@@ -1,6 +1,12 @@
 set(GAME_NAME "game")
 
-add_executable(${GAME_NAME} src/main.cpp)
+file(GLOB_RECURSE GAME_SOURCES 
+    "src/*.cpp"
+)
+
+add_executable(game 
+    ${GAME_SOURCES}
+)
 
 file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR}/${GAME_NAME}/)
 
