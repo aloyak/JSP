@@ -16,6 +16,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR}/${GAME_NAME
 target_include_directories(${GAME_NAME}
     PUBLIC  include
     PRIVATE src
+    PRIVATE ${sgp4_SOURCE_DIR}/libsgp4
 )
 
 target_link_libraries(${GAME_NAME} PRIVATE engine
