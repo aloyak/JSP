@@ -13,6 +13,8 @@ public:
 
     Engine& GetEngine() { return *m_engine; }
 
+    float timeScale = 1.0f;
+
 private:
     Engine* m_engine;
     std::unique_ptr<GameMode> m_currentGameMode;

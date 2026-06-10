@@ -1,6 +1,8 @@
 #include "game.h"
 
 Game::Game(Engine& engine) : m_engine(&engine), m_currentGameMode(nullptr) {
+    m_engine->initUI();
+
     m_engine->getRenderer().setupRenderTarget(600, 400);
     m_engine->getRenderer().setPixelArt(true, 16);
 
@@ -12,9 +14,11 @@ Game::Game(Engine& engine) : m_engine(&engine), m_currentGameMode(nullptr) {
 }
 
 void Game::Update() {
+    m_engine->beginUI();
     if (m_currentGameMode) {
         m_currentGameMode->Update();
     }
+    m_engine->endUI();
 }
 
 void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode) {
