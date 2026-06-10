@@ -22,7 +22,7 @@ private:
 
     float m_yaw = 0.0f;
     float m_pitch = 0.0f;
-    float m_radius = 250.0f;
+    float m_radius = 3200.0f;
 
     size_t m_currentSatIndex = 0;
 

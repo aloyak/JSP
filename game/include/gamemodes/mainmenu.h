@@ -1,0 +1,228 @@
+#pragma once
+
+// Not the best way to control version but whatever
+#define VERSION "0.1.0"
+
+#include "gamemode.h"
+#include "components/PlanetComponent.h"
+#include "engine/components/entity.h"
+
+#include "gamemodes/explore.h"
+//#include "gamemodes/gravitysandbox.h"
+//#include "gamemodes/settings.h"
+
+class Game;
+
+class MainMenuMode : public GameMode {
+private:
+    Game& m_game;
+    Engine& m_engine = m_game.GetEngine();
+    UI& m_ui = m_game.GetUI();
+
+    Entity* m_earthEntity = nullptr;
+
+    // closeable windows:
+    bool showSettings = false;
+    bool showExtras = false;
+public:
+    MainMenuMode(Game& game)
+        : GameMode("assets/scenes/menu.scene") 
+        , m_game(game) {}
+
+    void OnEnter() override {
+        m_earthEntity = m_engine.getSceneManager().getActiveScene()->getEntityByName("Earth").get();
+
+        if (m_earthEntity) {
+            auto* planet = m_earthEntity->addComponent<PlanetComponent>();
+            planet->period = 24.0f;
+            planet->radius = 637.1f;
+        }
+
+        m_game.timeScale = 25.0f;
+    }
+
+    void OnExit() override {
+        m_game.timeScale = 1.0f;
+    }
+
+    void Update() override {
+        // DEBUG: style editor
+        //ImGui::ShowStyleEditor();
+
+        m_earthEntity->getComponent<PlanetComponent>()->update(m_engine.getDeltaTime() * m_game.timeScale);
+
+        RenderMainMenu();
+
+        if (showSettings) ShowSettings();
+        if (showExtras) ShowExtras();
+    }
+
+    void RenderMainMenu() {
+        int flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 12));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+        ImGui::SetNextWindowPos(ImVec2(80, 80));
+        ImGui::Begin("Main Menu", nullptr, flags);
+
+        // Main Title TODO: make this beautiful
+        m_ui.setFont(0);
+        ImGui::Text("J.S.P.");
+        m_ui.resetFont();
+
+        m_ui.setFont(2);
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 30.0f);
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.35f), "Janitor Space Program - %s", VERSION);
+
+        ImGui::SeparatorText("Select:");
+
+        m_ui.resetFont();
+        m_ui.setFont(1);
+
+        if (ImGui::Button("Campaign Mode")) {} //m_game.SetGameMode(std::make_unique<CampaignMode>(m_game));
+        if (ImGui::Button("Explore the Solar System")) m_game.SetGameMode(std::make_unique<ExploreMode>(m_game)); 
+        if (ImGui::Button("Gravity Sandbox")) {} //m_game.SetGameMode(std::make_unique<GravitySandboxMode>(m_game));
+        if (ImGui::Button("Settings")) { showSettings = !showSettings; } 
+        if (ImGui::Button("Extras")) { showExtras = !showExtras; } 
+
+        if (ImGui::Button("Exit")) m_engine.stop();
+        m_ui.resetFont();
+        ImGui::End();
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+
+        ImGui::PopStyleVar();
+        ImGui::PopStyleVar();
+    }
+
+
+
+    // TODO: user settings (change on engine, not game)
+    void ShowSettings() {
+        auto CenterText = [](const char* text) {
+            float windowWidth = ImGui::GetWindowSize().x;
+            float textWidth = ImGui::CalcTextSize(text).x;
+            ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            ImGui::TextUnformatted(text);
+        };
+
+        int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+        ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
+
+        ImGui::Begin("Settings", &showSettings, flags);
+
+        m_ui.setFont(1);
+        CenterText("Settings");
+        m_ui.resetFont();
+
+        ImGui::Spacing();
+        
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Warning: Settings are not currently saved.");
+        
+        ImGui::Spacing();
+        ImGui::SeparatorText("Graphics");
+        
+        bool isFullscreen = m_engine.getWindow().isFullscreen();
+        if (ImGui::Checkbox("Fullscreen", &isFullscreen)) {
+            m_engine.getWindow().setFullscreen(isFullscreen);
+        }
+
+        ImGui::SameLine(150.0f);
+
+        bool vsyncEnabled = m_engine.getWindow().isVSyncEnabled();
+        if (ImGui::Checkbox("VSync", &vsyncEnabled)) {
+            m_engine.getWindow().enableVSync(vsyncEnabled);
+        }
+
+        static int resolutionIndex = 0;
+        const char* resolutions[] = { "800x600", "1024x768", "1280x720", "1920x1080" };
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::Combo("##Resolution", &resolutionIndex, resolutions, IM_ARRAYSIZE(resolutions));
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("Audio");
+
+        static float masterVolume = 1.0f;
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SliderFloat("##MasterVolume", &masterVolume, 0.0f, 1.0f, "Volume: %.0f%%", ImGuiSliderFlags_Logarithmic);
+
+        ImGui::End();
+        ImGui::PopStyleVar(2);
+    }
+
+    void ShowExtras() {
+        auto CenterText = [](const char* text) {
+            float windowWidth = ImGui::GetWindowSize().x;
+            float textWidth = ImGui::CalcTextSize(text).x;
+            ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
+            ImGui::TextUnformatted(text);
+        };
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+        
+        ImGui::SetNextWindowPos(ImVec2(650, 200), ImGuiCond_Once);
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
+        
+        ImGui::Begin("Extras", &showExtras, flags);
+
+        m_ui.setFont(1);
+        CenterText("Credits");
+        m_ui.resetFont();
+        
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        CenterText("Developer: 4loyak! (@aloyak)");
+        CenterText("Built with Origin Engine");
+                
+        const char* url = "https://github.com/aloyak/origin";
+        float urlWidth = ImGui::CalcTextSize(url).x;
+        ImGui::SetCursorPosX((ImGui::GetWindowSize().x - urlWidth) * 0.5f);
+        
+        ImGui::TextColored(ImVec4(0.2f, 0.6f, 1.0f, 1.0f), "%s", url);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            if (ImGui::IsMouseClicked(0)) {
+    #ifdef _WIN32
+                ShellExecute(0, 0, url, 0, 0, SW_SHOW);
+    #elif __APPLE__
+                system(("open " + std::string(url)).c_str());
+    #else
+                system(("xdg-open " + std::string(url)).c_str());
+    #endif
+            }
+        }
+
+        ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+
+        m_ui.setFont(1);
+        CenterText("Special thanks to:");
+        m_ui.resetFont();
+        
+        ImGui::Spacing();
+        
+        CenterText("NASA & ESA for free quality assets");
+        CenterText("CelesTrak’s Public TLE for satellite data");
+        CenterText("Hack Club for being awesome!");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        CenterText("Extras coming SOON^(tm)");
+
+        ImGui::End();
+        ImGui::PopStyleVar(2);
+    }
+};
