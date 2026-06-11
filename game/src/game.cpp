@@ -1,8 +1,9 @@
 #include "game.h"
 #include "engine/utils/logger.h"
+#include "gamemodes/mainmenu.h"
 
-Game::Game(Engine& engine) : m_engine(&engine), m_currentGameMode(nullptr) {
-    m_engine->initUI(); // engine level ui
+Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(nullptr) {
+    m_engine->initUI(); 
 
     m_engine->getRenderer().setupRenderTarget(600, 400);
     m_engine->getRenderer().setPixelArt(true, 16);
@@ -10,13 +11,14 @@ Game::Game(Engine& engine) : m_engine(&engine), m_currentGameMode(nullptr) {
     m_engine->getWindow().setFullscreen(false);
     m_engine->getWindow().enableVSync(false);
 
-    m_ui.initialize(); // custom game ui
+    m_ui.initialize(); 
 }
 
 void Game::Update() {
     if (m_currentGameMode) {
         m_currentGameMode->Update();
     }
+    Logger::info("FPS: {}", 1.0f / m_engine->getDeltaTime());
 }
 
 void Game::LateUpdate() {
@@ -27,13 +29,13 @@ void Game::LateUpdate() {
     m_engine->endUI();
 }
 
-void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode) {
+void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) {
     bool same = m_currentGameMode && 
         !newGameMode->GetScenePath().empty() && 
         m_currentGameMode->GetScenePath() == newGameMode->GetScenePath();
 
     if (m_currentGameMode) {
-        if (!same && !m_currentGameMode->GetScenePath().empty()) {
+        if ((!same || forceReload) && !m_currentGameMode->GetScenePath().empty() && (forceReload || m_engine->getSceneManager().getActiveScene() != nullptr)) {
             m_engine->getSceneManager().unload();
         }
         m_currentGameMode->OnExit();
@@ -43,9 +45,56 @@ void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode) {
     m_currentGameMode = std::move(newGameMode);
 
     if (m_currentGameMode) {
-        if (!same && !m_currentGameMode->GetScenePath().empty()) {
+        if ((!same || forceReload) && !m_currentGameMode->GetScenePath().empty() && (forceReload || m_engine->getSceneManager().getActiveScene() == nullptr)) {
             m_engine->getSceneManager().load(m_currentGameMode->GetScenePath());
         }
         m_currentGameMode->OnEnter();
+    }
+}
+
+void UI::showQuickOptions() {
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    
+    int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
+
+    if (ImGui::BeginPopupModal("Options", nullptr, flags)) {
+        float windowWidth = ImGui::GetWindowSize().x;
+
+        this->setFont(1); 
+        float textWidth = ImGui::CalcTextSize("Options").x;
+        ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
+        ImGui::Text("Options");
+        this->resetFont();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        float buttonWidth = 110.0f;
+        float buttonHeight = 75.0f;
+        int totalButtons = 3;
+        float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
+        
+        float totalButtonsWidth = (buttonWidth * totalButtons) + (itemSpacing * (totalButtons - 1));
+        
+        ImGui::SetCursorPosX((windowWidth - totalButtonsWidth) * 0.5f);
+
+        if (ImGui::Button("Resume", ImVec2(buttonWidth, buttonHeight))) {
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::SameLine();
+        if (ImGui::Button("Main Menu", ImVec2(buttonWidth, buttonHeight))) {
+            m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game), true);
+        }
+        
+        ImGui::SameLine();
+        if (ImGui::Button("Quit Game", ImVec2(buttonWidth, buttonHeight))) {
+            m_game.GetEngine().stop();
+        }
+
+        ImGui::EndPopup();
     }
 }

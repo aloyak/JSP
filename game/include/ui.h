@@ -2,9 +2,14 @@
 
 #include "engine/utils/path.h"
 
+class Game;
+class MainMenuMode;
+
 class UI {
 public:
     std::vector<ImFont*> fonts;
+
+    UI(Game& game) : m_game(game) {}
 
     void initialize() {
         setStyle();
@@ -30,7 +35,11 @@ public:
         ImGui::PopFont();
     }
 
+    void showQuickOptions();
+
 private:
+    Game& m_game;
+
     void setStyle() {
         ImGuiStyle& style = ImGui::GetStyle();
         style.WindowRounding = 0.0f;

@@ -13,7 +13,7 @@ public:
     
     void Update();
     void LateUpdate();
-    void SetGameMode(std::unique_ptr<GameMode> newGameMode);
+    void SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload = false);
 
     Engine& GetEngine() { return *m_engine; }
     UI& GetUI() { return m_ui; }

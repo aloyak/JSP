@@ -6,24 +6,21 @@
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
 #include "engine/components/entity.h"
+#include "game.h"
 
 #include "gamemodes/explore.h"
 #include "gamemodes/sandbox.h"
-//#include "gamemodes/settings.h"
 
 #include <chrono>
-
-class Game;
 
 class MainMenuMode : public GameMode {
 private:
     Game& m_game;
-    Engine& m_engine = m_game.GetEngine();
-    UI& m_ui = m_game.GetUI();
+    Engine& m_engine;
+    UI& m_ui;
 
     Entity* m_earthEntity = nullptr;
 
-    // closeable windows:
     bool showSettings = false;
     bool showExtras = false;
     bool showMenuSettings = true;
@@ -32,7 +29,9 @@ private:
 public:
     MainMenuMode(Game& game)
         : GameMode("assets/scenes/menu.scene") 
-        , m_game(game) {}
+        , m_game(game)
+        , m_engine(game.GetEngine())
+        , m_ui(game.GetUI()) {}
 
     void OnEnter() override {
         m_earthEntity = m_engine.getSceneManager().getActiveScene()->getEntityByName("Earth").get();

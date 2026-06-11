@@ -58,6 +58,7 @@ public:
         } else {
             m_input->setCursorMode(true);
             m_orbitCamera->Update(m_input, dt);
+            m_orbitCamera->ApplyScroll(m_input);
         }
 
         if (m_input->isKeyPressed(KEY_T)) {
@@ -68,7 +69,9 @@ public:
                 if (next) SetTarget(next);
             }
         }
+    }
 
+    void LateUpdate() override {
         ImGui::Begin("Info");
         ImGui::Text("Current Target: %s", orbitTarget ? orbitTarget->name.c_str() : "None");
         ImGui::Text("Distance: %.1f km", orbitTarget ? (orbitTarget->transform.position - m_camera->transform.position).length() * 10.0f : 0.0f);

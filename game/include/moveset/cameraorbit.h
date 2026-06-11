@@ -52,9 +52,9 @@ public:
     void ApplyScroll(Input* input) {
         if (!m_camera || !m_target) return;
 
-        const float scrollSensitivity = 12.0f;
+        const float scrollSensitivity = 0.1f;
 
-        m_radius -= input->getScrollDelta().y * scrollSensitivity;
+        m_radius *= 1.0f - (input->getScrollDelta().y * scrollSensitivity);
         m_radius = std::clamp(m_radius, 630.0f, 10000.0f);
     }
 
