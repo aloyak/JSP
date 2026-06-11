@@ -1,0 +1,73 @@
+#pragma once
+
+#include "engine/components/entity.h"
+#include "engine/components/cameraComponent.h"
+#include "engine/input/input.h"
+#include <algorithm>
+#include <cmath>
+
+class OrbitCamera {
+private:
+    Entity* m_camera = nullptr;
+    Entity* m_target = nullptr;
+
+    float m_yaw = 0.0f;
+    float m_pitch = 0.0f;
+    float m_radius = 50.0f;
+
+public:
+    OrbitCamera(Entity* camera) : m_camera(camera) {}
+
+    void SetTarget(Entity* target, float initialRadius = 50.0f) {
+        m_target = target;
+        m_radius = initialRadius;
+    }
+    
+    void ApplyPosition() {
+        if (!m_camera || !m_target) return;
+
+        Vec3 targetPos = m_target->transform.position;
+        m_camera->transform.position = Vec3(
+            targetPos.x + m_radius * cosf(m_pitch) * cosf(m_yaw),
+            targetPos.y + m_radius * sinf(m_pitch),
+            targetPos.z + m_radius * cosf(m_pitch) * sinf(m_yaw));
+
+        m_camera->getComponent<CameraComponent>()->lookAt(*m_target);
+    }
+
+    void Update(Input* input, float deltaTime) {
+        if (!m_camera || !m_target) return;
+
+        const float mouseSensitivity = 0.001f;
+        const float scrollSensitivity = 12.0f;
+        const float pitchLimit = 89.5f * (M_PI / 180.0f);
+
+        Vec2 delta = input->getMouseDelta();
+        m_yaw += delta.x * mouseSensitivity;
+        m_pitch -= delta.y * mouseSensitivity;
+        m_pitch = std::clamp(m_pitch, -pitchLimit, pitchLimit);
+
+        m_radius -= input->getScrollDelta().y * scrollSensitivity;
+        m_radius = std::clamp(m_radius, 5.5f, 2500.0f);
+
+        ApplyPosition();
+    }
+
+    void SyncFromCurrentPosition() {
+        if (!m_camera || !m_target) return;
+
+        Vec3 offset = m_camera->transform.position - m_target->transform.position;
+        m_radius = sqrtf(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+        if (m_radius < 0.001f) return;
+
+        m_pitch = asinf(std::clamp(offset.y / m_radius, -1.0f, 1.0f));
+        m_yaw   = atan2f(offset.z, offset.x);
+    }
+
+    void SetOrientation(float yaw, float pitch) {
+        m_yaw = yaw;
+        m_pitch = pitch;
+    }
+
+    float& GetRadius() { return m_radius; }
+};

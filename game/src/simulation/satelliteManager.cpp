@@ -156,7 +156,7 @@ bool SatelliteManager::isCacheValid() {
 bool SatelliteManager::fetchSatelliteData() {
     Logger::info("Attempting to fetch satellite data from celestrak.org");
     httplib::Client cli("https://celestrak.org");
-    if (auto res = cli.Get("/NORAD/elements/gp.php?GROUP=stations&FORMAT=json")) {
+    if (auto res = cli.Get("/NORAD/elements/gp.php?GROUP=active&FORMAT=json")) {
         Logger::info("HTTP request completed with status code: {}", res->status);
         if (res->status == 200) {
             std::string resolvedCachePath = Path::resolve(m_cachePath).string();

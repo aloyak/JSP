@@ -8,8 +8,10 @@
 #include "engine/components/entity.h"
 
 #include "gamemodes/explore.h"
-//#include "gamemodes/gravitysandbox.h"
+#include "gamemodes/sandbox.h"
 //#include "gamemodes/settings.h"
+
+#include <chrono>
 
 class Game;
 
@@ -24,6 +26,9 @@ private:
     // closeable windows:
     bool showSettings = false;
     bool showExtras = false;
+    bool showMenuSettings = true;
+
+    double m_simulatedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
 public:
     MainMenuMode(Game& game)
         : GameMode("assets/scenes/menu.scene") 
@@ -55,11 +60,12 @@ public:
 
         if (showSettings) ShowSettings();
         if (showExtras) ShowExtras();
+
+        if (showMenuSettings) ShowMenuSettings();
     }
 
     void RenderMainMenu() {
         int flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
-
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 12));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
@@ -86,7 +92,7 @@ public:
 
         if (ImGui::Button("Campaign Mode")) {} //m_game.SetGameMode(std::make_unique<CampaignMode>(m_game));
         if (ImGui::Button("Explore the Solar System")) m_game.SetGameMode(std::make_unique<ExploreMode>(m_game)); 
-        if (ImGui::Button("Gravity Sandbox")) {} //m_game.SetGameMode(std::make_unique<GravitySandboxMode>(m_game));
+        if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
         if (ImGui::Button("Settings")) { showSettings = !showSettings; } 
         if (ImGui::Button("Extras")) { showExtras = !showExtras; } 
 
@@ -100,8 +106,6 @@ public:
         ImGui::PopStyleVar();
         ImGui::PopStyleVar();
     }
-
-
 
     // TODO: user settings (change on engine, not game)
     void ShowSettings() {
@@ -129,6 +133,12 @@ public:
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Warning: Settings are not currently saved.");
         
         ImGui::Spacing();
+        ImGui::SeparatorText("General");
+        static int langIndex = 0;
+        const char* languages[] = { "English", "SOON" };
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::Combo("##Language", &langIndex, languages, IM_ARRAYSIZE(languages));
+
         ImGui::SeparatorText("Graphics");
         
         bool isFullscreen = m_engine.getWindow().isFullscreen();
@@ -225,4 +235,43 @@ public:
         ImGui::End();
         ImGui::PopStyleVar(2);
     }
+
+    void ShowMenuSettings() {
+        int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | 
+                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+
+        //ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        //ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+
+        ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+        ImVec2 windowSize = ImVec2(200, 80);
+        ImVec2 padding = ImVec2(20, 20);
+
+        ImVec2 pos = ImVec2(
+            displaySize.x - windowSize.x - padding.x,
+            displaySize.y - windowSize.y - padding.y
+        );
+
+        ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+
+        ImGui::Begin("Background Settings", nullptr, flags);
+
+        m_simulatedTime += (m_engine.getDeltaTime() * m_game.timeScale);
+        std::time_t displayTime = static_cast<std::time_t>(m_simulatedTime);
+        std::tm* localTime = std::localtime(&displayTime);
+        char timeBuffer[64];
+        std::strftime(timeBuffer, sizeof(timeBuffer), "%B %d %Y, %H:%M:%S", localTime);
+
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.6f), "%s", timeBuffer);
+        ImGui::SetNextItemWidth(180.0f);
+        ImGui::SliderFloat("##TimeScale", &m_game.timeScale, 1.0f, 10000.0f, "Time Scale: %.1fx", ImGuiSliderFlags_Logarithmic);
+
+        ImGui::End();
+        //ImGui::PopStyleColor();
+        //ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+    }
+
 };

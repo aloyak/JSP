@@ -21,7 +21,9 @@ public:
 
 private:
     Engine* m_engine;
+
     std::unique_ptr<GameMode> m_currentGameMode;
+    std::unique_ptr<GameMode> m_lastGameMode;
 
     UI m_ui;
 };
