@@ -12,6 +12,7 @@ public:
     Game(Engine& engine);
     
     void Update();
+    void LateUpdate();
     void SetGameMode(std::unique_ptr<GameMode> newGameMode);
 
     Engine& GetEngine() { return *m_engine; }

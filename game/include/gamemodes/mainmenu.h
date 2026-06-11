@@ -54,8 +54,10 @@ public:
         // DEBUG: style editor
         //ImGui::ShowStyleEditor();
 
-        m_earthEntity->getComponent<PlanetComponent>()->update(m_engine.getDeltaTime() * m_game.timeScale);
+        m_earthEntity->getComponent<PlanetComponent>()->update(m_engine.getDeltaTime() * m_game.timeScale);        
+    }
 
+    void LateUpdate() override {
         RenderMainMenu();
 
         if (showSettings) ShowSettings();

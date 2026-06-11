@@ -11,6 +11,9 @@ int main() {
 
     engine.run([&]() {        
         game.Update();
+    },
+    [&]() {
+        game.LateUpdate();
     });
 
     return 0;

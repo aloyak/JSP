@@ -39,7 +39,6 @@ public:
         if (!m_camera || !m_target) return;
 
         const float mouseSensitivity = 0.001f;
-        const float scrollSensitivity = 12.0f;
         const float pitchLimit = 89.5f * (M_PI / 180.0f);
 
         Vec2 delta = input->getMouseDelta();
@@ -47,10 +46,16 @@ public:
         m_pitch -= delta.y * mouseSensitivity;
         m_pitch = std::clamp(m_pitch, -pitchLimit, pitchLimit);
 
-        m_radius -= input->getScrollDelta().y * scrollSensitivity;
-        m_radius = std::clamp(m_radius, 5.5f, 2500.0f);
-
         ApplyPosition();
+    }
+    
+    void ApplyScroll(Input* input) {
+        if (!m_camera || !m_target) return;
+
+        const float scrollSensitivity = 12.0f;
+
+        m_radius -= input->getScrollDelta().y * scrollSensitivity;
+        m_radius = std::clamp(m_radius, 630.0f, 10000.0f);
     }
 
     void SyncFromCurrentPosition() {
