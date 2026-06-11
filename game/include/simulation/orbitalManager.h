@@ -28,6 +28,7 @@ public:
             Entity* satEntity = m_engine.createEntity(data.name);
             satEntity->addComponent<SatellitePropagatorComponent>(data);
             satEntity->addComponent<RenderComponent>("assets/models/cube.fbx");
+            satEntity->transform.scale = Vec3(0.1f, 0.1f, 0.1f);
             m_orbitalEntities.push_back(satEntity);
         }
     }

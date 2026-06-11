@@ -15,6 +15,7 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
 }
 
 void Game::Update() {
+    m_engine->beginUI();
     if (m_currentGameMode) {
         m_currentGameMode->Update();
     }
@@ -22,7 +23,6 @@ void Game::Update() {
 }
 
 void Game::LateUpdate() {
-    m_engine->beginUI();
     if (m_currentGameMode) {
         m_currentGameMode->LateUpdate();
     }

@@ -40,7 +40,7 @@ public:
         engine.setActiveCamera(m_camera);
 
         m_orbitCamera = new OrbitCamera(m_camera);
-        SetTarget(m_earthEntity);
+        SetTarget(m_earthEntity, 3000.0f);
 
         m_orbitalManager = new OrbitalManager(engine);
         m_orbitalManager->initialize(m_earthEntity);
@@ -66,7 +66,9 @@ public:
             if (!sats.empty()) {
                 m_currentSatIndex = (m_currentSatIndex + 1) % sats.size();
                 Entity* next = m_orbitalManager->getEntityByIndex(m_currentSatIndex);
-                if (next) SetTarget(next);
+                if (next && !next->hasComponent<PlanetComponent>()) {
+                    SetTarget(next, 2.0f);
+                }
             }
         }
     }
@@ -84,13 +86,12 @@ public:
     }
 
 private:
-    void SetTarget(Entity* target) {
+    void SetTarget(Entity* target, float initialRadius = 50.0f) {
         if (!target) return;
         
         orbitTarget = target;
-        float radius = target->getComponent<PlanetComponent>() ? target->getComponent<PlanetComponent>()->radius + 5.0f : 75.0f;
         
-        m_orbitCamera->SetTarget(target, radius);
+        m_orbitCamera->SetTarget(target, initialRadius);
 
         if (target != m_earthEntity) {
             Vec3 earthToTarget = target->transform.position - m_earthEntity->transform.position;

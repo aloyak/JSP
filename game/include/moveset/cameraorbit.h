@@ -55,7 +55,11 @@ public:
         const float scrollSensitivity = 0.1f;
 
         m_radius *= 1.0f - (input->getScrollDelta().y * scrollSensitivity);
-        m_radius = std::clamp(m_radius, 630.0f, 10000.0f);
+        float minRadius = 1.0f;
+        if (m_target->hasComponent<PlanetComponent>()) {
+            minRadius = m_target->getComponent<PlanetComponent>()->radius + 10.0f;
+        }
+        m_radius = std::clamp(m_radius, minRadius, 10000.0f);
     }
 
     void SyncFromCurrentPosition() {

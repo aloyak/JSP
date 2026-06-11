@@ -90,7 +90,7 @@
             "components": [
                 {
                     "aspect": 1.9174219369888306,
-                    "far": 10000.0,
+                    "far": 32000.0,
                     "fov": 60.0,
                     "near": 0.10000000149011612,
                     "type": "CameraComponent"
