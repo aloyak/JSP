@@ -16,10 +16,10 @@ struct GravityBody {
     std::string name = "Unnamed";
 };
 
+// TODO: set velocity after placement
 enum class PlaceState {
     None,
     Positioning,
-    SettingVelocity
 };
 
 class SandboxMode : public GameMode {
@@ -33,12 +33,13 @@ private:
     Entity* m_camera = nullptr;
 
     bool movingEnabled = false;
-    bool isTransitioning = true;
 
     float moveSpeed = 500.0f;
     float startRadius = 2350.0f;
-
+    
     bool drawGrid = true;
+    
+    bool isTransitioning = true;
 
     float m_transitionProgress = 0.0f;
     float m_transitionDuration = 2.0f; 
@@ -60,6 +61,9 @@ private:
 
     Entity* m_ghostEntity = nullptr;
     float m_velocityScale = 0.5f;
+
+    bool m_prevLeftPressed = false;
+    bool m_prevRightPressed = false;
 
     std::vector<GravityBody> gravityBodies = {
         { "assets/models/earth.fbx", 5.972e24f, 637.1f, 24.0f, "Earth" },
@@ -138,6 +142,9 @@ public:
                         break;
                     }
                 }
+                
+                planetRadius *= planet->transform.scale.x;
+                
                 if ((pos - planet->transform.position).length() < (ghostRadius + planetRadius + 50.0f)) {
                     return false;
                 }
@@ -174,44 +181,105 @@ public:
         m_placeState = PlaceState::None;
     }
 
+    int TryPickPlanet() {
+        Vec2 mousePos = m_input.getMousePos();
+        Vec2 winSize  = m_game.GetEngine().getWindow().getSize();
+        float ndcX = (2.0f * mousePos.x) / winSize.x - 1.0f;
+        float ndcY = 1.0f - (2.0f * mousePos.y) / winSize.y;
+
+        auto* camComp = m_camera->getComponent<CameraComponent>();
+        Mat4 proj; camComp->getCamera().getProjectionMatrix(proj);
+        float invProjX = 1.0f / proj[0][0];
+        float invProjY = 1.0f / proj[1][1];
+
+        Vec3 lookDir  = (m_target->transform.position - m_camera->transform.position).normalize();
+        Vec3 worldUp(0.0f, 1.0f, 0.0f);
+        Vec3 rightDir = cross(lookDir, worldUp).normalize();
+        Vec3 upDir    = cross(rightDir, lookDir).normalize();
+        Vec3 rayDir   = (lookDir + rightDir * (ndcX * invProjX) + upDir * (ndcY * invProjY)).normalize();
+        Vec3 rayOrigin = m_camera->transform.position;
+
+        int   bestIdx      = -1;
+        float bestScore    = 1e9f; 
+
+        for (int i = 0; i < (int)planetList.size(); i++) {
+            Entity* planet = planetList[i];
+            if (!planet) continue;
+
+            float physicsRadius = 1.0f;
+            for (const auto& body : gravityBodies) {
+                if (planet->name == body.name) { 
+                    physicsRadius = body.radius; 
+                    break; 
+                }
+            }
+            
+            physicsRadius *= planet->transform.scale.x;
+
+            Vec3  toCenter = planet->transform.position - rayOrigin;
+            float t        = dot(toCenter, rayDir);
+            if (t < 0.0f) continue;
+
+            float worldDist = (rayOrigin + rayDir * t - planet->transform.position).length();
+
+            Vec3  screenCenter = rayOrigin + rayDir * t;
+            float distToCam    = toCenter.length();
+            float ndcRadius    = (physicsRadius / std::max(distToCam, 1.0f)) * proj[0][0];
+            float pixelRadius  = std::max(ndcRadius * winSize.x * 0.5f, 20.0f); 
+
+            float pickThreshold = (pixelRadius / (winSize.x * 0.5f)) * distToCam / proj[0][0];
+
+            if (worldDist < pickThreshold && t < bestScore) {
+                bestScore = t;   
+                bestIdx   = i;
+            }
+        }
+        return bestIdx;
+    }
+
     void HandlePlacementLogic() {
+        bool leftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
+        bool rightPressed = m_input.isMouseButtonPressed(MOUSE_RIGHT);
+        
+        bool leftJustPressed = leftPressed && !m_prevLeftPressed;
+        bool rightJustPressed = rightPressed && !m_prevRightPressed;
+
         if (m_placeState == PlaceState::Positioning) {
             Vec3 intersect = GetMouseIntersection();
             if (m_ghostEntity) {
                 m_ghostEntity->transform.position = intersect;
                 float ghostIntensity = sin((m_game.GetEngine().getTime() * 5.0f)) * 0.25f + 0.65f;
+                
+                float ghostRadius = gravityBodies[m_selectedBodyIndex].radius * m_ghostEntity->transform.scale.x;
+                
                 m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(
-                    IsPositionValid(intersect, gravityBodies[m_selectedBodyIndex].radius) ? Vec3(0.2f, 0.8f, 0.2f) * ghostIntensity : Vec3(0.8f, 0.4f, 0.4f) * ghostIntensity
+                    IsPositionValid(intersect, ghostRadius) ? Vec3(0.2f, 0.8f, 0.2f) * ghostIntensity : Vec3(0.8f, 0.4f, 0.4f) * ghostIntensity
                 );
             }
-            if (m_input.isMouseButtonPressed(MOUSE_LEFT)) {
-                float ghostRadius = gravityBodies[m_selectedBodyIndex].radius;
-                if (IsPositionValid(intersect, ghostRadius)) {
-                    m_placePosition = intersect;
-                    m_startMousePos = m_input.getMousePos();
-                    m_placeState = PlaceState::SettingVelocity;
+            if (!ImGui::GetIO().WantCaptureMouse) {
+                if (leftJustPressed) {
+                    ConfirmPlacement();
+                    return;
+                } else if (rightJustPressed) {
+                    CancelPlacement();
+                    return;
                 }
-            } else if (m_input.isMouseButtonPressed(MOUSE_RIGHT)) {
-                CancelPlacement();
             }
-        } else if (m_placeState == PlaceState::SettingVelocity) {
-
-            Vec2 mousePos = m_input.getMousePos();
-            Vec2 mouseDelta = mousePos - m_startMousePos;
-            Vec3 lookDir = (m_target->transform.position - m_camera->transform.position).normalize();
-            Vec3 forwardXZ = Vec3(lookDir.x, 0.0f, lookDir.z).normalize();
-
-            if (forwardXZ.length() < 0.0001f) forwardXZ = Vec3(0, 0, 1);
-
-            Vec3 rightXZ = Vec3(forwardXZ.z, 0.0f, -forwardXZ.x);
-            m_placeVelocity = rightXZ * mouseDelta.x * m_velocityScale - forwardXZ * mouseDelta.y * m_velocityScale;
-
-            if (m_input.isMouseButtonPressed(MOUSE_LEFT)) {
-                ConfirmPlacement();
-            } else if (m_input.isMouseButtonPressed(MOUSE_RIGHT)) {
-                CancelPlacement();
+        } else if (m_placeState == PlaceState::None) {
+            if (leftJustPressed && !ImGui::GetIO().WantCaptureMouse) {
+                int idx = TryPickPlanet();
+                if (idx >= 0) {
+                    m_ghostEntity = planetList[idx];
+                    planetList.erase(planetList.begin() + idx);
+                    for (int i = 0; i < (int)gravityBodies.size(); i++) {
+                        if (gravityBodies[i].name == m_ghostEntity->name) {
+                            m_selectedBodyIndex = i;
+                            break;
+                        }
+                    }
+                    m_placeState = PlaceState::Positioning;
+                }
             }
-
         }
     }
 
@@ -254,12 +322,18 @@ public:
 
             moveSpeed = 1000.0f * m_orbitCamera->GetRadius() * 0.5f * dt;
 
-            if (m_placeState == PlaceState::None && m_input.isMouseButtonPressed(MOUSE_RIGHT)) {
+            bool isRightClicked = m_input.isMouseButtonPressed(MOUSE_RIGHT);
+
+            if (m_placeState == PlaceState::Positioning || isRightClicked) {
                 m_input.setCursorMode(true);
+            } else {
+                m_input.setCursorMode(false);
+            }
+
+            if (m_placeState == PlaceState::None && isRightClicked) {
                 m_orbitCamera->Update(&m_input, dt);
                 m_orbitCamera->ApplyScroll(&m_input);
             } else {
-                m_input.setCursorMode(false);
                 m_orbitCamera->ApplyPosition();
                 m_orbitCamera->ApplyScroll(&m_input);
             }
@@ -276,16 +350,12 @@ public:
                 m_target->transform.position.y -= 1.0f;   
             }
         }
+        
+        m_prevLeftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
+        m_prevRightPressed = m_input.isMouseButtonPressed(MOUSE_RIGHT);
     }
 
     void LateUpdate() override {
-        Renderer& renderer = m_game.GetEngine().getRenderer();
-
-        if (m_placeState == PlaceState::SettingVelocity) {
-            Vec3 velocityEnd = m_placePosition + m_placeVelocity * 10.0f;
-            renderer.drawLine(m_placePosition, velocityEnd, m_camera->getComponent<CameraComponent>()->getCamera(), m_camera->transform, Vec3(0.2f, 0.8f, 0.2f), 2.0f);
-        }
-
         DrawUI();
     }
 
@@ -293,11 +363,11 @@ public:
         for (int i = -13; i <= 13; ++i) {
             Vec3 start = Vec3(i * 750.0f, m_target->transform.position.y, -9750.0f);
             Vec3 end   = Vec3(i * 750.0f, m_target->transform.position.y,  9750.0f);
-            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(), m_camera->transform, Vec3(.05f, .05f, .05f), 10.0f, false);
+            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(), m_camera->transform, Vec3(.005f, .005f, .005f), 10.0f, false);
             start = Vec3(-9750.0f, m_target->transform.position.y, i * 750.0f);
             end   = Vec3( 9750.0f, m_target->transform.position.y, i * 750.0f);
 
-            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(), m_camera->transform, Vec3(.05f, .05f, .05f), 10.0f, false);
+            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(), m_camera->transform, Vec3(.005f, .005f, .005f), 10.0f, false);
         }
         
     }
@@ -328,9 +398,9 @@ public:
         ImGui::SetNextWindowPos(
             ImVec2(windowSize.x * 0.5f, 5.0f),
             ImGuiCond_Always,
-            ImVec2(0.5f, 0.0f)   // pivot: top-center
+            ImVec2(0.5f, 0.0f) 
         );
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always); // auto-size
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always); 
 
         ImGui::Begin("##PlayPause", nullptr,
             ImGuiWindowFlags_NoTitleBar      |
@@ -339,9 +409,11 @@ public:
             ImGuiWindowFlags_NoBackground    |
             ImGuiWindowFlags_AlwaysAutoResize);
 
-        if (ImGui::Button(">",  ImVec2(30, 30))) physicsPaused = false;
+        if (ImGui::Button("Play",  ImVec2(30, 30))) physicsPaused = false;
         ImGui::SameLine();
-        if (ImGui::Button("||", ImVec2(30, 30))) physicsPaused = true;
+        if (ImGui::Button("Pause", ImVec2(30, 30))) physicsPaused = true;
+        ImGui::SameLine();
+        if (ImGui::Button("Reset", ImVec2(30, 30))) {}
 
         ImGui::End();
 
