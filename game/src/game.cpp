@@ -8,8 +8,9 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
     m_engine->getRenderer().setupRenderTarget(600, 400);
     m_engine->getRenderer().setPixelArt(true, 16);
 
-    m_engine->getWindow().setFullscreen(false);
+    m_engine->getWindow().setFullscreen(true);
     m_engine->getWindow().enableVSync(false);
+    // m_engine->getWindow().allowResize(false); // TODO
 
     m_ui.initialize(); 
 }
@@ -19,13 +20,16 @@ void Game::Update() {
     if (m_currentGameMode) {
         m_currentGameMode->Update();
     }
-    Logger::info("FPS: {}", 1.0f / m_engine->getDeltaTime());
 }
 
 void Game::LateUpdate() {
     if (m_currentGameMode) {
         m_currentGameMode->LateUpdate();
     }
+
+    // DEBUG: style editor
+    //ImGui::ShowStyleEditor();
+
     m_engine->endUI();
 }
 
@@ -87,7 +91,7 @@ void UI::showQuickOptions() {
         
         ImGui::SameLine();
         if (ImGui::Button("Main Menu", ImVec2(buttonWidth, buttonHeight))) {
-            m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game), true);
+            this->loadMainMenu();
         }
         
         ImGui::SameLine();
@@ -97,4 +101,8 @@ void UI::showQuickOptions() {
 
         ImGui::EndPopup();
     }
+}
+
+void UI::loadMainMenu() {
+    m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game), true);
 }

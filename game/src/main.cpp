@@ -4,7 +4,7 @@
 #include "gamemodes/mainmenu.h"
 
 int main() {
-    Engine engine(1600, 900, "JSP");
+    Engine engine(1920, 1080, "JSP");
     Game game(engine);
 
     game.SetGameMode(std::make_unique<MainMenuMode>(game));

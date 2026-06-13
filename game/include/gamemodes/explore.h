@@ -28,12 +28,13 @@ public:
         Engine& engine = m_game.GetEngine();
         m_input = &engine.getInput();
 
-        m_earthEntity = engine.getSceneManager().getActiveScene()->getEntityByName("Earth").get();
-        if (m_earthEntity) {
-            auto* planet = m_earthEntity->addComponent<PlanetComponent>();
-            planet->period = 24.0f;
-            planet->radius = 637.1f;
-        }
+        m_earthEntity = engine.getSceneManager().getActiveScene()->createEntity("Earth");
+        m_earthEntity->addComponent<RenderComponent>("assets/models/earth.fbx");
+        m_earthEntity->transform.scale = Vec3(1.274f, 1.274f, 1.274f);
+        auto* planet = m_earthEntity->addComponent<PlanetComponent>();
+        planet->period = 24.0f;
+        planet->radius = 637.1f;
+        
 
         m_camera = engine.createEntity("Camera");
         m_camera->addComponent<CameraComponent>(45.0f, 1600.0f / 900.0f, 0.1f, 10000.0f);

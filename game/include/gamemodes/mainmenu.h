@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.1.0"
+#define VERSION "0.3.0"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -10,6 +10,10 @@
 
 #include "gamemodes/explore.h"
 #include "gamemodes/sandbox.h"
+#include "gamemodes/planetbuilder.h"
+
+// used as a temporary solution for a missing sprite renderer
+#include "engine/render/texture.h"
 
 #include <chrono>
 
@@ -24,8 +28,11 @@ private:
     bool showSettings = false;
     bool showExtras = false;
     bool showMenuSettings = true;
+    bool showSandbox = false;
 
     double m_simulatedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+    Texture logo = Texture("assets/logo.png");
 public:
     MainMenuMode(Game& game)
         : GameMode("assets/scenes/menu.scene") 
@@ -50,9 +57,6 @@ public:
     }
 
     void Update() override {
-        // DEBUG: style editor
-        //ImGui::ShowStyleEditor();
-
         m_earthEntity->getComponent<PlanetComponent>()->update(m_engine.getDeltaTime() * m_game.timeScale);        
     }
 
@@ -65,48 +69,61 @@ public:
         if (showMenuSettings) ShowMenuSettings();
     }
 
-    void RenderMainMenu() {
-        int flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+void RenderMainMenu() {
+    int flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 12));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 12));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
 
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 
-        ImGui::SetNextWindowPos(ImVec2(80, 80));
-        ImGui::Begin("Main Menu", nullptr, flags);
+    ImGui::SetNextWindowPos(ImVec2(80, 80));
+    ImGui::Begin("Main Menu", nullptr, flags);
 
-        // Main Title TODO: make this beautiful
-        m_ui.setFont(0);
-        ImGui::Text("J.S.P.");
-        m_ui.resetFont();
+    // Main Title TODO: make this beautiful
+    //m_ui.setFont(0);
+    //ImGui::Text("J.S.P.");
+    //m_ui.resetFont();
 
-        m_ui.setFont(2);
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 30.0f);
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.35f), "Janitor Space Program - %s", VERSION);
+    float scaleFactor = m_engine.getWindow().getSize().y / 1080.0f;
+    ImVec2 logoSize = ImVec2(300 * scaleFactor, 300 * scaleFactor);
+    ImGui::Image((void*)(intptr_t)logo.ID, logoSize);
 
-        ImGui::SeparatorText("Select:");
+    m_ui.setFont(2);
+    //ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 10.0f);
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.35f), "Janitor Space Program - %s", VERSION);
 
-        m_ui.resetFont();
-        m_ui.setFont(1);
+    ImGui::SeparatorText("Select:");
 
-        if (ImGui::Button("Campaign Mode")) {} //m_game.SetGameMode(std::make_unique<CampaignMode>(m_game));
-        if (ImGui::Button("Explore the Solar System")) m_game.SetGameMode(std::make_unique<ExploreMode>(m_game)); 
+    m_ui.resetFont();
+    m_ui.setFont(1);
+
+    if (ImGui::Button("Campaign Mode")) {}
+    if (ImGui::Button("Explore the Earth")) m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
+
+    if (ImGui::Button("Sandbox Mode")) { showSandbox = !showSandbox; }
+    if (showSandbox) {
+        ImGui::Indent();
+        if (ImGui::Button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
+        if (ImGui::Button("Spacecraft Editor")) {}
         if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
-        if (ImGui::Button("Settings")) { showSettings = !showSettings; } 
-        if (ImGui::Button("Extras")) { showExtras = !showExtras; } 
-
-        if (ImGui::Button("Exit")) m_engine.stop();
-        m_ui.resetFont();
-        ImGui::End();
-
-        ImGui::PopStyleColor();
-        ImGui::PopStyleColor();
-
-        ImGui::PopStyleVar();
-        ImGui::PopStyleVar();
+        ImGui::Unindent();
     }
+
+    if (ImGui::Button("Settings")) { showSettings = !showSettings; }
+    if (ImGui::Button("Extras")) { showExtras = !showExtras; }
+
+    if (ImGui::Button("Exit")) m_engine.stop();
+    m_ui.resetFont();
+    ImGui::End();
+
+    ImGui::PopStyleColor();
+    ImGui::PopStyleColor();
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
+}
 
     // TODO: user settings (change on engine, not game)
     void ShowSettings() {
@@ -191,10 +208,10 @@ public:
         CenterText("Credits");
         m_ui.resetFont();
         
-        ImGui::Separator();
         ImGui::Spacing();
 
         CenterText("Developer: 4loyak! (@aloyak)");
+        CenterText("This project is open source!");
         CenterText("Built with Origin Engine");
                 
         const char* url = "https://github.com/aloyak/origin";

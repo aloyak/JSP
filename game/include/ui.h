@@ -35,7 +35,9 @@ public:
         ImGui::PopFont();
     }
 
+    // defined in game.cpp
     void showQuickOptions();
+    void loadMainMenu();
 
 private:
     Game& m_game;
