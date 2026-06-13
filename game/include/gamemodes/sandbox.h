@@ -3,6 +3,8 @@
 #include "gamemode.h"
 #include "moveset/cameraorbit.h"
 
+#include "grid.h"
+
 #include "engine/components/entity.h"
 #include "engine/utils/logger.h"
 
@@ -16,10 +18,16 @@ struct GravityBody {
     std::string name = "Unnamed";
 };
 
-// TODO: set velocity after placement
 enum class PlaceState {
     None,
     Positioning,
+    VelocityDrag,
+};
+
+enum class ToolMode {
+    Selection,
+    Reallocation,
+    Velocity,
 };
 
 class SandboxMode : public GameMode {
@@ -49,8 +57,11 @@ private:
 
     // sandbox specific
     Entity* selectedEntity = nullptr;
+    float m_selectedColor[3] = { 1.0f, 1.0f, 1.0f };   // color shown in Properties tab
     std::vector<Entity*> planetList;
     bool physicsPaused = false;
+
+    ToolMode m_toolMode = ToolMode::Reallocation;   // active tool
 
     PlaceState m_placeState = PlaceState::None;
     int m_selectedBodyIndex = -1;
@@ -64,6 +75,19 @@ private:
 
     bool m_prevLeftPressed = false;
     bool m_prevRightPressed = false;
+
+    // velocity-drag state
+    Entity* m_velocityTarget = nullptr; 
+    Vec2   m_velDragStart;
+    Vec3   m_velDragWorldOrigin;
+    bool   m_velDragging = false; 
+    static constexpr float kVelocityPixelScale = 0.05f;
+
+    bool  m_focusTransitioning = false;
+    Vec3  m_focusStartPos;
+    Vec3  m_focusEndPos;
+    float m_focusProgress = 0.0f;
+    float m_focusDuration = 0.6f;
 
     std::vector<GravityBody> gravityBodies = {
         { "assets/models/earth.fbx", 5.972e24f, 637.1f, 24.0f, "Earth" },
@@ -105,7 +129,7 @@ public:
         delete m_orbitCamera;
     }
 
-    // TODO: this is useful, move to engine utils or something
+    // Helpers
     Vec3 GetMouseIntersection() {
         Vec2 mousePos = m_input.getMousePos();
         Vec2 winSize = m_game.GetEngine().getWindow().getSize();
@@ -125,9 +149,7 @@ public:
         Vec3 rayDir = (lookDir + rightDir * (ndcX * invProjX) + upDir * (ndcY * invProjY)).normalize();
         Vec3 rayOrigin = m_camera->transform.position;
         float planeY = m_target->transform.position.y;
-        if (std::abs(rayDir.y) < 0.0001f) {
-            return rayOrigin;
-        }
+        if (std::abs(rayDir.y) < 0.0001f) return rayOrigin;
         float t = (planeY - rayOrigin.y) / rayDir.y;
         return rayOrigin + rayDir * t;
     }
@@ -137,26 +159,51 @@ public:
             if (planet) {
                 float planetRadius = 1.0f;
                 for (const auto& body : gravityBodies) {
-                    if (planet->name == body.name) {
-                        planetRadius = body.radius;
-                        break;
-                    }
+                    if (planet->name == body.name) { planetRadius = body.radius; break; }
                 }
-                
                 planetRadius *= planet->transform.scale.x;
-                
-                if ((pos - planet->transform.position).length() < (ghostRadius + planetRadius + 50.0f)) {
+                if ((pos - planet->transform.position).length() < (ghostRadius + planetRadius + 50.0f))
                     return false;
-                }
             }
         }
         return true;
     }
 
+    const GravityBody* FindBodyDef(const std::string& name) const {
+        for (const auto& body : gravityBodies)
+            if (body.name == name) return &body;
+        return nullptr;
+    }
+
+    // TODO: move this to engine or a utility class, since it's useful in general
+    bool WorldToScreen(const Vec3& worldPos, ImVec2& outScreen) const {
+        Vec2 winSize  = m_game.GetEngine().getWindow().getSize();
+        auto* camComp = m_camera->getComponent<CameraComponent>();
+        Mat4 proj; camComp->getCamera().getProjectionMatrix(proj);
+
+        Vec3 toPoint  = worldPos - m_camera->transform.position;
+        Vec3 lookDir  = (m_target->transform.position - m_camera->transform.position).normalize();
+        Vec3 worldUp(0.0f, 1.0f, 0.0f);
+        Vec3 rightDir = cross(lookDir, worldUp).normalize();
+        Vec3 upDir    = cross(rightDir, lookDir).normalize();
+
+        float depth = dot(toPoint, lookDir);
+        if (depth <= 0.0f) return false;
+
+        float projX = dot(toPoint, rightDir) / depth * proj[0][0];
+        float projY = dot(toPoint, upDir)    / depth * proj[1][1];
+
+        outScreen.x = (projX + 1.0f) * 0.5f * winSize.x;
+        outScreen.y = (1.0f - projY) * 0.5f * winSize.y;
+        return true;
+    }
+
+    // -----------------------------------------------------------------------
+    // Placement
+    // -----------------------------------------------------------------------
+
     void StartPlacement(int index) {
-        if (m_placeState != PlaceState::None) {
-            CancelPlacement();
-        }
+        if (m_placeState != PlaceState::None) CancelPlacement();
         m_selectedBodyIndex = index;
         m_placeState = PlaceState::Positioning;
         m_ghostEntity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Ghost");
@@ -181,6 +228,7 @@ public:
         m_placeState = PlaceState::None;
     }
 
+    // Planet picking
     int TryPickPlanet() {
         Vec2 mousePos = m_input.getMousePos();
         Vec2 winSize  = m_game.GetEngine().getWindow().getSize();
@@ -200,20 +248,15 @@ public:
         Vec3 rayOrigin = m_camera->transform.position;
 
         int   bestIdx      = -1;
-        float bestScore    = 1e9f; 
+        float bestScore    = 1e9f;
 
         for (int i = 0; i < (int)planetList.size(); i++) {
             Entity* planet = planetList[i];
             if (!planet) continue;
 
             float physicsRadius = 1.0f;
-            for (const auto& body : gravityBodies) {
-                if (planet->name == body.name) { 
-                    physicsRadius = body.radius; 
-                    break; 
-                }
-            }
-            
+            for (const auto& body : gravityBodies)
+                if (planet->name == body.name) { physicsRadius = body.radius; break; }
             physicsRadius *= planet->transform.scale.x;
 
             Vec3  toCenter = planet->transform.position - rayOrigin;
@@ -222,51 +265,78 @@ public:
 
             float worldDist = (rayOrigin + rayDir * t - planet->transform.position).length();
 
-            Vec3  screenCenter = rayOrigin + rayDir * t;
             float distToCam    = toCenter.length();
             float ndcRadius    = (physicsRadius / std::max(distToCam, 1.0f)) * proj[0][0];
-            float pixelRadius  = std::max(ndcRadius * winSize.x * 0.5f, 20.0f); 
+            float pixelRadius  = std::max(ndcRadius * winSize.x * 0.5f, 20.0f);
 
             float pickThreshold = (pixelRadius / (winSize.x * 0.5f)) * distToCam / proj[0][0];
 
             if (worldDist < pickThreshold && t < bestScore) {
-                bestScore = t;   
+                bestScore = t;
                 bestIdx   = i;
             }
         }
         return bestIdx;
     }
 
+    // interaction logic per tool
     void HandlePlacementLogic() {
         bool leftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
         bool rightPressed = m_input.isMouseButtonPressed(MOUSE_RIGHT);
-        
+
         bool leftJustPressed = leftPressed && !m_prevLeftPressed;
         bool rightJustPressed = rightPressed && !m_prevRightPressed;
 
-        if (m_placeState == PlaceState::Positioning) {
+        // ghost
+        if (m_placeState == PlaceState::Positioning && m_ghostEntity) {
             Vec3 intersect = GetMouseIntersection();
-            if (m_ghostEntity) {
-                m_ghostEntity->transform.position = intersect;
-                float ghostIntensity = sin((m_game.GetEngine().getTime() * 5.0f)) * 0.25f + 0.65f;
-                
-                float ghostRadius = gravityBodies[m_selectedBodyIndex].radius * m_ghostEntity->transform.scale.x;
-                
-                m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(
-                    IsPositionValid(intersect, ghostRadius) ? Vec3(0.2f, 0.8f, 0.2f) * ghostIntensity : Vec3(0.8f, 0.4f, 0.4f) * ghostIntensity
-                );
-            }
+            float ghostRadius = gravityBodies[m_selectedBodyIndex].radius * m_ghostEntity->transform.scale.x;
+            bool valid = IsPositionValid(intersect, ghostRadius);
+
+            m_ghostEntity->transform.position = intersect;
+            float ghostIntensity = sin((m_game.GetEngine().getTime() * 5.0f)) * 0.25f + .5f;
+            m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(
+                valid ? Vec3(0.5f, 1.0f, 0.5f) * ghostIntensity
+                      : Vec3(1.0f, 0.4f, 0.4f) * ghostIntensity);
+
             if (!ImGui::GetIO().WantCaptureMouse) {
-                if (leftJustPressed) {
-                    ConfirmPlacement();
-                    return;
-                } else if (rightJustPressed) {
-                    CancelPlacement();
-                    return;
+                if (leftJustPressed && valid) { ConfirmPlacement(); return; }
+                if (rightJustPressed)         { CancelPlacement();  return; }
+            }
+            return;
+        }
+
+        if (ImGui::GetIO().WantCaptureMouse) return;
+
+        // active tool
+        switch (m_toolMode) {
+
+        // SELECTION TOOL
+        case ToolMode::Selection:
+            if (leftJustPressed) {
+                int idx = TryPickPlanet();
+                if (idx >= 0) {
+                    selectedEntity = planetList[idx];
+                    auto* rc = selectedEntity->getComponent<RenderComponent>();
+                    if (rc) {
+                        Vec3 col = rc->getBaseColor();
+                        m_selectedColor[0] = col.x;
+                        m_selectedColor[1] = col.y;
+                        m_selectedColor[2] = col.z;
+                    }
+                    m_focusStartPos      = m_target->transform.position;
+                    m_focusEndPos        = selectedEntity->transform.position;
+                    m_focusProgress      = 0.0f;
+                    m_focusTransitioning = true;
+                } else {
+                    selectedEntity = nullptr;   // click empty space to deselect
                 }
             }
-        } else if (m_placeState == PlaceState::None) {
-            if (leftJustPressed && !ImGui::GetIO().WantCaptureMouse) {
+            break;
+
+        // REALLOCATION TOOL
+        case ToolMode::Reallocation:
+            if (m_placeState == PlaceState::None && leftJustPressed) {
                 int idx = TryPickPlanet();
                 if (idx >= 0) {
                     m_ghostEntity = planetList[idx];
@@ -280,47 +350,156 @@ public:
                     m_placeState = PlaceState::Positioning;
                 }
             }
+            break;
+
+        // VELOCITY TOOL
+        case ToolMode::Velocity:
+            if (!m_velDragging) {
+                if (leftJustPressed) {
+                    int idx = TryPickPlanet();
+                    if (idx >= 0) {
+                        m_velocityTarget     = planetList[idx];
+                        m_velDragWorldOrigin = m_velocityTarget->transform.position;
+                        ImVec2 screenCenter;
+                        if (WorldToScreen(m_velDragWorldOrigin, screenCenter))
+                            m_velDragStart = Vec2(screenCenter.x, screenCenter.y);
+                        else
+                            m_velDragStart = m_input.getMousePos();
+                        m_velDragging = true;
+                    }
+                }
+            } else {
+                if (rightJustPressed) {
+                    m_velDragging   = false;
+                    m_velocityTarget = nullptr;
+                    break;
+                }
+
+                if (!leftPressed) {
+                    Vec2 mouseNow = m_input.getMousePos();
+                    Vec2 delta    = mouseNow - m_velDragStart;  // screen-space pixels
+
+                    Vec3 lookDir  = (m_target->transform.position - m_camera->transform.position).normalize();
+                    Vec3 worldUp(0.0f, 1.0f, 0.0f);
+                    Vec3 rightDir = cross(lookDir, worldUp).normalize();
+                    Vec3 fwdDir   = cross(rightDir, worldUp).normalize(); // keep it planar
+
+                    Vec3 velocity = (rightDir * delta.x - fwdDir * delta.y) * kVelocityPixelScale;
+
+                    auto* planetComp = m_velocityTarget->getComponent<PlanetComponent>();
+                    if (planetComp) planetComp->setVelocity(velocity);
+
+                    m_velDragging    = false;
+                    m_velocityTarget = nullptr;
+                }
+            }
+            break;
         }
     }
 
+    // Overlay
+    void DrawVelocityArrow() {
+        if (m_toolMode != ToolMode::Velocity || !m_velDragging || !m_velocityTarget)
+            return;
+
+        ImVec2 screenOrigin;
+        if (!WorldToScreen(m_velDragWorldOrigin, screenOrigin)) return;
+
+        Vec2 mouseNow = m_input.getMousePos();
+        ImVec2 tip(mouseNow.x, mouseNow.y);
+
+        Vec2 delta(tip.x - screenOrigin.x, tip.y - screenOrigin.y);
+        float length = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+
+        dl->AddLine(screenOrigin, tip, IM_COL32(255, 220, 50, 220), 2.5f);
+
+        if (length > 8.0f) {
+            Vec2 dir (delta.x / length, delta.y / length);
+            Vec2 perp(-dir.y, dir.x);
+            float hs = 8.0f;
+            ImVec2 p1(tip.x - dir.x * hs + perp.x * hs * 0.5f,
+                      tip.y - dir.y * hs + perp.y * hs * 0.5f);
+            ImVec2 p2(tip.x - dir.x * hs - perp.x * hs * 0.5f,
+                      tip.y - dir.y * hs - perp.y * hs * 0.5f);
+            dl->AddTriangleFilled(tip, p1, p2, IM_COL32(255, 220, 50, 220));
+        }
+
+        float speed = length * kVelocityPixelScale;
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%.1f u/s", speed);
+        dl->AddText(ImVec2(tip.x + 8.0f, tip.y - 14.0f), IM_COL32(255, 255, 255, 200), buf);
+
+        // Small dot at the planet center to make the anchor obvious
+        dl->AddCircleFilled(screenOrigin, 5.0f, IM_COL32(255, 220, 50, 220));
+    }
+
+    // highlight selected entity
+    void DrawSelectionHighlight() {
+        if (m_toolMode != ToolMode::Selection || !selectedEntity) return;
+
+        ImVec2 screenPos;
+        if (!WorldToScreen(selectedEntity->transform.position, screenPos)) return;
+
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+        // Filled dot
+        dl->AddCircleFilled(screenPos, 5.0f, IM_COL32(100, 200, 255, 230));
+        // Thin outer ring so it reads on any background
+        dl->AddCircle(screenPos, 7.0f, IM_COL32(100, 200, 255, 120), 16, 1.0f);
+    }
+
+    void UpdateFocusTransition(float dt) {
+        if (!m_focusTransitioning) return;
+
+        m_focusProgress += dt / m_focusDuration;
+        if (m_focusProgress >= 1.0f) {
+            m_focusProgress      = 1.0f;
+            m_focusTransitioning = false;
+        }
+
+        // Smooth-step easing
+        float t = m_focusProgress * m_focusProgress * (3.0f - 2.0f * m_focusProgress);
+        m_target->transform.position = Vec3::lerp(m_focusStartPos, m_focusEndPos, t);
+    }
+
+    // -----------------------------------------------------------------------
     void Update() override {
         float dt = m_game.GetEngine().getDeltaTime();
 
         if (drawGrid && movingEnabled) {
-            DrawGrid(m_game.GetEngine().getRenderer());
+            DrawGrid(m_game.GetEngine().getRenderer(), m_camera);
         }
 
         if (!physicsPaused) {
             for (Entity* planet : planetList) {
                 if (planet) {
                     auto* planetComp = planet->getComponent<PlanetComponent>();
-                    if (planetComp) {
-                        planetComp->update(dt * m_game.timeScale);
-                    }
+                    if (planetComp) planetComp->update(dt * m_game.timeScale);
                 }
             }
         }
 
-        if (isTransitioning) 
-            Transition(dt);
+        if (isTransitioning) Transition(dt);
+        if (movingEnabled)   UpdateFocusTransition(dt);
 
         if (movingEnabled) {
             Vec3 camForward = m_camera->transform.forward();
             Vec3 forwardXZ = Vec3(camForward.x, 0.0f, camForward.z).normalize();
-            
-            if (forwardXZ.length() < 0.0001f) forwardXZ = Vec3(0, 0, 1); 
+
+            if (forwardXZ.length() < 0.0001f) forwardXZ = Vec3(0, 0, 1);
             
             Vec3 rightXZ = Vec3(forwardXZ.z, 0.0f, -forwardXZ.x);
-            
+
             Vec3 movement(0, 0, 0);
             if (m_input.isKeyDown(KEY_W)) movement += forwardXZ;
             if (m_input.isKeyDown(KEY_S)) movement -= forwardXZ;
             if (m_input.isKeyDown(KEY_A)) movement += rightXZ;
             if (m_input.isKeyDown(KEY_D)) movement -= rightXZ;
-            
+
             m_target->transform.position += movement * dt * moveSpeed;
 
-            moveSpeed = 1000.0f * m_orbitCamera->GetRadius() * 0.5f * dt;
+            moveSpeed = 1000.0f * m_orbitCamera->GetRadius() * dt;
 
             bool isRightClicked = m_input.isMouseButtonPressed(MOUSE_RIGHT);
 
@@ -330,7 +509,8 @@ public:
                 m_input.setCursorMode(false);
             }
 
-            if (m_placeState == PlaceState::None && isRightClicked) {
+            bool velToolBlocking = (m_toolMode == ToolMode::Velocity && m_velDragging);
+            if (m_placeState == PlaceState::None && isRightClicked && !velToolBlocking) {
                 m_orbitCamera->Update(&m_input, dt);
                 m_orbitCamera->ApplyScroll(&m_input);
             } else {
@@ -340,38 +520,32 @@ public:
 
             HandlePlacementLogic();
 
-            if (m_input.isKeyPressed(KEY_G)) {
-                drawGrid = !drawGrid;
-            }
-            if (m_input.isKeyDown(KEY_LSHIFT)) {
-                m_target->transform.position.y += 1.0f;
-            }
-            if (m_input.isKeyDown(KEY_LCTRL)) {
-                m_target->transform.position.y -= 1.0f;   
-            }
+            // shortcuts
+            if (m_input.isKeyPressed(KEY_G)) drawGrid = !drawGrid;
+            if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += 1.0f;
+            if (m_input.isKeyDown(KEY_LCTRL))  m_target->transform.position.y -= 1.0f;
+
+            // Tool shortcuts
+            if (m_input.isKeyPressed(KEY_1)) m_toolMode = ToolMode::Selection;
+            if (m_input.isKeyPressed(KEY_2)) m_toolMode = ToolMode::Reallocation;
+            if (m_input.isKeyPressed(KEY_3)) m_toolMode = ToolMode::Velocity;
         }
-        
+
         m_prevLeftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
         m_prevRightPressed = m_input.isMouseButtonPressed(MOUSE_RIGHT);
+
+        DrawMainMenuBar();
     }
 
     void LateUpdate() override {
+        if (!isTransitioning) {
+            DrawSelectionHighlight();
+            DrawVelocityArrow();
+        }
         DrawUI();
     }
 
-    void DrawGrid(Renderer& renderer) {
-        for (int i = -13; i <= 13; ++i) {
-            Vec3 start = Vec3(i * 750.0f, m_target->transform.position.y, -9750.0f);
-            Vec3 end   = Vec3(i * 750.0f, m_target->transform.position.y,  9750.0f);
-            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(), m_camera->transform, Vec3(.005f, .005f, .005f), 10.0f, false);
-            start = Vec3(-9750.0f, m_target->transform.position.y, i * 750.0f);
-            end   = Vec3( 9750.0f, m_target->transform.position.y, i * 750.0f);
-
-            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(), m_camera->transform, Vec3(.005f, .005f, .005f), 10.0f, false);
-        }
-        
-    }
-
+    // Transition
     void Transition(float dt) {
         if (!m_orbitCamera) return;
 
@@ -390,80 +564,70 @@ public:
         }
     }
 
+    // UI
     void DrawUI() {
         if (isTransitioning) return;
 
         auto windowSize = m_game.GetEngine().getWindow().getSize();
 
-        ImGui::SetNextWindowPos(
-            ImVec2(windowSize.x * 0.5f, 5.0f),
-            ImGuiCond_Always,
-            ImVec2(0.5f, 0.0f) 
-        );
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always); 
-
+        ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.5f, 5.0f),
+                                ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::Begin("##PlayPause", nullptr,
-            ImGuiWindowFlags_NoTitleBar      |
-            ImGuiWindowFlags_NoMove          |
-            ImGuiWindowFlags_NoSavedSettings |
-            ImGuiWindowFlags_NoBackground    |
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground |
             ImGuiWindowFlags_AlwaysAutoResize);
-
-        if (ImGui::Button("Play",  ImVec2(30, 30))) physicsPaused = false;
-        ImGui::SameLine();
-        if (ImGui::Button("Pause", ImVec2(30, 30))) physicsPaused = true;
-        ImGui::SameLine();
-        if (ImGui::Button("Reset", ImVec2(30, 30))) {}
-
         ImGui::End();
 
-        ImGuiID sandboxID = ImGui::GetID("Sandbox");
-        bool isCollapsed  = ImGui::GetStateStorage()->GetBool(sandboxID, false);
+        // Bottom panel
+        ImGuiID sandboxID  = ImGui::GetID("Sandbox");
+        bool isCollapsed = ImGui::GetStateStorage()->GetBool(sandboxID, false);
+        float panelHeight = isCollapsed ? ImGui::GetFrameHeight() : 160.0f;
 
-        float panelHeight   = isCollapsed
-                                ? ImGui::GetFrameHeight() 
-                                : 160.0f; 
-
-        ImGui::SetNextWindowPos(
-            ImVec2(windowSize.x * 0.5f, (float)windowSize.y),
-            ImGuiCond_Always,
-            ImVec2(0.5f, 1.0f) 
-        );
+        ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.5f, (float)windowSize.y),
+                                ImGuiCond_Always, ImVec2(0.5f, 1.0f));
         ImGui::SetNextWindowSize(ImVec2(500, panelHeight), ImGuiCond_Always);
 
-        int flags = ImGuiWindowFlags_NoMove          |
-                    ImGuiWindowFlags_NoSavedSettings |
+        int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
                     ImGuiWindowFlags_NoResize;
 
         ImGui::Begin("Sandbox", nullptr, flags);
 
-        if (!ImGui::IsWindowCollapsed())
-        {
-            float contentHeight = ImGui::GetContentRegionAvail().y;
+        if (!ImGui::IsWindowCollapsed()) {
+            if (ImGui::BeginTabBar("SandboxTabBar")) {
 
-            ImGui::BeginGroup();
-            if (ImGui::Button("=", ImVec2(70, contentHeight)))
-                ImGui::OpenPopup("Options");
-            ImGui::EndGroup();
+                if (ImGui::BeginTabItem("Tools")) {
+                    float childH = ImGui::GetContentRegionAvail().y;
+                    ImGui::BeginChild("ToolScrollList", ImVec2(0, childH),
+                                      ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
 
-            ImGui::SameLine();
+                    auto toolButton = [&](const char* label, ToolMode mode) {
+                        bool active = (m_toolMode == mode);
+                        if (active) ImGui::PushStyleColor(ImGuiCol_Button,
+                                        ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                        if (ImGui::Button(label, ImVec2(0, ImGui::GetContentRegionAvail().y)))
+                            m_toolMode = mode;
+                        if (active) ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                    };
 
-            ImGui::BeginGroup();
-            if (ImGui::BeginTabBar("SandboxTabBar"))
-            {
-                if (ImGui::BeginTabItem("Entities"))
-                {
-                    float childHeight = ImGui::GetContentRegionAvail().y;
-                    ImGui::BeginChild("EntityScrollList",
-                        ImVec2(0, childHeight),
-                        ImGuiChildFlags_None,
-                        ImGuiWindowFlags_HorizontalScrollbar);
+                    toolButton("Selection [1]",    ToolMode::Selection);
+                    toolButton("Reallocation [2]", ToolMode::Reallocation);
+                    toolButton("Velocity [3]",     ToolMode::Velocity);
 
-                    for (int i = 0; i < gravityBodies.size(); i++) {
-                        const auto& body = gravityBodies[i];
-                        if (ImGui::Button(body.name.c_str(), ImVec2(0, ImGui::GetContentRegionAvail().y))) {
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Planets")) {
+                    float childH = ImGui::GetContentRegionAvail().y;
+                    ImGui::BeginChild("EntityScrollList", ImVec2(0, childH),
+                                      ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+
+                    for (int i = 0; i < (int)gravityBodies.size(); i++) {
+                        if (ImGui::Button(gravityBodies[i].name.c_str(),
+                                          ImVec2(0, ImGui::GetContentRegionAvail().y)))
                             StartPlacement(i);
-                        }
                         ImGui::SameLine();
                     }
 
@@ -471,59 +635,125 @@ public:
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("Properties"))
-                {
-                    char  nameBuf[64] = "Default Name";
-                    float color[3]    = { 1.0f, 1.0f, 1.0f };
-                    float mass        = 1.0f;
-                    float radius      = 1.0f;
+                if (ImGui::BeginTabItem("Properties")) {
+                    if (selectedEntity) {
+                        const GravityBody* bd = FindBodyDef(selectedEntity->name);
 
-                    float totalWidth = ImGui::GetContentRegionAvail().x;
-                    float spacing    = ImGui::GetStyle().ItemSpacing.x;
+                        char nameBuf[64] = {};
+                        strncpy(nameBuf, selectedEntity->name.c_str(), sizeof(nameBuf) - 1);
 
-                    ImGui::SetNextItemWidth((totalWidth - spacing) * 0.75f);
-                    ImGui::InputText("##NameField", nameBuf, IM_ARRAYSIZE(nameBuf),
-                        ImGuiInputTextFlags_ReadOnly);
+                        float totalWidth = ImGui::GetContentRegionAvail().x;
+                        float spacing    = ImGui::GetStyle().ItemSpacing.x;
 
-                    ImGui::SameLine();
+                        ImGui::SetNextItemWidth((totalWidth - spacing) * 0.75f);
+                        ImGui::InputText("##NameField", nameBuf, IM_ARRAYSIZE(nameBuf),
+                                         ImGuiInputTextFlags_ReadOnly);
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth((totalWidth - spacing) * 0.25f);
+                        if (ImGui::ColorEdit3("##ColorField", m_selectedColor,
+                                              ImGuiColorEditFlags_NoInputs)) {
+                            auto* rc = selectedEntity->getComponent<RenderComponent>();
+                            if (rc) rc->setBaseColor(
+                                Vec3(m_selectedColor[0], m_selectedColor[1], m_selectedColor[2]));
+                        }
 
-                    ImGui::SetNextItemWidth((totalWidth - spacing) * 0.25f);
-                    ImGui::ColorEdit3("##ColorField", color, ImGuiColorEditFlags_NoInputs);
+                        float halfWidth = (totalWidth - spacing) * 0.5f;
+                        float mass   = bd ? bd->mass   : 0.0f;
+                        float radius = bd ? bd->radius : 0.0f;
 
-                    float halfWidth = (totalWidth - spacing) * 0.5f;
+                        ImGui::SetNextItemWidth(halfWidth);
+                        ImGui::InputFloat("##MassField", &mass, 0.0f, 0.0f,
+                                          "Mass: %.3e", ImGuiInputTextFlags_ReadOnly);
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(halfWidth);
+                        ImGui::InputFloat("##RadiusField", &radius, 0.0f, 0.0f,
+                                          "Radius: %.1f", ImGuiInputTextFlags_ReadOnly);
 
-                    ImGui::SetNextItemWidth(halfWidth);
-                    ImGui::InputFloat("##MassField", &mass, 0.0f, 0.0f,
-                        "Mass: %.2f", ImGuiInputTextFlags_ReadOnly);
+                        auto* pc = selectedEntity->getComponent<PlanetComponent>();
+                        if (pc) {
+                            Vec3 vel = pc->getVelocity();
+                            float speed = vel.length();
+                            ImGui::Text("Velocity: (%.1f, %.1f, %.1f)  |  %.1f u/s",
+                                        vel.x, vel.y, vel.z, speed);
+                        }
 
-                    ImGui::SameLine();
-
-                    ImGui::SetNextItemWidth(halfWidth);
-                    ImGui::InputFloat("##RadiusField", &radius, 0.0f, 0.0f,
-                        "Radius: %.2f", ImGuiInputTextFlags_ReadOnly);
+                        Vec3 pos = selectedEntity->transform.position;
+                        ImGui::Text("Position: (%.1f, %.1f, %.1f)", pos.x, pos.y, pos.z);
+                    } else {
+                        ImGui::TextDisabled("No planet selected.");
+                        ImGui::TextDisabled("Use the Selection tool and click a planet.");
+                    }
 
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("Settings"))
-                {
-                    // more options: gravity strength, reset grid height
-
+                if (ImGui::BeginTabItem("Settings")) {
                     if (ImGui::Button("Grid [G]")) drawGrid = !drawGrid;
                     ImGui::SliderFloat("##TimeScale", &m_game.timeScale,
-                        1.0f, 10000.0f, "Time Scale: %.2f",
-                        ImGuiSliderFlags_Logarithmic);
+                                       1.0f, 10000.0f, "Time Scale: %.2f",
+                                       ImGuiSliderFlags_Logarithmic);
+                    ImGui::EndTabItem();
+                }
 
+                if (ImGui::BeginTabItem("Simulation")) {
+                    if (ImGui::Button("Play [P]"))   physicsPaused = false;
+                    ImGui::SameLine();
+                    if (ImGui::Button("Pause [Space]")) physicsPaused = true;
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset [R]")) {}
                     ImGui::EndTabItem();
                 }
 
                 ImGui::EndTabBar();
             }
-            ImGui::EndGroup();
         }
 
-        m_ui.showQuickOptions(); // Show options popup if open
-
         ImGui::End();
+    }
+
+    void DrawMainMenuBar() {
+        if (isTransitioning) return;
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg,   ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg,  ImVec4(0, 0, 0, 0));
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("Game")) {
+                if (ImGui::MenuItem("Main Menu")) m_ui.loadMainMenu();
+                if (ImGui::MenuItem("Quit"))      m_game.GetEngine().stop();
+                ImGui::EndMenu();
+            }
+            ImGui::Separator();
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("New Sandbox"))  {}
+                if (ImGui::MenuItem("Load Sandbox")) {}
+                if (ImGui::MenuItem("Save Sandbox")) {}
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Settings")) {
+                if (ImGui::MenuItem("Grid", "G")) drawGrid = !drawGrid;
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Tools")) {
+                if (ImGui::MenuItem("Selection",    "1")) m_toolMode = ToolMode::Selection;
+                if (ImGui::MenuItem("Reallocation", "2")) m_toolMode = ToolMode::Reallocation;
+                if (ImGui::MenuItem("Velocity",     "3")) m_toolMode = ToolMode::Velocity;
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Simulation")) {
+                if (ImGui::MenuItem("Play",  "P"))     physicsPaused = false;
+                if (ImGui::MenuItem("Pause", "Space")) physicsPaused = true;
+                if (ImGui::MenuItem("Reset", "R"))     {}
+                ImGui::EndMenu();
+            }
+
+            const char* toolName = (m_toolMode == ToolMode::Selection)    ? "Selection"
+                                 : (m_toolMode == ToolMode::Reallocation) ? "Reallocation"
+                                                                           : "Velocity";
+            float textWidth = ImGui::CalcTextSize(toolName).x + 8.0f;
+            ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth);
+            ImGui::TextDisabled("%s", toolName);
+        }
+        ImGui::EndMainMenuBar();
+        ImGui::PopStyleColor(2);
     }
 };
