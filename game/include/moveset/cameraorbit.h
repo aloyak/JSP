@@ -57,7 +57,7 @@ public:
         m_radius *= 1.0f - (input->getScrollDelta().y * scrollSensitivity);
         float minRadius = 1.0f;
         if (m_target->hasComponent<PlanetComponent>()) {
-            minRadius = m_target->getComponent<PlanetComponent>()->radius + 10.0f;
+            minRadius = m_target->getComponent<PlanetComponent>()->getRadius() + 10.0f;
         }
         m_radius = std::clamp(m_radius, minRadius, 10000.0f);
     }

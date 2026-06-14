@@ -30,10 +30,8 @@ public:
 
         m_earthEntity = engine.getSceneManager().getActiveScene()->createEntity("Earth");
         m_earthEntity->addComponent<RenderComponent>("assets/models/earth.fbx");
-        m_earthEntity->transform.scale = Vec3(1.274f, 1.274f, 1.274f);
         auto* planet = m_earthEntity->addComponent<PlanetComponent>();
-        planet->period = 24.0f;
-        planet->radius = 637.1f;
+        planet->adjustScale();
         
 
         m_camera = engine.createEntity("Camera");

@@ -157,11 +157,7 @@ public:
     bool IsPositionValid(const Vec3& pos, float ghostRadius) {
         for (Entity* planet : planetList) {
             if (planet) {
-                float planetRadius = 1.0f;
-                for (const auto& body : gravityBodies) {
-                    if (planet->name == body.name) { planetRadius = body.radius; break; }
-                }
-                planetRadius *= planet->transform.scale.x;
+                float planetRadius = planet->transform.scale.x;
                 if ((pos - planet->transform.position).length() < (ghostRadius + planetRadius + 50.0f))
                     return false;
             }
@@ -198,23 +194,27 @@ public:
         return true;
     }
 
-    // -----------------------------------------------------------------------
     // Placement
-    // -----------------------------------------------------------------------
-
     void StartPlacement(int index) {
         if (m_placeState != PlaceState::None) CancelPlacement();
         m_selectedBodyIndex = index;
         m_placeState = PlaceState::Positioning;
         m_ghostEntity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Ghost");
         m_ghostEntity->addComponent<RenderComponent>(gravityBodies[index].modelPath);
-        m_ghostEntity->transform.scale = Vec3(1.246f, 1.246f, 1.246f);
+
+        float r = gravityBodies[index].radius;
+        m_ghostEntity->transform.scale = Vec3(r, r, r);
     }
 
     void ConfirmPlacement() {
-        m_ghostEntity->name = gravityBodies[m_selectedBodyIndex].name;
+        GravityBody& body = gravityBodies[m_selectedBodyIndex];
+
+        m_ghostEntity->name = body.name;
         m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));
-        m_ghostEntity->addComponent<PlanetComponent>();
+
+        auto* planet = m_ghostEntity->addComponent<PlanetComponent>(body.period, body.radius);
+        planet->adjustScale();
+
         planetList.push_back(m_ghostEntity);
         m_ghostEntity = nullptr;
         m_placeState = PlaceState::None;
@@ -254,10 +254,7 @@ public:
             Entity* planet = planetList[i];
             if (!planet) continue;
 
-            float physicsRadius = 1.0f;
-            for (const auto& body : gravityBodies)
-                if (planet->name == body.name) { physicsRadius = body.radius; break; }
-            physicsRadius *= planet->transform.scale.x;
+            float physicsRadius = planet->transform.scale.x;
 
             Vec3  toCenter = planet->transform.position - rayOrigin;
             float t        = dot(toCenter, rayDir);
@@ -290,7 +287,7 @@ public:
         // ghost
         if (m_placeState == PlaceState::Positioning && m_ghostEntity) {
             Vec3 intersect = GetMouseIntersection();
-            float ghostRadius = gravityBodies[m_selectedBodyIndex].radius * m_ghostEntity->transform.scale.x;
+            float ghostRadius = m_ghostEntity->transform.scale.x;
             bool valid = IsPositionValid(intersect, ghostRadius);
 
             m_ghostEntity->transform.position = intersect;
@@ -552,15 +549,26 @@ public:
         m_transitionProgress += dt / m_transitionDuration;
         if (m_transitionProgress > 1.0f) m_transitionProgress = 1.0f;
 
-        Vec3 targetPosition(startRadius, 0.0f);
-        Vec3 targetRotation(0.0f, 180.0f, 0.0f);
+        const float kPitch45 = 0.78539816f; // 45 degrees in radians
+        const float kYaw45   = 0.78539816f;
 
-        m_camera->transform.position = Vec3::lerp(m_startPosition, targetPosition, m_transitionProgress);
-        m_camera->transform.rotation = Vec3::lerp(m_startRotation, targetRotation, m_transitionProgress);
+        Vec3 targetPosition(
+            startRadius * cosf(kPitch45) * cosf(kYaw45),
+            startRadius * sinf(kPitch45),
+            startRadius * cosf(kPitch45) * sinf(kYaw45)
+        );
+
+        Vec3 targetRotation(-45.0f, -135.0f, 0.0f);
+
+        float t = m_transitionProgress * m_transitionProgress * (3.0f - 2.0f * m_transitionProgress);
+
+        m_camera->transform.position = Vec3::lerp(m_startPosition, targetPosition, t);
+        m_camera->transform.rotation = Vec3::lerp(m_startRotation, targetRotation, t);
 
         if (m_transitionProgress >= 1.0f) {
             movingEnabled = true;
             isTransitioning = false;
+            m_orbitCamera->SyncFromCurrentPosition();
         }
     }
 

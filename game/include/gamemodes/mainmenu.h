@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.3.0"
+#define VERSION "0.3.1"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -45,8 +45,7 @@ public:
 
         if (m_earthEntity) {
             auto* planet = m_earthEntity->addComponent<PlanetComponent>();
-            planet->period = 24.0f;
-            planet->radius = 637.1f;
+            planet->adjustScale();
         }
 
         m_game.timeScale = 25.0f;
@@ -106,7 +105,7 @@ void RenderMainMenu() {
     if (showSandbox) {
         ImGui::Indent();
         if (ImGui::Button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
-        if (ImGui::Button("Spacecraft Editor")) {}
+        if (ImGui::Button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game)); // placeholder
         if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
         ImGui::Unindent();
     }
