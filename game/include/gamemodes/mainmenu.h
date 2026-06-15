@@ -34,6 +34,9 @@ private:
     double m_simulatedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     Texture logo = Texture("assets/logo.png");
+    Texture splashLogo = Texture("assets/originlogo.png");
+    float m_splashTime = 0.0f;
+    bool m_showSplash = true;
 public:
     MainMenuMode(Game& game)
         : GameMode("assets/scenes/menu.scene") 
@@ -59,6 +62,12 @@ public:
     }
 
     void Update() override {
+        if (m_showSplash) {
+            m_splashTime += m_engine.getDeltaTime();
+            if (m_splashTime >= 3.0f) {
+                m_showSplash = false;
+            }
+        }
         m_earthEntity->getComponent<PlanetComponent>()->update(m_engine.getDeltaTime() * m_game.timeScale);        
     }
 
@@ -69,6 +78,30 @@ public:
         if (showExtras) ShowExtras();
 
         if (showMenuSettings) ShowMenuSettings();
+
+        if (m_showSplash) {
+            float bgAlpha = 1.0f;
+            float logoAlpha = 0.0f;
+
+            if (m_splashTime <= 0.5f) {
+                bgAlpha = 1.0f;
+                logoAlpha = 0.0f;
+            } else if (m_splashTime <= 2.0f) {
+                bgAlpha = 1.0f;
+                logoAlpha = (m_splashTime - 0.5f) / 1.5f;
+            } else {
+                float fadeOutFactor = (3.0f - m_splashTime) / 1.0f;
+                bgAlpha = fadeOutFactor;
+                logoAlpha = fadeOutFactor;
+            }
+
+            if (bgAlpha < 0.0f) bgAlpha = 0.0f;
+            if (bgAlpha > 1.0f) bgAlpha = 1.0f;
+            if (logoAlpha < 0.0f) logoAlpha = 0.0f;
+            if (logoAlpha > 1.0f) logoAlpha = 1.0f;
+
+            m_ui.drawSplashScreen(bgAlpha, logoAlpha, splashLogo.ID);
+        }
     }
 
 void RenderMainMenu() {

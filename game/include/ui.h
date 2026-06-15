@@ -38,8 +38,8 @@ public:
     }
 
     // defined in game.cpp
-    void showQuickOptions();
     void loadMainMenu();
+    void drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId);
 
 private:
     Game& m_game;

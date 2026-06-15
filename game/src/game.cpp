@@ -56,52 +56,33 @@ void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) 
     }
 }
 
-// NOTE: unused right now!
-void UI::showQuickOptions() {
-    ImGuiIO& io = ImGui::GetIO();
-    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
-    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    
-    int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
+void UI::drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId) {
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    Vec2 windowSize = m_game.GetEngine().getWindow().getSize();
+    ImGui::SetNextWindowSize(ImVec2(windowSize.x, windowSize.y));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, bgAlpha));
+    ImGui::Begin("Splash Screen", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-    if (ImGui::BeginPopupModal("Options", nullptr, flags)) {
-        float windowWidth = ImGui::GetWindowSize().x;
+    float originalWidth = 1999.0f;
+    float originalHeight = 676.0f;
+    float aspectRatio = originalWidth / originalHeight;
 
-        this->setFont(1); 
-        float textWidth = ImGui::CalcTextSize("Options").x;
-        ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
-        ImGui::Text("Options");
-        this->resetFont();
+    float maxWidth = windowSize.x * 0.25f;
+    float maxHeight = windowSize.y * 0.25f;
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+    float logoWidth = maxWidth;
+    float logoHeight = logoWidth / aspectRatio;
 
-        float buttonWidth = 110.0f;
-        float buttonHeight = 75.0f;
-        int totalButtons = 3;
-        float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
-        
-        float totalButtonsWidth = (buttonWidth * totalButtons) + (itemSpacing * (totalButtons - 1));
-        
-        ImGui::SetCursorPosX((windowWidth - totalButtonsWidth) * 0.5f);
-
-        if (ImGui::Button("Resume", ImVec2(buttonWidth, buttonHeight))) {
-            ImGui::CloseCurrentPopup();
-        }
-        
-        ImGui::SameLine();
-        if (ImGui::Button("Main Menu", ImVec2(buttonWidth, buttonHeight))) {
-            this->loadMainMenu();
-        }
-        
-        ImGui::SameLine();
-        if (ImGui::Button("Quit Game", ImVec2(buttonWidth, buttonHeight))) {
-            m_game.GetEngine().stop();
-        }
-
-        ImGui::EndPopup();
+    if (logoHeight > maxHeight) {
+        logoHeight = maxHeight;
+        logoWidth = logoHeight * aspectRatio;
     }
+
+    ImGui::SetCursorPos(ImVec2((windowSize.x - logoWidth) * 0.5f, (windowSize.y - logoHeight) * 0.5f));
+    ImGui::Image((void*)(intptr_t)textureId, ImVec2(logoWidth, logoHeight), ImVec2(0, 0), ImVec2(1, 1), ImVec4(1.0f, 1.0f, 1.0f, logoAlpha), ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    ImGui::End();
+    ImGui::PopStyleColor();
 }
 
 void UI::loadMainMenu() {
