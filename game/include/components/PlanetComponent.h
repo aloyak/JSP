@@ -18,6 +18,7 @@ public:
 
         Transform& transform = entity->transform;
         transform.scale = Vec3(m_radius, m_radius, m_radius);
+        transform.rotation = Vec3(-90.0f, 0, 0); // align the planet with +Y
     }
 
     void update(float dt) override {

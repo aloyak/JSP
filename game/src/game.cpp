@@ -56,6 +56,7 @@ void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) 
     }
 }
 
+// NOTE: unused right now!
 void UI::showQuickOptions() {
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);

@@ -15,6 +15,8 @@ private:
     float m_pitch = 0.0f;
     float m_radius = 50.0f;
 
+    float m_maxRadius = 10000.0f;
+
 public:
     OrbitCamera(Entity* camera) : m_camera(camera) {}
 
@@ -59,7 +61,7 @@ public:
         if (m_target->hasComponent<PlanetComponent>()) {
             minRadius = m_target->getComponent<PlanetComponent>()->getRadius() + 10.0f;
         }
-        m_radius = std::clamp(m_radius, minRadius, 10000.0f);
+        m_radius = std::clamp(m_radius, minRadius, m_maxRadius);
     }
 
     void SyncFromCurrentPosition() {
@@ -77,6 +79,8 @@ public:
         m_yaw = yaw;
         m_pitch = pitch;
     }
+
+    void SetMaxRadius(float maxRadius) { m_maxRadius = maxRadius; }
 
     float& GetRadius() { return m_radius; }
 };

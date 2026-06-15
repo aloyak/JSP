@@ -11,6 +11,7 @@
 #include "gamemodes/explore.h"
 #include "gamemodes/sandbox.h"
 #include "gamemodes/planetbuilder.h"
+#include "gamemodes/spacecraftbuilder.h"
 
 // used as a temporary solution for a missing sprite renderer
 #include "engine/render/texture.h"
@@ -41,6 +42,8 @@ public:
         , m_ui(game.GetUI()) {}
 
     void OnEnter() override {
+        m_engine.getSceneManager().getActiveScene()->setAmbientStrength(0.0f);
+
         m_earthEntity = m_engine.getSceneManager().getActiveScene()->getEntityByName("Earth").get();
 
         if (m_earthEntity) {
@@ -105,7 +108,7 @@ void RenderMainMenu() {
     if (showSandbox) {
         ImGui::Indent();
         if (ImGui::Button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
-        if (ImGui::Button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game)); // placeholder
+        if (ImGui::Button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
         if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
         ImGui::Unindent();
     }

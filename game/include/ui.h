@@ -1,5 +1,7 @@
 #pragma once
 
+#include <imgui.h>
+
 #include "engine/utils/path.h"
 
 class Game;
