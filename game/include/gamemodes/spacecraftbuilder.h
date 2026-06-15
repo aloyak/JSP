@@ -6,11 +6,9 @@
 
 #include "engine/components/entity.h"
 
-#include <cstring>
-
 class Game;
 
-class PlanetBuilderMode : public GameMode {
+class SpacecraftBuilderMode : public GameMode {
 private:
     Game& m_game;
     Input& m_input = m_game.GetEngine().getInput();
@@ -19,13 +17,12 @@ private:
     Entity* m_camera = nullptr;
     OrbitCamera* m_orbitCamera = nullptr;
 
-    Entity* planet = nullptr;
-    float planetMass = 100.0f;
+    Entity* m_target = nullptr;
 
     bool drawGrid = true;
 public:
-    PlanetBuilderMode(Game& game)
-        : GameMode("assets/scenes/space.scene")
+    SpacecraftBuilderMode(Game& game)
+        : GameMode("assets/scenes/launchsite.scene")
         , m_game(game) {}
 
     void OnEnter() override {
@@ -35,7 +32,7 @@ public:
         m_camera->addComponent<CameraComponent>(45.0f, 1600.0f / 900.0f, 0.1f, 30000.0f);
         m_game.GetEngine().setActiveCamera(m_camera);
         
-        float distance = 1600.0f;
+        float distance = 3500.0f;
         float offset = distance / std::sqrt(3.0f);
         
         m_camera->transform.position = Vec3(offset, offset, offset);
@@ -44,16 +41,10 @@ public:
 
         m_camera->transform.rotation = orientation;
 
-        planet = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Planet");
-
-        auto* renderComponent = planet->addComponent<RenderComponent>("assets/models/planetbase.fbx");
-        renderComponent->setDiffuseTexturePath("assets/textures/base.png");
-        auto* planetComponent = planet->addComponent<PlanetComponent>(1.0f, 637.1);
-        planetComponent->adjustScale();
+        m_target = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Target");
         
         m_orbitCamera = new OrbitCamera(m_camera);
-        m_orbitCamera->SetTarget(planet, distance);
-        m_orbitCamera->SetMaxRadius(3700.0f);
+        m_orbitCamera->SetTarget(m_target, distance);
         m_orbitCamera->SyncFromCurrentPosition();
         m_orbitCamera->ApplyPosition();
     }
@@ -88,10 +79,10 @@ public:
                 ImGui::EndMenu();
             }
             ImGui::Separator();
-            if (ImGui::BeginMenu("Planet")) {
-                if (ImGui::MenuItem("New Planet")) {}
-                if (ImGui::MenuItem("Save Planet")) {}
-                if (ImGui::MenuItem("Load Planet")) {}
+            if (ImGui::BeginMenu("Spacecraft")) {
+                if (ImGui::MenuItem("New Spacecraft")) {}
+                if (ImGui::MenuItem("Save Spacecraft")) {}
+                if (ImGui::MenuItem("Load Spacecraft")) {}
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Edit")) {
@@ -106,43 +97,5 @@ public:
         }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleColor(2);
-
-        DrawUI();
-    }
-
-    void DrawUI() {
-        ImGui::Begin("Planet Builder", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::Text("Planet Properties");
-        ImGui::Separator();
-
-        ImGui::PushItemWidth(250.0f);
-
-        if (planet) {
-            char nameBuffer[128];
-            std::strncpy(nameBuffer, planet->name.c_str(), sizeof(nameBuffer));
-            if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
-                planet->name = std::string(nameBuffer);
-            }
-
-            auto* planetComponent = planet->getComponent<PlanetComponent>();
-            if (planetComponent) {
-                float radius = planetComponent->getRadius();
-                if (ImGui::SliderFloat("Radius", &radius, 50.0f, 1500.0f)) {
-                    planetComponent->setRadius(radius);
-                    planetComponent->adjustScale();
-                }
-                
-                if (ImGui::SliderFloat("Mass", &planetMass, 1.0f, 10000.0f));
-
-                float period = planetComponent->getPeriod();
-                if (ImGui::SliderFloat("Rotation Period", &period, 0.01f, 100.0f)) {
-                    planetComponent->setPeriod(period);
-                }
-            }
-        }
-
-        ImGui::PopItemWidth();
-
-        ImGui::End();
     }
 };
