@@ -1,0 +1,46 @@
+{
+    "ambientStrength": 0.25,
+    "entities": [
+        {
+            "components": [
+                {
+                    "colorTint": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "faces": [
+                        "assets/skybox/earth/left.png",
+                        "assets/skybox/earth/right.png",
+                        "assets/skybox/earth/up.png",
+                        "assets/skybox/earth/down.png",
+                        "assets/skybox/earth/front.png",
+                        "assets/skybox/earth/back.png"
+                    ],
+                    "rotation": 0.0,
+                    "type": "SkyboxComponent"
+                }
+            ],
+            "name": "Skybox",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rot": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "sca": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "name": "Empty Scene"
+}

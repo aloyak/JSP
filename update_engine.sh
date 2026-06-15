@@ -10,8 +10,8 @@ fi
 cd $TEMP_DIR
 git sparse-checkout init --cone
 git sparse-checkout set engine sandbox
-git checkout master
-git pull origin master
+git checkout instancing_wip
+git pull origin instancing_wip
 
 cd ..
 

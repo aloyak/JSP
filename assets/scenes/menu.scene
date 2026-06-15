@@ -10,12 +10,12 @@
                         0.11764705181121826
                     ],
                     "faces": [
-                        "assets/skybox/skybox_right.jpg",
-                        "assets/skybox/skybox_left.jpg",
-                        "assets/skybox/skybox_top.jpg",
-                        "assets/skybox/skybox_bottom.jpg",
-                        "assets/skybox/skybox_front.jpg",
-                        "assets/skybox/skybox_back.jpg"
+                        "assets/skybox/space/skybox_right.jpg",
+                        "assets/skybox/space/skybox_left.jpg",
+                        "assets/skybox/space/skybox_top.jpg",
+                        "assets/skybox/space/skybox_bottom.jpg",
+                        "assets/skybox/space/skybox_front.jpg",
+                        "assets/skybox/space/skybox_back.jpg"
                     ],
                     "rotation": 0.0,
                     "type": "SkyboxComponent"
@@ -75,7 +75,7 @@
                     0.0
                 ],
                 "rot": [
-                    -90.0,
+                    0.0,
                     -0.0,
                     0.0
                 ],
@@ -90,9 +90,9 @@
             "components": [
                 {
                     "aspect": 1.9174219369888306,
-                    "far": 32000.0,
+                    "far": 500000.0,
                     "fov": 60.0,
-                    "near": 0.10000000149011612,
+                    "near": 1.0,
                     "type": "CameraComponent"
                 }
             ],

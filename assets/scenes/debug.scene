@@ -13,7 +13,7 @@
                     "diffuse": "",
                     "frag": "assets/shaders/frag.glsl",
                     "metallic": "",
-                    "model": "assets/models/earth.fbx",
+                    "model": "assets/models/planetbase.fbx",
                     "normal": "",
                     "shininess": 32.0,
                     "specular": "",
