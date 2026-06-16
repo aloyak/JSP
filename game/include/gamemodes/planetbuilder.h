@@ -5,6 +5,7 @@
 #include "moveset/cameraorbit.h"
 
 #include "engine/components/entity.h"
+#include "engine/components/rendererComponent.h"
 
 #include <cstring>
 
@@ -21,8 +22,6 @@ private:
 
     Entity* planet = nullptr;
     float planetMass = 100.0f;
-
-    bool drawGrid = true;
 public:
     PlanetBuilderMode(Game& game)
         : GameMode("assets/scenes/space.scene")
@@ -70,8 +69,6 @@ public:
         } else {
             m_input.setCursorMode(false);
         }
-
-        if (drawGrid) DrawGrid(m_game.GetEngine().getRenderer(), m_camera);
     }
 
     void LateUpdate() override {
@@ -97,10 +94,6 @@ public:
             if (ImGui::BeginMenu("Edit")) {
                 if (ImGui::MenuItem("Undo")) {}
                 if (ImGui::MenuItem("Redo")) {}
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("View")) {
-                if (ImGui::MenuItem("Show Grid", nullptr, &drawGrid)) {}
                 ImGui::EndMenu();
             }
         }

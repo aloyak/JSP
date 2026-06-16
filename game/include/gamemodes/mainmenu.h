@@ -8,7 +8,6 @@
 #include "engine/components/entity.h"
 #include "game.h"
 
-#include "gamemodes/explore.h"
 #include "gamemodes/sandbox.h"
 #include "gamemodes/planetbuilder.h"
 #include "gamemodes/spacecraftbuilder.h"
@@ -135,7 +134,7 @@ void RenderMainMenu() {
     m_ui.setFont(1);
 
     if (ImGui::Button("Campaign Mode")) {}
-    if (ImGui::Button("Explore the Earth")) m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
+    if (ImGui::Button("Explore the Solar System")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
 
     if (ImGui::Button("Sandbox Mode")) { showSandbox = !showSandbox; }
     if (showSandbox) {

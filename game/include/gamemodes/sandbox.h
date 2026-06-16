@@ -6,6 +6,7 @@
 #include "grid.h"
 
 #include "engine/components/entity.h"
+#include "engine/components/rendererComponent.h"
 #include "engine/utils/logger.h"
 
 class Game;
