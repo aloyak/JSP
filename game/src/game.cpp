@@ -12,6 +12,8 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
     m_engine->getWindow().enableVSync(false);
     // m_engine->getWindow().allowResize(false); // TODO
 
+    //Logger::setVerbose(1); // TODO: SET ON RELEASE
+
     m_ui.initialize(); 
 }
 
@@ -67,8 +69,8 @@ void UI::drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId
     float originalHeight = 676.0f;
     float aspectRatio = originalWidth / originalHeight;
 
-    float maxWidth = windowSize.x * 0.25f;
-    float maxHeight = windowSize.y * 0.25f;
+    float maxWidth = windowSize.x * 0.2f;
+    float maxHeight = windowSize.y * 0.2f;
 
     float logoWidth = maxWidth;
     float logoHeight = logoWidth / aspectRatio;
@@ -86,5 +88,5 @@ void UI::drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId
 }
 
 void UI::loadMainMenu() {
-    m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game), true);
+    m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game, false), true);
 }

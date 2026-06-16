@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.3.1"
+#define VERSION "0.3.2"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -35,13 +35,15 @@ private:
     Texture logo = Texture("assets/logo.png");
     Texture splashLogo = Texture("assets/originlogo.png");
     float m_splashTime = 0.0f;
-    bool m_showSplash = true;
+    bool m_showSplash;
+
 public:
-    MainMenuMode(Game& game)
+    MainMenuMode(Game& game, bool showSplash = false)
         : GameMode("assets/scenes/menu.scene") 
         , m_game(game)
         , m_engine(game.GetEngine())
-        , m_ui(game.GetUI()) {}
+        , m_ui(game.GetUI())
+        , m_showSplash(showSplash) {}
 
     void OnEnter() override {
         m_engine.getSceneManager().getActiveScene()->setAmbientStrength(0.0f);
@@ -103,61 +105,63 @@ public:
         }
     }
 
-void RenderMainMenu() {
-    int flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+    void RenderMainMenu() {
+        int flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 12));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 12));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 
-    ImGui::SetNextWindowPos(ImVec2(80, 80));
-    ImGui::Begin("Main Menu", nullptr, flags);
+        ImGui::SetNextWindowPos(ImVec2(80, 80));
+        ImGui::Begin("Main Menu", nullptr, flags);
 
-    // Main Title TODO: make this beautiful
-    //m_ui.setFont(0);
-    //ImGui::Text("J.S.P.");
-    //m_ui.resetFont();
+        // Main Title TODO: make this beautiful
+        //m_ui.setFont(0);
+        //ImGui::Text("J.S.P.");
+        //m_ui.resetFont();
 
-    float scaleFactor = m_engine.getWindow().getSize().y / 1080.0f;
-    ImVec2 logoSize = ImVec2(300 * scaleFactor, 300 * scaleFactor);
-    ImGui::Image((void*)(intptr_t)logo.ID, logoSize);
+        float scaleFactor = m_engine.getWindow().getSize().y / 1080.0f;
+        ImVec2 logoSize = ImVec2(300 * scaleFactor, 300 * scaleFactor);
+        ImGui::Image((void*)(intptr_t)logo.ID, logoSize);
 
-    m_ui.setFont(2);
-    //ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 10.0f);
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.35f), "Janitor Space Program - %s", VERSION);
+        m_ui.setFont(2);
+        //ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 10.0f);
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.35f), "Janitor Space Program - %s", VERSION);
 
-    ImGui::SeparatorText("Select:");
+        ImGui::SeparatorText("Select:");
 
-    m_ui.resetFont();
-    m_ui.setFont(1);
+        m_ui.resetFont();
+        m_ui.setFont(1);
 
-    if (ImGui::Button("Campaign Mode")) {}
-    if (ImGui::Button("Explore the Solar System")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
+        ImGui::BeginDisabled();
+        if (ImGui::Button("Campaign Mode")) {}
+        if (ImGui::Button("Explore the Solar System")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
+        ImGui::EndDisabled();
 
-    if (ImGui::Button("Sandbox Mode")) { showSandbox = !showSandbox; }
-    if (showSandbox) {
-        ImGui::Indent();
-        if (ImGui::Button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
-        if (ImGui::Button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
-        if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
-        ImGui::Unindent();
+        if (ImGui::Button("Sandbox Mode")) { showSandbox = !showSandbox; }
+        if (showSandbox) {
+            ImGui::Indent();
+            if (ImGui::Button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
+            if (ImGui::Button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
+            if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
+            ImGui::Unindent();
+        }
+
+        if (ImGui::Button("Settings")) { showSettings = !showSettings; }
+        if (ImGui::Button("Extras")) { showExtras = !showExtras; }
+
+        if (ImGui::Button("Exit")) m_engine.stop();
+        m_ui.resetFont();
+        ImGui::End();
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+
+        ImGui::PopStyleVar();
+        ImGui::PopStyleVar();
     }
-
-    if (ImGui::Button("Settings")) { showSettings = !showSettings; }
-    if (ImGui::Button("Extras")) { showExtras = !showExtras; }
-
-    if (ImGui::Button("Exit")) m_engine.stop();
-    m_ui.resetFont();
-    ImGui::End();
-
-    ImGui::PopStyleColor();
-    ImGui::PopStyleColor();
-
-    ImGui::PopStyleVar();
-    ImGui::PopStyleVar();
-}
 
     // TODO: user settings (change on engine, not game)
     void ShowSettings() {

@@ -7,7 +7,7 @@ int main() {
     Engine engine(1920, 1080, "JSP");
     Game game(engine);
 
-    game.SetGameMode(std::make_unique<MainMenuMode>(game));
+    game.SetGameMode(std::make_unique<MainMenuMode>(game, true));
 
     engine.run([&]() {        
         game.Update();
