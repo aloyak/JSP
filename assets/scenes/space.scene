@@ -4,6 +4,11 @@
         {
             "components": [
                 {
+                    "colorTint": [
+                        0.13725490868091583,
+                        0.13725490868091583,
+                        0.13725490868091583
+                    ],
                     "faces": [
                         "assets/skybox/space/skybox_right.jpg",
                         "assets/skybox/space/skybox_left.jpg",

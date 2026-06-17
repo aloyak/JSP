@@ -153,27 +153,19 @@ public:
 
     // Helpers
     Vec3 GetMouseIntersection() {
-        Vec2 mousePos = m_input.getMousePos();
-        Vec2 winSize = m_game.GetEngine().getWindow().getSize();
-        float ndcX = (2.0f * mousePos.x) / winSize.x - 1.0f;
-        float ndcY = 1.0f - (2.0f * mousePos.y) / winSize.y;
-
         auto* camComp = m_camera->getComponent<CameraComponent>();
-        Mat4 proj; camComp->getCamera().getProjectionMatrix(proj);
-        float invProjX = 1.0f / proj[0][0]; 
-        float invProjY = 1.0f / proj[1][1]; 
+        if (!camComp) return m_target->transform.position;
 
-        Vec3 lookDir = (m_target->transform.position - m_camera->transform.position).normalize();
-        Vec3 worldUp(0.0f, 1.0f, 0.0f);
-        Vec3 rightDir = cross(lookDir, worldUp).normalize();
-        Vec3 upDir = cross(rightDir, lookDir).normalize();
+        Vec2 mousePos = m_input.getMousePos();
+        Ray ray = m_game.GetEngine().getRenderer().pickRay(mousePos.x, mousePos.y,
+                                                           camComp->getCamera(),
+                                                           m_camera->transform);
 
-        Vec3 rayDir = (lookDir + rightDir * (ndcX * invProjX) + upDir * (ndcY * invProjY)).normalize();
-        Vec3 rayOrigin = m_camera->transform.position;
         float planeY = m_target->transform.position.y;
-        if (std::abs(rayDir.y) < 0.0001f) return rayOrigin;
-        float t = (planeY - rayOrigin.y) / rayDir.y;
-        return rayOrigin + rayDir * t;
+        if (std::abs(ray.direction.y) < 0.0001f) return ray.origin;
+        
+        float t = (planeY - ray.origin.y) / ray.direction.y;
+        return ray.origin + ray.direction * t;
     }
 
     bool IsPositionValid(const Vec3& pos, float ghostRadius) {
@@ -378,42 +370,35 @@ public:
 
     // Planet picking
     int TryPickPlanet() {
-        Vec2 mousePos = m_input.getMousePos();
-        Vec2 winSize  = m_game.GetEngine().getWindow().getSize();
-        float ndcX = (2.0f * mousePos.x) / winSize.x - 1.0f;
-        float ndcY = 1.0f - (2.0f * mousePos.y) / winSize.y;
-
         auto* camComp = m_camera->getComponent<CameraComponent>();
-        Mat4 proj; camComp->getCamera().getProjectionMatrix(proj);
-        float invProjX = 1.0f / proj[0][0];
-        float invProjY = 1.0f / proj[1][1];
+        if (!camComp) return -1;
 
-        Vec3 lookDir  = (m_target->transform.position - m_camera->transform.position).normalize();
-        Vec3 worldUp(0.0f, 1.0f, 0.0f);
-        Vec3 rightDir = cross(lookDir, worldUp).normalize();
-        Vec3 upDir    = cross(rightDir, lookDir).normalize();
-        Vec3 rayDir   = (lookDir + rightDir * (ndcX * invProjX) + upDir * (ndcY * invProjY)).normalize();
-        Vec3 rayOrigin = m_camera->transform.position;
+        Vec2 mousePos = m_input.getMousePos();
+        Ray ray = m_game.GetEngine().getRenderer().pickRay(mousePos.x, mousePos.y,
+                                                           camComp->getCamera(),
+                                                           m_camera->transform);
 
-        int   bestIdx      = -1;
-        float bestScore    = 1e9f;
+        Vec2 winSize = m_game.GetEngine().getWindow().getSize();
+        
+        const Mat4& proj = *reinterpret_cast<const Mat4*>(camComp->getCamera().getProjectionMatrix());
+
+        int   bestIdx   = -1;
+        float bestScore = 1e9f;
 
         for (int i = 0; i < (int)planetList.size(); i++) {
             Entity* planet = planetList[i];
             if (!planet) continue;
 
             float physicsRadius = planet->transform.scale.x;
-
-            Vec3  toCenter = planet->transform.position - rayOrigin;
-            float t        = dot(toCenter, rayDir);
+            Vec3  toCenter = planet->transform.position - ray.origin;
+            float t        = dot(toCenter, ray.direction);
             if (t < 0.0f) continue;
 
-            float worldDist = (rayOrigin + rayDir * t - planet->transform.position).length();
-
-            float distToCam    = toCenter.length();
-            float ndcRadius    = (physicsRadius / std::max(distToCam, 1.0f)) * proj[0][0];
-            float pixelRadius  = std::max(ndcRadius * winSize.x * 0.5f, 20.0f);
-
+            float worldDist = (ray.origin + ray.direction * t - planet->transform.position).length();
+            float distToCam = toCenter.length();
+            
+            float ndcRadius = (physicsRadius / std::max(distToCam, 1.0f)) * proj[0][0];
+            float pixelRadius = std::max(ndcRadius * winSize.x * 0.5f, 20.0f);
             float pickThreshold = (pixelRadius / (winSize.x * 0.5f)) * distToCam / proj[0][0];
 
             if (worldDist < pickThreshold && t < bestScore) {
