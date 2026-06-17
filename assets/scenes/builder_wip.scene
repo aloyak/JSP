@@ -1,0 +1,281 @@
+{
+    "ambientStrength": 0.25,
+    "entities": [
+        {
+            "components": [
+                {
+                    "colorTint": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "faces": [
+                        "assets/skybox/earth/left.png",
+                        "assets/skybox/earth/right.png",
+                        "assets/skybox/earth/up.png",
+                        "assets/skybox/earth/down.png",
+                        "assets/skybox/earth/front.png",
+                        "assets/skybox/earth/back.png"
+                    ],
+                    "rotation": 0.0,
+                    "type": "SkyboxComponent"
+                }
+            ],
+            "name": "Skybox",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rot": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "sca": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [],
+            "name": "Origin",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    0.0,
+                    0.05743122100830078
+                ],
+                "rot": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "sca": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "assets/textures/base.png",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/platform/base.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "Platform",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rot": [
+                    -90.0,
+                    -0.0,
+                    0.0
+                ],
+                "sca": [
+                    0.9999873042106628,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "color": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "intensity": 0.75,
+                    "radius": 247.0,
+                    "type": "PointLightComponent"
+                }
+            ],
+            "name": "debugLight",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    28.982999801635742,
+                    0.0
+                ],
+                "rot": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "sca": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/platform/workspace.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "Workspace",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rot": [
+                    -90.0,
+                    0.0,
+                    0.0
+                ],
+                "sca": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "assets/textures/base.png",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/platform/supports2x3.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "Supports1",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    -11.5499849319458,
+                    0.0,
+                    -19.217124938964844
+                ],
+                "rot": [
+                    -90.0,
+                    -0.0,
+                    0.0
+                ],
+                "sca": [
+                    0.9999048709869385,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "assets/textures/base.png",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/platform/supports3x1.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "Supports2",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    -19.248563766479492,
+                    0.0,
+                    -2.8478028774261475
+                ],
+                "rot": [
+                    89.99994659423828,
+                    89.99994659423828,
+                    -179.99989318847656
+                ],
+                "sca": [
+                    0.9999961256980896,
+                    0.9999989867210388,
+                    0.9999986290931702
+                ]
+            }
+        }
+    ],
+    "name": "Assembly Building"
+}

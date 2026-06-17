@@ -51,9 +51,9 @@
                         1.0
                     ],
                     "diffuse": "",
-                    "frag": "assets/shaders/frag.glsl",
+                    "frag": "assets/shaders/builtin/frag.glsl",
                     "metallic": "",
-                    "model": "assets/models/earth.fbx",
+                    "model": "assets/models/planets/earth.fbx",
                     "normal": "",
                     "shininess": 32.0,
                     "specular": "",
@@ -63,7 +63,7 @@
                         1.0,
                         1.0
                     ],
-                    "vert": "assets/shaders/vert.glsl"
+                    "vert": "assets/shaders/builtin/vert.glsl"
                 }
             ],
             "name": "Earth",
