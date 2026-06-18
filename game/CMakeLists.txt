@@ -1,8 +1,5 @@
 set(GAME_NAME "game")
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/httplib.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/sgp4.cmake)
-
 file(GLOB_RECURSE GAME_SOURCES 
     "src/*.cpp"
 )
@@ -16,13 +13,9 @@ file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR}/${GAME_NAME
 target_include_directories(${GAME_NAME}
     PUBLIC  include
     PRIVATE src
-    PRIVATE ${sgp4_SOURCE_DIR}/libsgp4
 )
 
-target_link_libraries(${GAME_NAME} PRIVATE engine
-    httplib
-    sgp4
-)
+target_link_libraries(${GAME_NAME} PRIVATE engine)
 
 if(WIN32)
     add_custom_command(TARGET ${GAME_NAME} POST_BUILD
