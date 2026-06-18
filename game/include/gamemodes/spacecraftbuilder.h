@@ -1,10 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include "gamemode.h"
-#include "grid.h"
 #include "moveset/cameraorbit.h"
 
 #include "engine/components/entity.h"
+#include "engine/components/skyboxComponent.h"
 
 class Game;
 
@@ -19,10 +20,10 @@ private:
 
     Entity* m_target = nullptr;
 
-    bool drawGrid = true;
+    Entity* m_skybox = nullptr;
 public:
     SpacecraftBuilderMode(Game& game)
-        : GameMode("assets/scenes/launchsite.scene")
+        : GameMode("assets/scenes/builder_wip.scene")
         , m_game(game) {}
 
     void OnEnter() override {
@@ -32,7 +33,7 @@ public:
         m_camera->addComponent<CameraComponent>(45.0f, 1600.0f / 900.0f, 0.1f, 30000.0f);
         m_game.GetEngine().setActiveCamera(m_camera);
         
-        float distance = 3500.0f;
+        float distance = 10.0f;
         float offset = distance / std::sqrt(3.0f);
         
         m_camera->transform.position = Vec3(offset, offset, offset);
@@ -42,10 +43,13 @@ public:
         m_camera->transform.rotation = orientation;
 
         m_target = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Target");
+
+        m_skybox = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Skybox").get();
         
         m_orbitCamera = new OrbitCamera(m_camera);
         m_orbitCamera->SetTarget(m_target, distance);
         m_orbitCamera->SyncFromCurrentPosition();
+        m_orbitCamera->SetMaxRadius(35.0f);
         m_orbitCamera->ApplyPosition();
     }
 
@@ -62,7 +66,14 @@ public:
             m_input.setCursorMode(false);
         }
 
-        if (drawGrid) DrawGrid(m_game.GetEngine().getRenderer(), m_camera);
+        if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += .015f;
+        if (m_input.isKeyDown(KEY_LCTRL)) m_target->transform.position.y -= .015f;
+        // clamp y axis to 0, 300
+        m_target->transform.position.y = std::clamp(m_target->transform.position.y, 0.0f, 60.0f);
+
+        float transitionDepth = 5.0f;
+        float intensity = std::clamp((m_camera->transform.position.y + transitionDepth) / transitionDepth, 0.0f, 1.0f);
+        m_skybox->getComponent<SkyboxComponent>()->setColorTint(Vec3(intensity, intensity, intensity));
     }
 
     void LateUpdate() override {
@@ -83,15 +94,6 @@ public:
                 if (ImGui::MenuItem("New Spacecraft")) {}
                 if (ImGui::MenuItem("Save Spacecraft")) {}
                 if (ImGui::MenuItem("Load Spacecraft")) {}
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Edit")) {
-                if (ImGui::MenuItem("Undo")) {}
-                if (ImGui::MenuItem("Redo")) {}
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("View")) {
-                if (ImGui::MenuItem("Show Grid", nullptr, &drawGrid)) {}
                 ImGui::EndMenu();
             }
         }

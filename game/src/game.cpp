@@ -11,6 +11,7 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
     m_engine->getWindow().setFullscreen(true);
     m_engine->getWindow().enableVSync(false);
     // m_engine->getWindow().allowResize(false); // TODO
+    m_engine->setTargetFps(240);
 
     //Logger::setVerbose(1); // TODO: SET ON RELEASE
 

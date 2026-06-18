@@ -62,6 +62,8 @@ public:
             minRadius = m_target->getComponent<PlanetComponent>()->getRadius() + 10.0f;
         }
         m_radius = std::clamp(m_radius, minRadius, m_maxRadius);
+
+        ApplyPosition();
     }
 
     void SyncFromCurrentPosition() {

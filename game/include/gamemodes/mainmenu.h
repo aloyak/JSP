@@ -52,7 +52,7 @@ public:
 
         if (m_earthEntity) {
             auto* planet = m_earthEntity->addComponent<PlanetComponent>();
-            planet->adjustScale();
+            planet->initialize();
         }
 
         m_game.timeScale = 25.0f;
@@ -101,7 +101,7 @@ public:
             if (logoAlpha < 0.0f) logoAlpha = 0.0f;
             if (logoAlpha > 1.0f) logoAlpha = 1.0f;
 
-            m_ui.drawSplashScreen(bgAlpha, logoAlpha, splashLogo.ID);
+            m_ui.drawSplashScreen(bgAlpha, logoAlpha, splashLogo.getID());
         }
     }
 
@@ -124,7 +124,7 @@ public:
 
         float scaleFactor = m_engine.getWindow().getSize().y / 1080.0f;
         ImVec2 logoSize = ImVec2(300 * scaleFactor, 300 * scaleFactor);
-        ImGui::Image((void*)(intptr_t)logo.ID, logoSize);
+        ImGui::Image((void*)(intptr_t)logo.getID(), logoSize);
 
         m_ui.setFont(2);
         //ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 10.0f);

@@ -3,8 +3,6 @@
 #include "gamemode.h"
 #include "moveset/cameraorbit.h"
 
-#include "grid.h"
-
 #include "engine/components/entity.h"
 #include "engine/components/rendererComponent.h"
 #include "engine/utils/logger.h"
@@ -103,15 +101,15 @@ private:
     float m_focusDuration = 0.6f;
 
     std::vector<GravityBody> gravityBodies = {
-        { "assets/models/earth.fbx", 50, 637.1f, 24.0f, "Earth" },
-        { "assets/models/moon.fbx", 7, 173.7f, 27.3f, "Moon" },
-        { "assets/models/mars.fbx", 43, 338.9f, 24.6f, "Mars" },
-        { "assets/models/venus.fbx", 23, 605.2f, 240.0f, "Venus" },
-        { "assets/models/mercury.fbx", 5, 243.9f, 1408.0f, "Mercury" },
-        { "assets/models/jupiter.fbx", 132, 6991.1f, 9.9f, "Jupiter" },
-        { "assets/models/saturn.fbx", 56, 5823.2f, 10.7f, "Saturn" },
-        { "assets/models/uranus.fbx", 75, 2536.2f, 17.2f, "Uranus" },
-        { "assets/models/neptune.fbx", 17, 2462.2f, 16.1f, "Neptune" }
+        { "assets/models/planets/earth.fbx", 50, 637.1f, 24.0f, "Earth" },
+        { "assets/models/planets/moon.fbx", 7, 173.7f, 27.3f, "Moon" },
+        { "assets/models/planets/mars.fbx", 43, 338.9f, 24.6f, "Mars" },
+        { "assets/models/planets/venus.fbx", 23, 605.2f, 240.0f, "Venus" },
+        { "assets/models/planets/mercury.fbx", 5, 243.9f, 1408.0f, "Mercury" },
+        { "assets/models/planets/jupiter.fbx", 132, 6991.1f, 9.9f, "Jupiter" },
+        { "assets/models/planets/saturn.fbx", 56, 5823.2f, 10.7f, "Saturn" },
+        { "assets/models/planets/uranus.fbx", 75, 2536.2f, 17.2f, "Uranus" },
+        { "assets/models/planets/neptune.fbx", 17, 2462.2f, 16.1f, "Neptune" }
     };
 
     bool showPlanetsWindow = false;
@@ -353,7 +351,7 @@ public:
         m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));
 
         auto* planet = m_ghostEntity->addComponent<PlanetComponent>(body.period, body.radius);
-        planet->adjustScale();
+        planet->initialize();
 
         planetList.push_back(m_ghostEntity);
         m_ghostEntity = nullptr;
@@ -779,6 +777,19 @@ public:
             movingEnabled = true;
             isTransitioning = false;
             m_orbitCamera->SyncFromCurrentPosition();
+        }
+    }
+
+    void DrawGrid(Renderer& renderer, Entity* m_camera) {
+        for (int i = -13; i <= 13; ++i) {
+            Vec3 start = Vec3(i * 750.0f, 0, -9750.0f);
+            Vec3 end   = Vec3(i * 750.0f, 0,  9750.0f);
+            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(),
+                            m_camera->transform, Vec3(.005f, .005f, .005f), 10.0f, false);
+            start = Vec3(-9750.0f, 0, i * 750.0f);
+            end   = Vec3( 9750.0f, 0, i * 750.0f);
+            renderer.drawLine(start, end, m_camera->getComponent<CameraComponent>()->getCamera(),
+                            m_camera->transform, Vec3(.005f, .005f, .005f), 10.0f, false);
         }
     }
 
