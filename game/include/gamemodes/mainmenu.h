@@ -69,10 +69,10 @@ public:
 
                 m_menuPlanet = m_earthEntity->addComponent<PlanetComponent>(m_game);
                 m_menuPlanet->setHasAtmosphere(true);
-                m_menuPlanet->setAtmosphereThickness(120.0f);
-                m_menuPlanet->setRayleighCoeff(Vec3(0.006f, 0.014f, 0.033f));
-                m_menuPlanet->setSunIntensity(4.5f);
-                m_menuPlanet->setEdgeFalloff(300.0f);
+                m_menuPlanet->getAtmosphere().thickness = 120.0f;
+                m_menuPlanet->getAtmosphere().rayleighCoeff = Vec3(0.006f, 0.014f, 0.033f);
+                m_menuPlanet->getPlanetParams().sunIntensity = 4.5f;
+                m_menuPlanet->getAtmosphere().edgeFalloff = 300.0f;
 
                 m_menuPlanet->initialize();
             }

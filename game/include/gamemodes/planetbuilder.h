@@ -37,8 +37,6 @@ private:
     OrbitCamera* m_orbitCamera = nullptr;
 
     Entity* planet = nullptr;
-    float planetMass = 100.0f;
-    bool hasRings = false;
 
     bool showProperties = true;
     bool showTools = true;
@@ -70,6 +68,7 @@ private:
 
     bool m_rightButtonWasDown   = false;
     bool m_rightClickIsOrbiting = false;
+
 public:
     PlanetBuilderMode(Game& game)
         : GameMode("assets/scenes/space.scene")
@@ -131,6 +130,10 @@ public:
             m_input.setCursorMode(false);
         }
         m_orbitCamera->ApplyScroll(&m_input);
+
+        // shortcuts
+        if (m_input.isKeyPressed(KEY_1)) { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
+        if (m_input.isKeyPressed(KEY_2)) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
 
         UpdateMouseIntersection();
         TryPaint();
@@ -205,19 +208,33 @@ public:
 
             auto* planetComponent = planet->getComponent<PlanetComponent>();
             if (planetComponent) {
-                float radius = planetComponent->getRadius();
+                float radius = planetComponent->getPlanetParams().radius;
                 if (ImGui::SliderFloat("Radius", &radius, 50.0f, 1500.0f)) {
-                    planetComponent->setRadius(radius);
+                    planetComponent->getPlanetParams().radius = radius;
                     planetComponent->initialize();
                 }
 
-                if (ImGui::SliderFloat("Mass", &planetMass, 1.0f, 10000.0f));
+                float mass = planetComponent->getPlanetParams().mass;
+                if (ImGui::SliderFloat("Mass", &mass, 1.0f, 10000.0f)) {
+                    planetComponent->getPlanetParams().mass = mass;
+                }
 
-                float periodHours = planetComponent->getPeriod();
+                float periodHours = planetComponent->getPlanetParams().period;
                 float periodMinutes = periodHours * 60.0f;
                 
                 if (ImGui::SliderFloat("Rotation Period (min)", &periodMinutes, 0.08333f, 40.0f)) {
-                    planetComponent->setPeriod(periodMinutes / 60.0f);
+                    planetComponent->getPlanetParams().period = periodMinutes / 60.0f;
+                }
+
+                ImGui::Separator();
+                float sunIntensity = planetComponent->getPlanetParams().sunIntensity;
+                if (ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 50.0f)) {
+                    planetComponent->getPlanetParams().sunIntensity = sunIntensity;
+                }
+
+                Vec3 sunDir = planetComponent->getPlanetParams().sunDir;
+                if (ImGui::SliderFloat3("Sun Direction", &sunDir.x, -1.0f, 1.0f)) {
+                    planetComponent->getPlanetParams().sunDir = sunDir.normalize();
                 }
             }
 
@@ -227,34 +244,54 @@ public:
                 planetComponent->setHasAtmosphere(hasAtmosphere);                
             }
             if (hasAtmosphere) {
-                float atmosphereThickness = planetComponent->getAtmosphereThickness();
+                float atmosphereThickness = planetComponent->getAtmosphere().thickness;
                 if (ImGui::SliderFloat("Atmosphere Thickness", &atmosphereThickness, 1.0f, 1000.0f)) {
-                    planetComponent->setAtmosphereThickness(atmosphereThickness);
+                    planetComponent->getAtmosphere().thickness = atmosphereThickness;
                 }
 
-                float sunIntensity = planetComponent->getSunIntensity();
-                if (ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 50.0f)) {
-                    planetComponent->setSunIntensity(sunIntensity);
-                }
-
-                Vec3 sunDir = planetComponent->getSunDir();
-                if (ImGui::SliderFloat3("Sun Direction", &sunDir.x, -1.0f, 1.0f)) {
-                    planetComponent->setSunDir(sunDir.normalize());
-                }
-
-                Vec3 rayleighCoeff = planetComponent->getRayleighCoeff();
+                Vec3 rayleighCoeff = planetComponent->getAtmosphere().rayleighCoeff;
                 if (ImGui::ColorEdit3("Rayleigh Coeff", &rayleighCoeff.x)) {
-                    planetComponent->setRayleighCoeff(rayleighCoeff);
+                    planetComponent->getAtmosphere().rayleighCoeff = rayleighCoeff;
                 }
 
-                float edgeFalloff = planetComponent->getEdgeFalloff();
+                float edgeFalloff = planetComponent->getAtmosphere().edgeFalloff;
                 if (ImGui::SliderFloat("Edge Falloff", &edgeFalloff, 0.0f, 1200.0f, "%.3f", ImGuiSliderFlags_Logarithmic)) {
-                    planetComponent->setEdgeFalloff(edgeFalloff);
+                    planetComponent->getAtmosphere().edgeFalloff = edgeFalloff;
                 }
             }
 
             ImGui::Separator();
-            ImGui::Checkbox("Has Rings", &hasRings);
+            bool hasRings = planetComponent->hasRings();
+            if (ImGui::Checkbox("Has Rings", &hasRings)) {
+                planetComponent->setHasRings(hasRings);
+            }
+            if (hasRings) {
+                float innerRadius = 10; //placeholder
+                if (ImGui::SliderFloat("Ring Inner Radius", &innerRadius, 1.0f, 5000.0f)) {
+                }
+
+                float outerRadius = 100; // placeholder
+                if (ImGui::SliderFloat("Ring Outer Radius", &outerRadius, 1.0f, 5000.0f)) {
+                }
+
+                float ringInclination = 0; // placeholder
+                if (ImGui::SliderFloat("Ring Inclination", &ringInclination, -90.0f, 90.0f)) {
+                }
+            }
+
+            ImGui::Separator();
+            bool hasWater = planetComponent->hasWater();
+            if (ImGui::Checkbox("Has Water", &hasWater)) {
+                planetComponent->setHasWater(hasWater);
+            }
+            if (hasWater) {
+                float waterLevel = planetComponent->getWater().level;
+                if (ImGui::SliderFloat("Water Level", &waterLevel, 0.0f, 1000.0f)) {
+                    planetComponent->getWater().level = waterLevel;
+                }
+
+                // more shader params
+            }
         }
 
         ImGui::PopItemWidth();
@@ -511,21 +548,22 @@ private:
 
         nlohmann::json j;
         j["name"] = planet->name;
-        j["mass"] = planetMass;
-        j["radius"] = planet->getComponent<PlanetComponent>()->getRadius();
-        j["period"] = planet->getComponent<PlanetComponent>()->getPeriod();
+        j["mass"] = planet->getComponent<PlanetComponent>()->getPlanetParams().mass;
+        j["radius"] = planet->getComponent<PlanetComponent>()->getPlanetParams().radius;
+        j["period"] = planet->getComponent<PlanetComponent>()->getPlanetParams().period;
         j["texture"] = "/user/planets/" + planet->name + ".png";
         j["hasAtmosphere"] = planet->getComponent<PlanetComponent>()->hasAtmosphere();
-        j["atmosphereThickness"] = planet->getComponent<PlanetComponent>()->getAtmosphereThickness();
-        j["sunIntensity"] = planet->getComponent<PlanetComponent>()->getSunIntensity();
-        j["sunDir"] = { planet->getComponent<PlanetComponent>()->getSunDir().x,
-                        planet->getComponent<PlanetComponent>()->getSunDir().y,
-                        planet->getComponent<PlanetComponent>()->getSunDir().z };
-        j["rayleighCoeff"] = { planet->getComponent<PlanetComponent>()->getRayleighCoeff().x,
-                            planet->getComponent<PlanetComponent>()->getRayleighCoeff().y,
-                            planet->getComponent<PlanetComponent>()->getRayleighCoeff().z };
-        j["edgeFalloff"] = planet->getComponent<PlanetComponent>()->getEdgeFalloff();
-        j["hasRings"] = hasRings;
+        j["atmosphereThickness"] = planet->getComponent<PlanetComponent>()->getAtmosphere().thickness;
+        j["sunIntensity"] = planet->getComponent<PlanetComponent>()->getPlanetParams().sunIntensity;
+        j["sunDir"] = { planet->getComponent<PlanetComponent>()->getPlanetParams().sunDir.x,
+                        planet->getComponent<PlanetComponent>()->getPlanetParams().sunDir.y,
+                        planet->getComponent<PlanetComponent>()->getPlanetParams().sunDir.z };
+        j["rayleighCoeff"] = { planet->getComponent<PlanetComponent>()->getAtmosphere().rayleighCoeff.x,
+                            planet->getComponent<PlanetComponent>()->getAtmosphere().rayleighCoeff.y,
+                            planet->getComponent<PlanetComponent>()->getAtmosphere().rayleighCoeff.z };
+        j["edgeFalloff"] = planet->getComponent<PlanetComponent>()->getAtmosphere().edgeFalloff;
+        j["hasRings"] = planet->getComponent<PlanetComponent>()->hasRings();
+        j["hasWater"] = planet->getComponent<PlanetComponent>()->hasWater();
 
         std::string geomPath = baseDir + planet->name + ".geom";
         std::ofstream geomFile(geomPath, std::ios::binary);
@@ -554,93 +592,9 @@ private:
     }
 
     void Load(const std::string& filepath) {
-        std::ifstream file(filepath);
-        if (!file.is_open()) {
-            Logger::error("Failed to open " + filepath);
-            return;
-        }
-
-        nlohmann::json j;
-        try {
-            file >> j;
-        } catch (const nlohmann::json::parse_error& e) {
-            Logger::error("JSON parse error: " + std::string(e.what()));
-            return;
-        }
-
-        if (j.contains("name")) planet->name = j["name"];
-        if (j.contains("mass")) planetMass = j["mass"];
-        if (j.contains("hasRings")) hasRings = j["hasRings"];
-
         auto* planetComponent = planet->getComponent<PlanetComponent>();
         if (planetComponent) {
-            if (j.contains("radius")) planetComponent->setRadius(j["radius"]);
-            if (j.contains("period")) planetComponent->setPeriod(j["period"]);
-            if (j.contains("hasAtmosphere")) planetComponent->setHasAtmosphere(j["hasAtmosphere"]);
-            if (j.contains("atmosphereThickness")) planetComponent->setAtmosphereThickness(j["atmosphereThickness"]);
-            
-            if (j.contains("sunIntensity")) planetComponent->setSunIntensity(j["sunIntensity"]);
-            if (j.contains("sunDir")) {
-                planetComponent->setSunDir(Vec3(j["sunDir"][0], j["sunDir"][1], j["sunDir"][2]));
-            }
-            if (j.contains("rayleighCoeff")) {
-                planetComponent->setRayleighCoeff(Vec3(j["rayleighCoeff"][0], j["rayleighCoeff"][1], j["rayleighCoeff"][2]));
-            }
-            if (j.contains("edgeFalloff")) planetComponent->setEdgeFalloff(j["edgeFalloff"]);
-
-            planetComponent->initialize();
-        }
-
-        if (j.contains("texture")) {
-            std::string texPath = j["texture"];
-            if (!texPath.empty() && texPath.front() == '/') {
-                texPath = texPath.substr(1);
-            }
-            
-            std::string resolvedTexPath = Path::resolve(texPath);
-            if (std::filesystem::exists(resolvedTexPath)) {
-                m_paintTexture.reset(Texture::createPaintable(resolvedTexPath));
-                auto* renderComponent = planet->getComponent<RenderComponent>();
-                if (renderComponent && m_paintTexture) {
-                    renderComponent->setPaintableTexture(m_paintTexture);
-                }
-            } else {
-                Logger::error("Texture not found: " + resolvedTexPath);
-            }
-        }
-
-        if (j.contains("geometry")) {
-            std::string geomPath = j["geometry"];
-            if (!geomPath.empty() && geomPath.front() == '/') {
-                geomPath = geomPath.substr(1);
-            }
-            
-            std::string resolvedGeomPath = Path::resolve(geomPath);
-            std::ifstream geomFile(resolvedGeomPath, std::ios::binary);
-            
-            if (geomFile.is_open()) {
-                auto* renderComp = planet->getComponent<RenderComponent>();
-                if (renderComp && renderComp->getModel()) {
-                    bool anyModified = false;
-                    for (auto& mesh : renderComp->getModel()->getMeshes()) {
-                        if (!mesh.isDynamic()) continue;
-                        
-                        for (auto& v : mesh.vertices) {
-                            if (geomFile.read(reinterpret_cast<char*>(&v.Position), sizeof(v.Position))) {
-                                anyModified = true;
-                            }
-                        }
-                        
-                        if (anyModified) {
-                            mesh.recalculateNormals();
-                            mesh.updateVertexBuffer();
-                        }
-                    }
-                }
-                geomFile.close();
-            } else {
-                Logger::error("Geometry file not found: " + resolvedGeomPath);
-            }
+            planetComponent->loadFromFile(filepath, m_paintTexture);
         }
     }
 };
