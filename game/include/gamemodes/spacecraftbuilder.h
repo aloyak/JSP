@@ -4,6 +4,8 @@
 #include "gamemode.h"
 #include "moveset/cameraorbit.h"
 
+#include "selector.h"
+
 #include "engine/components/entity.h"
 #include "engine/components/skyboxComponent.h"
 
@@ -89,7 +91,6 @@ public:
                 }
                 ImGui::EndMenu();
             }
-            ImGui::Separator();
             if (ImGui::BeginMenu("Spacecraft")) {
                 if (ImGui::MenuItem("New Spacecraft")) {}
                 if (ImGui::MenuItem("Save Spacecraft")) {}

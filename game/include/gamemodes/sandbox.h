@@ -978,7 +978,6 @@ public:
                 if (ImGui::MenuItem("Quit"))      m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }
-            ImGui::Separator();
             if (ImGui::BeginMenu("File")) {
                 if (ImGui::MenuItem("New Sandbox"))  {}
                 if (ImGui::MenuItem("Load Sandbox")) {}
