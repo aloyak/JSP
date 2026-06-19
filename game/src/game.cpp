@@ -19,6 +19,10 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
 }
 
 void Game::Update() {
+    if (m_pendingModeChange) {
+        m_pendingModeChange = false;
+        ActualSetGameMode(std::move(m_nextGameMode), m_nextForceReload);
+    }
     m_engine->beginUI();
     if (m_currentGameMode) {
         m_currentGameMode->Update();
@@ -37,6 +41,12 @@ void Game::LateUpdate() {
 }
 
 void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) {
+    m_nextGameMode = std::move(newGameMode);
+    m_nextForceReload = forceReload;
+    m_pendingModeChange = true;
+}
+
+void Game::ActualSetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) {
     bool same = m_currentGameMode && 
         !newGameMode->GetScenePath().empty() && 
         m_currentGameMode->GetScenePath() == newGameMode->GetScenePath();

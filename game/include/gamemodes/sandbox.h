@@ -133,11 +133,6 @@ public:
             m_startRotation = m_camera->transform.rotation;
         }
 
-        Entity* light = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Sun").get();
-        if (light) {
-            m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(light);
-        }
-
         m_target = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Target");
         m_target->transform.position = Vec3(0, 0, 0);
 
@@ -203,7 +198,6 @@ public:
         m_focusTransitioning = true;
     }
 
-    // -------------------------------------------------------------------
     // Simulation control
     static constexpr float kGravConstant = 6.674e-11f;
 
@@ -350,7 +344,7 @@ public:
         m_ghostEntity->name = body.name;
         m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));
 
-        auto* planet = m_ghostEntity->addComponent<PlanetComponent>(body.period, body.radius);
+        auto* planet = m_ghostEntity->addComponent<PlanetComponent>(m_game, body.period, body.radius);
         planet->initialize();
 
         planetList.push_back(m_ghostEntity);

@@ -27,4 +27,10 @@ private:
     std::unique_ptr<GameMode> m_lastGameMode;
 
     UI m_ui;
+
+    std::unique_ptr<GameMode> m_nextGameMode;
+    bool m_nextForceReload = false;
+    bool m_pendingModeChange = false;
+
+    void ActualSetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload = false);
 };

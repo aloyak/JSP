@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.3.2"
+#define VERSION "0.4.1"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -12,7 +12,6 @@
 #include "gamemodes/planetbuilder.h"
 #include "gamemodes/spacecraftbuilder.h"
 
-// used as a temporary solution for a missing sprite renderer
 #include "engine/render/texture.h"
 
 #include <chrono>
@@ -24,6 +23,7 @@ private:
     UI& m_ui;
 
     Entity* m_earthEntity = nullptr;
+    PlanetComponent* m_menuPlanet = nullptr;
 
     bool showSettings = false;
     bool showExtras = false;
@@ -37,6 +37,8 @@ private:
     float m_splashTime = 0.0f;
     bool m_showSplash;
 
+    bool m_sceneSetupDone = false;
+
 public:
     MainMenuMode(Game& game, bool showSplash = false)
         : GameMode("assets/scenes/menu.scene") 
@@ -47,15 +49,10 @@ public:
 
     void OnEnter() override {
         m_engine.getSceneManager().getActiveScene()->setAmbientStrength(0.0f);
-
         m_earthEntity = m_engine.getSceneManager().getActiveScene()->getEntityByName("Earth").get();
-
-        if (m_earthEntity) {
-            auto* planet = m_earthEntity->addComponent<PlanetComponent>();
-            planet->initialize();
-        }
-
         m_game.timeScale = 25.0f;
+        m_sceneSetupDone = false;
+        m_menuPlanet = nullptr;
     }
 
     void OnExit() override {
@@ -63,13 +60,41 @@ public:
     }
 
     void Update() override {
+        if (!m_sceneSetupDone) {
+            if (m_earthEntity) {
+                PlanetComponent* jsonPlanet = m_earthEntity->getComponent<PlanetComponent>();
+                if (jsonPlanet) {
+                    jsonPlanet->isEnabled = false;
+                }
+
+                m_menuPlanet = m_earthEntity->addComponent<PlanetComponent>(m_game);
+                m_menuPlanet->setHasAtmosphere(true);
+                m_menuPlanet->setAtmosphereThickness(120.0f);
+                m_menuPlanet->setRayleighCoeff(Vec3(0.006f, 0.014f, 0.033f));
+                m_menuPlanet->setSunIntensity(4.5f);
+                m_menuPlanet->setEdgeFalloff(300.0f);
+
+                m_menuPlanet->initialize();
+            }
+
+            Entity* cameraEntity = m_engine.getSceneManager().getActiveScene()->getEntityByName("Camera").get();
+            if (cameraEntity) {
+                m_engine.setActiveCamera(cameraEntity);
+            }
+
+            m_sceneSetupDone = true;
+        }
+
         if (m_showSplash) {
             m_splashTime += m_engine.getDeltaTime();
             if (m_splashTime >= 3.0f) {
                 m_showSplash = false;
             }
         }
-        m_earthEntity->getComponent<PlanetComponent>()->update(m_engine.getDeltaTime() * m_game.timeScale);        
+
+        if (m_menuPlanet) {
+            m_menuPlanet->update(m_engine.getDeltaTime() * m_game.timeScale);
+        }
     }
 
     void LateUpdate() override {
@@ -117,17 +142,14 @@ public:
         ImGui::SetNextWindowPos(ImVec2(80, 80));
         ImGui::Begin("Main Menu", nullptr, flags);
 
-        // Main Title TODO: make this beautiful
-        //m_ui.setFont(0);
-        //ImGui::Text("J.S.P.");
-        //m_ui.resetFont();
-
+        // add alpha to the logo
         float scaleFactor = m_engine.getWindow().getSize().y / 1080.0f;
-        ImVec2 logoSize = ImVec2(300 * scaleFactor, 300 * scaleFactor);
-        ImGui::Image((void*)(intptr_t)logo.getID(), logoSize);
+        ImVec2 logoSize = ImVec2(250 * scaleFactor, 250 * scaleFactor);
+        ImVec4 tintColor = ImVec4(1.0f, 1.0f, 1.0f, 0.75f);
+        ImVec4 borderColor = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+        ImGui::Image(logo.getID(), logoSize, ImVec2(0, 0), ImVec2(1, 1), tintColor, borderColor);
 
         m_ui.setFont(2);
-        //ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 10.0f);
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.35f), "Janitor Space Program - %s", VERSION);
 
         ImGui::SeparatorText("Select:");
@@ -295,7 +317,7 @@ public:
     void ShowMenuSettings() {
         int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | 
                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
-
+        
         //ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         //ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);

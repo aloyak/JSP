@@ -1,8 +1,8 @@
 #pragma once
 
 #include "gamemode.h"
-#include "grid.h"
 #include "moveset/cameraorbit.h"
+#include "components/PlanetComponent.h"
 
 #include "engine/components/entity.h"
 #include "engine/components/rendererComponent.h"
@@ -32,7 +32,6 @@ private:
 
     Entity* planet = nullptr;
     float planetMass = 100.0f;
-    bool hasAtmosphere = false;
     bool hasRings = false;
 
     bool showProperties = true;
@@ -52,6 +51,10 @@ private:
 
     static constexpr float k_uOffset = 0.75f;
     static constexpr bool  k_swapXZ  = true;
+
+    bool m_isHoveringPlanet = false;
+    Vec3 m_hoverWorldPos    = Vec3(0.0f, 0.0f, 0.0f);
+    Vec3 m_hoverLocalPos    = Vec3(0.0f, 0.0f, 0.0f);
 public:
     PlanetBuilderMode(Game& game)
         : GameMode("assets/scenes/space.scene")
@@ -73,8 +76,8 @@ public:
         planet = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Planet");
 
         auto* renderComponent = planet->addComponent<RenderComponent>("assets/models/planetbase.fbx");
-        auto* planetComponent = planet->addComponent<PlanetComponent>(1.0f, 637.1);
-        planetComponent->adjustScale();
+        auto* planetComponent = planet->addComponent<PlanetComponent>(m_game, 1.0f, 637.1);
+        planetComponent->initialize();
 
         m_paintTexture.reset(Texture::createPaintable(Vec2(k_textureSize, k_textureSize),
                                                       Vec4(1.0f, 1.0f, 1.0f, 1.0f)));
@@ -102,6 +105,7 @@ public:
         }
         m_orbitCamera->ApplyScroll(&m_input);
 
+        UpdateMouseIntersection();
         TryPaint();
     }
 
@@ -117,7 +121,7 @@ public:
             ImGui::Separator();
             if (ImGui::BeginMenu("Planet")) {
                 if (ImGui::MenuItem("New Planet")) {}
-                if (ImGui::MenuItem("Save Planet")) { SaveTexture(); } // good for now
+                if (ImGui::MenuItem("Save Planet")) { SaveTexture(); }
                 if (ImGui::MenuItem("Load Planet")) {}
                 ImGui::EndMenu();
             }
@@ -144,6 +148,8 @@ public:
 
         if (showProperties) DrawPropertiesWindow();
         if (showTools)      DrawToolsWindow();
+
+        DrawBrushIndicator();
     }
 
     void DrawPropertiesWindow() {
@@ -151,7 +157,7 @@ public:
         ImGui::Begin("Planet Properties", &showProperties,
                      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
 
-        ImGui::PushItemWidth(250.0f);
+        ImGui::PushItemWidth(225.0f);
 
         if (planet) {
             char nameBuffer[128];
@@ -165,19 +171,50 @@ public:
                 float radius = planetComponent->getRadius();
                 if (ImGui::SliderFloat("Radius", &radius, 50.0f, 1500.0f)) {
                     planetComponent->setRadius(radius);
-                    planetComponent->adjustScale();
+                    planetComponent->initialize();
                 }
 
                 if (ImGui::SliderFloat("Mass", &planetMass, 1.0f, 10000.0f));
 
-                float period = planetComponent->getPeriod();
-                if (ImGui::SliderFloat("Rotation Period", &period, 0.01f, 100.0f)) {
-                    planetComponent->setPeriod(period);
+                float periodHours = planetComponent->getPeriod();
+                float periodMinutes = periodHours * 60.0f;
+                
+                if (ImGui::SliderFloat("Rotation Period (min)", &periodMinutes, 0.08333f, 40.0f)) {
+                    planetComponent->setPeriod(periodMinutes / 60.0f);
                 }
             }
 
             ImGui::Separator();
-            ImGui::Checkbox("Has Atmosphere", &hasAtmosphere);
+            bool hasAtmosphere = planetComponent->hasAtmosphere();
+            if (ImGui::Checkbox("Has Atmosphere", &hasAtmosphere)) {
+                planetComponent->setHasAtmosphere(hasAtmosphere);                
+            }
+            if (hasAtmosphere) {
+                float atmosphereThickness = planetComponent->getAtmosphereThickness();
+                if (ImGui::SliderFloat("Atmosphere Thickness", &atmosphereThickness, 1.0f, 1000.0f)) {
+                    planetComponent->setAtmosphereThickness(atmosphereThickness);
+                }
+
+                float sunIntensity = planetComponent->getSunIntensity();
+                if (ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 50.0f)) {
+                    planetComponent->setSunIntensity(sunIntensity);
+                }
+
+                Vec3 sunDir = planetComponent->getSunDir();
+                if (ImGui::SliderFloat3("Sun Direction", &sunDir.x, -1.0f, 1.0f)) {
+                    planetComponent->setSunDir(sunDir.normalize());
+                }
+
+                Vec3 rayleighCoeff = planetComponent->getRayleighCoeff();
+                if (ImGui::ColorEdit3("Rayleigh Coeff", &rayleighCoeff.x)) {
+                    planetComponent->setRayleighCoeff(rayleighCoeff);
+                }
+
+                float edgeFalloff = planetComponent->getEdgeFalloff();
+                if (ImGui::SliderFloat("Edge Falloff", &edgeFalloff, 0.0f, 1200.0f, "%.3f", ImGuiSliderFlags_Logarithmic)) {
+                    planetComponent->setEdgeFalloff(edgeFalloff);
+                }
+            }
 
             ImGui::Separator();
             ImGui::Checkbox("Has Rings", &hasRings);
@@ -244,11 +281,9 @@ private:
         m_paintTexture->uploadToGPU();
     }
 
-    void TryPaint() {
-        if (currentTool != PlanetToolMode::Paint)      return;
-        if (!m_input.isMouseButtonPressed(MOUSE_LEFT)) return;
-        if (ImGui::GetIO().WantCaptureMouse)           return;
-        if (!planet || !m_camera || !m_paintTexture)   return;
+    void UpdateMouseIntersection() {
+        m_isHoveringPlanet = false;
+        if (!planet || !m_camera || ImGui::GetIO().WantCaptureMouse) return;
 
         auto* camComp = m_camera->getComponent<CameraComponent>();
         if (!camComp) return;
@@ -273,20 +308,28 @@ private:
         const float t = (t0 > 0.0f) ? t0 : t1;
         if (t <= 0.0f) return;
 
-        const Vec3  worldHit = ray.origin + rd * t;
-        const Vec3  localHit = worldHit - center;
+        m_hoverWorldPos = ray.origin + rd * t;
+        m_hoverLocalPos = m_hoverWorldPos - center;
+        m_isHoveringPlanet = true;
+    }
+
+    void TryPaint() {
+        if (currentTool != PlanetToolMode::Paint) return;
+        if (!m_input.isMouseButtonPressed(MOUSE_LEFT)) return;
+        if (!m_isHoveringPlanet) return;
+        if (!m_paintTexture) return;
 
         const float pi = 3.1415926535f;
         const float radY = planet->transform.rotation.y * (pi / 180.0f);
-        const float cosY = std::cos(-radY);
-        const float sinY = std::sin(-radY);
-        const float rx = localHit.x * cosY - localHit.z * sinY;
-        const float rz = localHit.x * sinY + localHit.z * cosY;
-        const Vec3  n = Vec3(rx, localHit.y, rz).normalize();
+        const float cosY = std::cos(radY);
+        const float sinY = std::sin(radY);
+        const float rx = m_hoverLocalPos.x * cosY - m_hoverLocalPos.z * sinY;
+        const float rz = m_hoverLocalPos.x * sinY + m_hoverLocalPos.z * cosY;
+        const Vec3  n = Vec3(rx, m_hoverLocalPos.y, rz).normalize();
 
-        const float ax= k_swapXZ ? n.z : n.x;
-        const float az= k_swapXZ ? n.x : n.z;
-        const float signX = -1.0f; // CHECK
+        const float ax = k_swapXZ ? n.z : n.x;
+        const float az = k_swapXZ ? n.x : n.z;
+        const float signX = -1.0f;
 
         float u = std::atan2(signX * ax, az) / (2.0f * pi) + 0.5f;
         float v = std::asin(std::fmax(-1.0f, std::fmin(1.0f, n.y))) / pi + 0.5f;
@@ -302,6 +345,32 @@ private:
             u, v, uvRadius,
             Vec4(brushColor[0], brushColor[1], brushColor[2], brushOpacity)
         );
+    }
+
+    void DrawBrushIndicator() {
+        if (currentTool == PlanetToolMode::Paint && m_isHoveringPlanet && !ImGui::GetIO().WantCaptureMouse) {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+
+            Vec3 diff = m_hoverWorldPos - m_camera->transform.position;
+            float distance = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+
+            const float pi = 3.1415926535f;
+            float fovRad = 45.0f * (pi / 180.0f);
+            float screenHeight = ImGui::GetIO().DisplaySize.y;
+
+            float sphereRadius = planet->transform.scale.x;
+            float worldBrushRadius = sphereRadius * (brushSize * k_brushUVScale) * pi;
+
+            float screenRadius = (worldBrushRadius / distance) * (screenHeight / (2.0f * std::tan(fovRad * 0.5f)));
+
+            ImVec2 mousePos = ImGui::GetMousePos();
+            ImU32 color = IM_COL32(static_cast<int>(brushColor[0] * 255.0f), 
+                                   static_cast<int>(brushColor[1] * 255.0f), 
+                                   static_cast<int>(brushColor[2] * 255.0f), 
+                                   200);
+
+            ImGui::GetForegroundDrawList()->AddCircle(mousePos, screenRadius, color, 32, 2.0f);
+        }
     }
 
     void SaveTexture() {
