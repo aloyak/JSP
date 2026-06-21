@@ -57,7 +57,7 @@ float opticalDepth(vec3 origin, vec3 dir, float rayLen) {
 
 float lineariseDepth(float d) {
     float z_ndc = d * 2.0 - 1.0;
-    return (2.0 * u_near * u_far) / (u_far + u_near - z_ndc * (u_far - u_near));
+    return (2.0 * u_near * u_far) / (u_far + u_near + z_ndc * (u_far - u_near));
 }
 
 void main() {
@@ -86,7 +86,7 @@ void main() {
 
     float rawDepth = texture(depthTexture, TexCoords).r;
     float sceneLinear = lineariseDepth(rawDepth);
-    if (rawDepth < 1.0 && sceneLinear < tMax) {
+    if (rawDepth > 0.0 && sceneLinear < tMax) {
         tMax = sceneLinear;
     }
 

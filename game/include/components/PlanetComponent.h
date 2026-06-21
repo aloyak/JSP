@@ -24,7 +24,7 @@ struct PlanetParams {
     float mass = 100.0f;
 
     Vec3 sunDir = Vec3(1.0f, 0.0f, 0.0f);
-    float sunIntensity = 10.0f;
+    float sunIntensity = 6.0f;
 };
 
 struct AtmosphereParams {
@@ -36,15 +36,11 @@ struct AtmosphereParams {
 
 struct WaterParams {
     bool hasWater = false;
-    float level = 0.0f;
-    Vec3 color = Vec3(0.0f, 0.3f, 0.5f);
-};
-
-struct RingParams {
-    bool hasRings = false;
-    float innerRadius = 1.2f;
-    float outerRadius = 2.0f;
-    Vec3 color = Vec3(0.8f, 0.8f, 0.8f);
+    float level = 20.0f;
+    Vec3 colorA = Vec3(0.0f, 0.75f, 1.0f);
+    Vec3 colorB = Vec3(0.0f, 0.3f, 0.6f);
+    float depthMultiplier = 0.13f;
+    float alphaMultiplier = 0.06f;
 };
 
 class PlanetComponent : public Component {
@@ -114,8 +110,11 @@ public:
             m_water->setVec3 ("u_planetCenter", entity->transform.position);
             m_water->setFloat("u_planetRadius", m_planetParams.radius);
             m_water->setFloat("u_waterLevel",   m_waterParams.level);
-            m_water->setVec3 ("u_waterColor",   m_waterParams.color);
-
+            m_water->setVec3 ("u_waterColorA",   m_waterParams.colorA);
+            m_water->setVec3 ("u_waterColorB",   m_waterParams.colorB);
+            m_water->setFloat("u_depthMultiplier", m_waterParams.depthMultiplier);
+            m_water->setFloat("u_alphaMultiplier", m_waterParams.alphaMultiplier);
+            
             m_water->setVec3 ("u_sunDir",       m_planetParams.sunDir);
             m_water->setFloat("u_sunIntensity", m_planetParams.sunIntensity);
 
@@ -176,10 +175,6 @@ public:
     bool hasWater() const { return m_hasWater; }
     WaterParams& getWater() { return m_waterParams; }
 
-    void setHasRings(bool hasRings) { m_hasRings = hasRings; }
-    bool hasRings() const { return m_hasRings; }
-    RingParams& getRings() { return m_ringParams; }
-
     void loadFromFile(const std::string& filepath, std::shared_ptr<Texture>& paintTexture) {
         std::ifstream file(filepath);
         if (!file.is_open()) {
@@ -195,8 +190,12 @@ public:
         }
         if (j.contains("name") && entity) entity->name = j["name"];
         if (j.contains("mass")) m_planetParams.mass = j["mass"];
-        if (j.contains("hasRings")) setHasRings(j["hasRings"]);
         if (j.contains("hasWater")) setHasWater(j["hasWater"]);
+        if (j.contains("waterLevel")) m_waterParams.level = j["waterLevel"];
+        if (j.contains("waterColorA")) m_waterParams.colorA = Vec3(j["waterColorA"][0], j["waterColorA"][1], j["waterColorA"][2]);
+        if (j.contains("waterColorB")) m_waterParams.colorB = Vec3(j["waterColorB"][0], j["waterColorB"][1], j["waterColorB"][2]);
+        if (j.contains("waterDepthMultiplier")) m_waterParams.depthMultiplier = j["waterDepthMultiplier"];
+        if (j.contains("waterAlphaMultiplier")) m_waterParams.alphaMultiplier = j["waterAlphaMultiplier"];
         if (j.contains("radius")) m_planetParams.radius = j["radius"];
         if (j.contains("period")) m_planetParams.period = j["period"];
         if (j.contains("hasAtmosphere")) setHasAtmosphere(j["hasAtmosphere"]);
@@ -261,7 +260,4 @@ private:
     bool m_hasWater = false;
     WaterParams m_waterParams;
     PostProcessor* m_water = nullptr;
-    
-    bool m_hasRings = false;
-    RingParams m_ringParams;
 };

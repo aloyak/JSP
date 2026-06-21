@@ -51,7 +51,7 @@ private:
 
     // Terrain tool
     float terrainBrushSize      = 150.0f; 
-    float terrainBrushStrength  = 15.0f;  
+    float terrainBrushStrength  = 150.0f;  
     float terrainBrushFalloff   = 1.5f; 
 
     std::shared_ptr<Texture> m_paintTexture;
@@ -226,7 +226,7 @@ public:
                     planetComponent->getPlanetParams().period = periodMinutes / 60.0f;
                 }
 
-                ImGui::Separator();
+                ImGui::SeparatorText("Sun");
                 float sunIntensity = planetComponent->getPlanetParams().sunIntensity;
                 if (ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 50.0f)) {
                     planetComponent->getPlanetParams().sunIntensity = sunIntensity;
@@ -238,7 +238,7 @@ public:
                 }
             }
 
-            ImGui::Separator();
+            ImGui::SeparatorText("Atmosphere");
             bool hasAtmosphere = planetComponent->hasAtmosphere();
             if (ImGui::Checkbox("Has Atmosphere", &hasAtmosphere)) {
                 planetComponent->setHasAtmosphere(hasAtmosphere);                
@@ -260,37 +260,36 @@ public:
                 }
             }
 
-            ImGui::Separator();
-            bool hasRings = planetComponent->hasRings();
-            if (ImGui::Checkbox("Has Rings", &hasRings)) {
-                planetComponent->setHasRings(hasRings);
-            }
-            if (hasRings) {
-                float innerRadius = 10; //placeholder
-                if (ImGui::SliderFloat("Ring Inner Radius", &innerRadius, 1.0f, 5000.0f)) {
-                }
-
-                float outerRadius = 100; // placeholder
-                if (ImGui::SliderFloat("Ring Outer Radius", &outerRadius, 1.0f, 5000.0f)) {
-                }
-
-                float ringInclination = 0; // placeholder
-                if (ImGui::SliderFloat("Ring Inclination", &ringInclination, -90.0f, 90.0f)) {
-                }
-            }
-
-            ImGui::Separator();
+            ImGui::SeparatorText("Water");
             bool hasWater = planetComponent->hasWater();
             if (ImGui::Checkbox("Has Water", &hasWater)) {
                 planetComponent->setHasWater(hasWater);
             }
             if (hasWater) {
                 float waterLevel = planetComponent->getWater().level;
-                if (ImGui::SliderFloat("Water Level", &waterLevel, 0.0f, 1000.0f)) {
+                if (ImGui::SliderFloat("Water Level", &waterLevel, -100.0f, 1000.0f)) {
                     planetComponent->getWater().level = waterLevel;
                 }
 
-                // more shader params
+                Vec3 waterColorA = planetComponent->getWater().colorA;
+                if (ImGui::ColorEdit3("Water Color A", &waterColorA.x)) {
+                    planetComponent->getWater().colorA = waterColorA;
+                }
+
+                Vec3 waterColorB = planetComponent->getWater().colorB;
+                if (ImGui::ColorEdit3("Water Color B", &waterColorB.x)) {
+                    planetComponent->getWater().colorB = waterColorB;
+                }
+
+                float depthMultiplier = planetComponent->getWater().depthMultiplier;
+                if (ImGui::SliderFloat("Depth Multiplier", &depthMultiplier, 0.0f, 0.5f)) {
+                    planetComponent->getWater().depthMultiplier = depthMultiplier;
+                }
+
+                float alphaMultiplier = planetComponent->getWater().alphaMultiplier;
+                if (ImGui::SliderFloat("Alpha Multiplier", &alphaMultiplier, 0.0f, 0.5f)) {
+                    planetComponent->getWater().alphaMultiplier = alphaMultiplier;
+                }
             }
         }
 
@@ -562,8 +561,16 @@ private:
                             planet->getComponent<PlanetComponent>()->getAtmosphere().rayleighCoeff.y,
                             planet->getComponent<PlanetComponent>()->getAtmosphere().rayleighCoeff.z };
         j["edgeFalloff"] = planet->getComponent<PlanetComponent>()->getAtmosphere().edgeFalloff;
-        j["hasRings"] = planet->getComponent<PlanetComponent>()->hasRings();
         j["hasWater"] = planet->getComponent<PlanetComponent>()->hasWater();
+        j["waterLevel"] = planet->getComponent<PlanetComponent>()->getWater().level;
+        j["waterColorA"] = { planet->getComponent<PlanetComponent>()->getWater().colorA.x,
+                            planet->getComponent<PlanetComponent>()->getWater().colorA.y,
+                            planet->getComponent<PlanetComponent>()->getWater().colorA.z };
+        j["waterColorB"] = { planet->getComponent<PlanetComponent>()->getWater().colorB.x,
+                            planet->getComponent<PlanetComponent>()->getWater().colorB.y,
+                            planet->getComponent<PlanetComponent>()->getWater().colorB.z };
+        j["depthMultiplier"] = planet->getComponent<PlanetComponent>()->getWater().depthMultiplier;
+        j["alphaMultiplier"] = planet->getComponent<PlanetComponent>()->getWater().alphaMultiplier;
 
         std::string geomPath = baseDir + planet->name + ".geom";
         std::ofstream geomFile(geomPath, std::ios::binary);
