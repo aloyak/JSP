@@ -71,7 +71,7 @@ void main() {
         vec3 oceanCol = mix(u_waterColorA, u_waterColorB, opticalDepth01);
 
         vec3 surfaceNormal = normalize((rayPos + rayDir * dstToOcean) - u_planetCenter);
-        float shadow = mix(0.15, 1.0, max(0.0, dot(surfaceNormal, normalize(u_sunDir))));
+        float shadow = mix(0.1, 1.0, max(0.0, dot(surfaceNormal, normalize(u_sunDir))));
         oceanCol *= shadow;
         
         FragColor = vec4(mix(sceneColor.rgb, oceanCol, alpha), 1.0);

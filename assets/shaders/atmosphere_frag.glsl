@@ -79,7 +79,7 @@ void main() {
     float tMin = max(atmoHit.x, 0.0);
     float tMax = atmoHit.y;
     
-    vec2 planetHit = raySphereIntersect(rayOrigin, rayDir, u_planetCenter, u_planetRadius);
+    vec2 planetHit = raySphereIntersect(rayOrigin, rayDir, u_planetCenter, u_planetRadius - 25.0);
     if (planetHit.x > 0.0) {
         tMax = min(tMax, planetHit.x);
     }
