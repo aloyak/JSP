@@ -22,6 +22,7 @@ struct PlanetParams {
     float period = 24.0f;
     float radius = 637.1f;
     float mass = 100.0f;
+    bool locked = false;
 
     Vec3 sunDir = Vec3(1.0f, 0.0f, 0.0f);
     float sunIntensity = 6.0f;
@@ -45,9 +46,8 @@ struct WaterParams {
 
 class PlanetComponent : public Component {
 public:
-    PlanetComponent(Game& game, float period = 24.0f, float radius = 637.1f)
-        : m_planetParams{Vec3(0.0f, 0.0f, 0.0f), period, radius}, m_game(&game) {}
-
+    PlanetComponent(Game& game, float period = 24.0f, float radius = 637.1f, float mass = 100.0f)
+        : m_planetParams{Vec3(0.0f, 0.0f, 0.0f), period, radius, mass}, m_game(&game) {}
 
     ~PlanetComponent() {
         if (m_atmosphere && m_game) {
@@ -65,16 +65,20 @@ public:
 
         Transform& transform = entity->transform;
         transform.scale = Vec3(m_planetParams.radius, m_planetParams.radius, m_planetParams.radius);
-        transform.rotation = Vec3(-90.0f, 0, 0); 
+        m_inicialRot = transform.rotation;
+        transform.rotation = Vec3(-90.0f, m_inicialRot.y, m_inicialRot.z); 
     }
 
     void update(float dt) override {
         if (!entity || !isEnabled) return;
 
-        float speed = (360.0f / (m_planetParams.period * 3600.0f)); 
+        float speed = 0.0f;
+        if (m_planetParams.period != 0.0f) {
+            speed = (360.0f / (m_planetParams.period * 3600.0f)); 
+        } 
         m_currentRotation += speed * dt;
 
-        entity->transform.rotation.y = m_currentRotation;
+        entity->transform.rotation.y = m_currentRotation + m_inicialRot.y;
 
         if (m_hasAtmosphere && m_atmosphere && entity && m_game) {
             auto& engine = m_game->GetEngine();
@@ -138,6 +142,12 @@ public:
     }
 
     PlanetParams& getPlanetParams() { return m_planetParams; }
+
+    void applyScale() {
+        if (entity) {
+            entity->transform.scale = Vec3(m_planetParams.radius, m_planetParams.radius, m_planetParams.radius);
+        }
+    }
 
     void setHasAtmosphere(bool hasAtmosphere) { 
         m_hasAtmosphere = hasAtmosphere; 
@@ -250,6 +260,7 @@ private:
     Game* m_game;
 
     float m_currentRotation = 0.0f;
+    Vec3 m_inicialRot = Vec3(0.0f, 0.0f, 0.0f);
 
     PlanetParams m_planetParams;
 

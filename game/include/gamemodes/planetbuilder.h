@@ -200,6 +200,7 @@ public:
         ImGui::PushItemWidth(225.0f);
 
         if (planet) {
+            ImGui::SeparatorText("General");
             char nameBuffer[128];
             std::strncpy(nameBuffer, planet->name.c_str(), sizeof(nameBuffer));
             if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {

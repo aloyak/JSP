@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.4.1"
+#define VERSION "0.4.6"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -48,7 +48,7 @@ public:
         , m_showSplash(showSplash) {}
 
     void OnEnter() override {
-        m_engine.getSceneManager().getActiveScene()->setAmbientStrength(0.0f);
+        m_engine.getSceneManager().getActiveScene()->setAmbientStrength(0.05f);
         m_earthEntity = m_engine.getSceneManager().getActiveScene()->getEntityByName("Earth").get();
         m_game.timeScale = 25.0f;
         m_sceneSetupDone = false;
@@ -69,7 +69,7 @@ public:
 
                 m_menuPlanet = m_earthEntity->addComponent<PlanetComponent>(m_game);
                 m_menuPlanet->setHasAtmosphere(true);
-                m_menuPlanet->getAtmosphere().thickness = 120.0f;
+                m_menuPlanet->getAtmosphere().thickness = 155.0f;
                 m_menuPlanet->getAtmosphere().rayleighCoeff = Vec3(0.006f, 0.014f, 0.033f);
                 m_menuPlanet->getPlanetParams().sunIntensity = 4.5f;
                 m_menuPlanet->getAtmosphere().edgeFalloff = 300.0f;
@@ -205,13 +205,10 @@ public:
         m_ui.setFont(1);
         CenterText("Settings");
         m_ui.resetFont();
-
-        ImGui::Spacing();
         
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Warning: Settings are not currently saved.");
         
-        ImGui::Spacing();
-        ImGui::SeparatorText("General");
+        ImGui::SeparatorText("Language");
         static int langIndex = 0;
         const char* languages[] = { "English", "SOON" };
         ImGui::SetNextItemWidth(-1.0f);
@@ -231,28 +228,35 @@ public:
             m_engine.getWindow().enableVSync(vsyncEnabled);
         }
 
-        static int resolutionIndex = 0;
-        const char* resolutions[] = { "800x600", "1024x768", "1280x720", "1920x1080" };
+        int targetFPS = m_engine.getTargetFps();
         ImGui::SetNextItemWidth(-1.0f);
-        ImGui::Combo("##Resolution", &resolutionIndex, resolutions, IM_ARRAYSIZE(resolutions));
+        if (ImGui::SliderInt("##TargetFPS", &targetFPS, 30, 1000, (targetFPS == 1000) || (targetFPS == -1) ? "Target FPS: Unlimited" : "Target FPS: %d")) {
+            if (targetFPS >= 1000) {
+                targetFPS = -1; // fps < 0 => unlimited
+            }
+            m_engine.setTargetFps(targetFPS);
+        }
 
-        ImGui::Spacing();
         ImGui::SeparatorText("Audio");
 
         static float masterVolume = 1.0f;
         ImGui::SetNextItemWidth(-1.0f);
         ImGui::SliderFloat("##MasterVolume", &masterVolume, 0.0f, 1.0f, "Volume: %.0f%%", ImGuiSliderFlags_Logarithmic);
 
+        static float musicVolume = 0.8f;
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SliderFloat("##MusicVolume", &musicVolume, 0.0f, 1.0f, "Music: %.0f%%", ImGuiSliderFlags_Logarithmic);
+
         ImGui::End();
         ImGui::PopStyleVar(2);
     }
 
     void ShowExtras() {
-        auto CenterText = [](const char* text) {
+        auto CenterText = [](const char* text, ImVec4 textColor = ImGui::GetStyleColorVec4(ImGuiCol_Text)) {
             float windowWidth = ImGui::GetWindowSize().x;
             float textWidth = ImGui::CalcTextSize(text).x;
             ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
-            ImGui::TextUnformatted(text);
+            ImGui::TextColored(textColor, text);
         };
 
         ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
@@ -268,40 +272,36 @@ public:
         CenterText("Credits");
         m_ui.resetFont();
         
-        ImGui::Spacing();
-
         CenterText("Developer: 4loyak! (@aloyak)");
         CenterText("This project is open source!");
         CenterText("Built with Origin Engine");
                 
-        const char* url = "https://github.com/aloyak/origin";
-        float urlWidth = ImGui::CalcTextSize(url).x;
-        ImGui::SetCursorPosX((ImGui::GetWindowSize().x - urlWidth) * 0.5f);
-        
-        ImGui::TextColored(ImVec4(0.2f, 0.6f, 1.0f, 1.0f), "%s", url);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-            if (ImGui::IsMouseClicked(0)) {
+        auto createLink = [&CenterText](const char* url) {
+            CenterText(url, ImVec4(0.4f, 0.6f, 1.0f, 1.0f));
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                if (ImGui::IsMouseClicked(0)) {
     #ifdef _WIN32
-                ShellExecute(0, 0, url, 0, 0, SW_SHOW);
+                    ShellExecute(0, 0, url, 0, 0, SW_SHOW);
     #elif __APPLE__
-                system(("open " + std::string(url)).c_str());
+                    system(("open " + std::string(url)).c_str());
     #else
-                system(("xdg-open " + std::string(url)).c_str());
+                    system(("xdg-open " + std::string(url)).c_str());
     #endif
+                }
             }
-        }
+        };
 
-        ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+        createLink("https://github.com/aloyak/JSP");
+        createLink("https://github.com/aloyak/origin");
+
+        ImGui::Spacing();
 
         m_ui.setFont(1);
         CenterText("Special thanks to:");
         m_ui.resetFont();
-        
-        ImGui::Spacing();
-        
+                
         CenterText("NASA & ESA for free quality assets");
-        CenterText("CelesTrak’s Public TLE for satellite data");
         CenterText("Hack Club for being awesome!");
 
         ImGui::Spacing();

@@ -55,6 +55,7 @@ private:
     float startRadius = 2350.0f;
     
     bool drawGrid = true;
+    bool drawTrails = true;
     bool m_showSandbox = true;
 
     bool isTransitioning = true;
@@ -83,7 +84,7 @@ private:
     std::vector<PlanetSnapshot> m_simSnapshot;
     bool m_hasSnapshot = false;
 
-    ToolMode m_toolMode = ToolMode::Reallocation;   // active tool
+    ToolMode m_toolMode = ToolMode::Selection;   // active tool
 
     PlaceState m_placeState = PlaceState::None;
     int m_selectedBodyIndex = -1;
@@ -94,9 +95,22 @@ private:
 
     Entity* m_ghostEntity = nullptr;
     float m_velocityScale = 0.5f;
+    bool m_reallocatingExisting = false;
+    Vec3 m_preReallocColor = Vec3(1.0f, 1.0f, 1.0f);
 
     bool m_prevLeftPressed = false;
     bool m_prevRightPressed = false;
+
+    struct DestroyAnimation {
+        Vec3   center;
+        float  planetRadius;
+        float  elapsed   = 0.0f;
+        float  duration  = 0.6f;
+        bool   done      = false;
+        Entity* entity   = nullptr;  // kept alive until shrink finishes
+    };
+
+    std::vector<DestroyAnimation> m_destroyAnims;
 
     // velocity-drag state
     Entity* m_velocityTarget = nullptr; 
@@ -124,6 +138,8 @@ private:
     };
 
     bool showPlanetsWindow = false;
+
+    Entity* m_sun = nullptr;
 public:
     SandboxMode(Game& game)
         : GameMode("assets/scenes/menu.scene")
@@ -137,6 +153,21 @@ public:
             planetList.push_back(earth);
         }
 
+        m_sun = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Sun").get();
+        m_sun->addComponent<PlanetComponent>(m_game, 0.0f, 900.0f, 100000.0f);
+        auto* sunComp = m_sun->getComponent<PlanetComponent>();
+        sunComp->initialize();
+        sunComp->getPlanetParams().locked = true;
+        sunComp->getPlanetParams().sunDir = Vec3(0.0f, 0.0f, 0.0f);
+        sunComp->getPlanetParams().sunIntensity = 40.0f;
+        sunComp->setHasAtmosphere(true);
+        sunComp->getAtmosphere().thickness = 550.0f;
+        sunComp->getAtmosphere().edgeFalloff = 1200.0f;
+        sunComp->getAtmosphere().rayleighCoeff = Vec3(0.003f, 0.001f, 0.0);
+        if (m_sun) {
+            planetList.push_back(m_sun);
+        }
+
         m_camera = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Camera").get();
         if (m_camera) {
             m_orbitCamera = new OrbitCamera(m_camera);
@@ -148,7 +179,7 @@ public:
         m_target->transform.position = Vec3(0, 0, 0);
 
         m_orbitCamera->SetTarget(m_target, startRadius);
-        m_orbitCamera->SetMaxRadius(50000.0f);
+        m_orbitCamera->SetMaxRadius(35000.0f);
     }
 
     void OnExit() override {
@@ -275,26 +306,25 @@ public:
         for (int i = 0; i < n; i++) {
             Entity* a = planetList[i];
             if (!a) continue;
-            const GravityBody* bodyA = FindBodyDef(a->name);
-            if (!bodyA) continue;
+            auto* pcA = a->getComponent<PlanetComponent>();
+            if (!pcA) continue;
 
             for (int j = i + 1; j < n; j++) {
                 Entity* b = planetList[j];
                 if (!b) continue;
-                const GravityBody* bodyB = FindBodyDef(b->name);
-                if (!bodyB) continue;
+                auto* pcB = b->getComponent<PlanetComponent>();
+                if (!pcB) continue;
 
                 Vec3 diff = b->transform.position - a->transform.position;
                 float distMeters = diff.length() * kUnitToMeters;
                 float distSq = distMeters * distMeters;
-                if (distSq < 1.0f) distSq = 1.0f; // avoid singularities
+                if (distSq < 1.0f) distSq = 1.0f; 
 
                 Vec3 dir = diff.normalize();
-                float scaledMassA = bodyA->mass * m_massScale;
-                float scaledMassB = bodyB->mass * m_massScale;
+                float scaledMassA = pcA->getPlanetParams().mass * m_massScale;
+                float scaledMassB = pcB->getPlanetParams().mass * m_massScale;
                 float forceMag = kGravConstant * scaledMassA * scaledMassB / distSq;
 
-                // forceMag/mass is in m/s^2; convert to units/s^2
                 accel[i] += dir * (forceMag / scaledMassA) / kUnitToMeters;
                 accel[j] -= dir * (forceMag / scaledMassB) / kUnitToMeters;
             }
@@ -304,13 +334,13 @@ public:
             Entity* planet = planetList[i];
             if (!planet) continue;
             auto* pc = planet->getComponent<PlanetComponent>();
-            if (!pc) continue;
+            if (!pc || pc->getPlanetParams().locked) continue;
 
             Vec3 vel = pc->getPlanetParams().velocity;
             vel += accel[i] * dt;
             pc->getPlanetParams().velocity = vel;
         }
-    }
+    } 
 
     // TODO: move this to engine or a utility class, since it's useful in general
     bool WorldToScreen(const Vec3& worldPos, ImVec2& outScreen) const {
@@ -340,9 +370,12 @@ public:
         if (m_placeState != PlaceState::None) CancelPlacement();
         m_selectedBodyIndex = index;
         m_placeState = PlaceState::Positioning;
-        m_ghostEntity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Ghost");
-        
+        m_reallocatingExisting = false;
+
         GravityBody& body = gravityBodies[index];
+
+        m_ghostEntity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity(body.name);
+
         if (body.isCustom) {
             m_ghostEntity->addComponent<RenderComponent>(
                 body.modelPath,
@@ -350,39 +383,54 @@ public:
                 "assets/shaders/builtin/frag.glsl",
                 true);
             auto* planetComp = m_ghostEntity->addComponent<PlanetComponent>(m_game, body.period, body.radius);
-            
+
             std::shared_ptr<Texture> dummyTexture;
             planetComp->loadFromFile(body.customPath, dummyTexture);
         } else {
             m_ghostEntity->addComponent<RenderComponent>(body.modelPath);
+            auto* planetComp = m_ghostEntity->addComponent<PlanetComponent>(m_game, body.period, body.radius);
+            planetComp->getPlanetParams().mass = body.mass;
+            planetComp->initialize();
         }
-
-        float r = body.radius;
-        m_ghostEntity->transform.scale = Vec3(r, r, r);
     }
 
     void ConfirmPlacement() {
-        GravityBody& body = gravityBodies[m_selectedBodyIndex];
+        bool validBodyDef = (m_selectedBodyIndex >= 0 &&
+                             m_selectedBodyIndex < (int)gravityBodies.size());
 
-        m_ghostEntity->name = body.name;
-        m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));
+        auto* rc = m_ghostEntity->getComponent<RenderComponent>();
 
         auto* planet = m_ghostEntity->getComponent<PlanetComponent>();
-        if (!planet) {
+        if (!planet && validBodyDef) {
+            GravityBody& body = gravityBodies[m_selectedBodyIndex];
             planet = m_ghostEntity->addComponent<PlanetComponent>(m_game, body.period, body.radius);
             planet->initialize();
         }
 
         planetList.push_back(m_ghostEntity);
+
+        if (m_reallocatingExisting) {
+            auto* finishedRc = m_ghostEntity->getComponent<RenderComponent>();
+            if (finishedRc) finishedRc->setBaseColor(m_preReallocColor);
+        }
+
         m_ghostEntity = nullptr;
+        m_reallocatingExisting = false;
         m_placeState = PlaceState::None;
     }
 
     void CancelPlacement() {
         if (m_ghostEntity) {
-            m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(m_ghostEntity);
+            if (m_reallocatingExisting) {
+                auto* existingRc = m_ghostEntity->getComponent<RenderComponent>();
+                if (existingRc) existingRc->setBaseColor(m_preReallocColor);
+                planetList.push_back(m_ghostEntity);
+            } else {
+                m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(m_ghostEntity);
+            }
             m_ghostEntity = nullptr;
         }
+        m_reallocatingExisting = false;
         m_placeState = PlaceState::None;
     }
 
@@ -442,9 +490,12 @@ public:
 
             m_ghostEntity->transform.position = intersect;
             float ghostIntensity = sin((m_game.GetEngine().getTime() * 5.0f)) * 0.25f + .5f;
-            m_ghostEntity->getComponent<RenderComponent>()->setBaseColor(
-                valid ? Vec3(0.5f, 1.0f, 0.5f) * ghostIntensity
-                      : Vec3(1.0f, 0.4f, 0.4f) * ghostIntensity);
+            auto* ghostRc = m_ghostEntity->getComponent<RenderComponent>();
+            if (ghostRc) {
+                ghostRc->setBaseColor(
+                    valid ? Vec3(0.5f, 1.0f, 0.5f) * ghostIntensity
+                          : Vec3(1.0f, 0.4f, 0.4f) * ghostIntensity);
+            }
 
             if (!ImGui::GetIO().WantCaptureMouse) {
                 if (leftJustPressed && valid) { ConfirmPlacement(); return; }
@@ -475,12 +526,16 @@ public:
                 if (idx >= 0) {
                     m_ghostEntity = planetList[idx];
                     planetList.erase(planetList.begin() + idx);
+                    m_selectedBodyIndex = -1;
                     for (int i = 0; i < (int)gravityBodies.size(); i++) {
                         if (gravityBodies[i].name == m_ghostEntity->name) {
                             m_selectedBodyIndex = i;
                             break;
                         }
                     }
+                    m_reallocatingExisting = true;
+                    auto* existingRc = m_ghostEntity->getComponent<RenderComponent>();
+                    if (existingRc) m_preReallocColor = existingRc->getBaseColor();
                     m_placeState = PlaceState::Positioning;
                 }
             }
@@ -652,6 +707,80 @@ public:
         m_target->transform.position = Vec3::lerp(m_focusStartPos, m_focusEndPos, t);
     }
 
+    void DestroyPlanet(Entity* planet) {
+        if (!planet) return;
+
+        // CHECK: cannot destroy the sun, for now
+        if (planet == m_sun) return;
+
+        DestroyAnimation anim;
+        anim.center       = planet->transform.position;
+        anim.planetRadius = planet->transform.scale.x;
+        anim.entity       = planet;
+        m_destroyAnims.push_back(anim);
+
+        if (selectedEntity == planet) selectedEntity = nullptr;
+
+        auto it = std::find(planetList.begin(), planetList.end(), planet);
+        if (it != planetList.end()) planetList.erase(it);
+    }
+
+    void UpdateDestroyAnimations(float dt) {
+        for (auto& anim : m_destroyAnims) {
+            if (anim.done) continue;
+            anim.elapsed += dt;
+            float t = anim.elapsed / anim.duration;
+
+            if (anim.entity) {
+                float shrinkT = std::min(t * 2.0f, 1.0f);          // 0→1 over first half
+                float scale   = anim.planetRadius * (1.0f - shrinkT);
+                anim.entity->transform.scale = Vec3(scale, scale, scale);
+                if (anim.entity->getComponent<PlanetComponent>()->hasAtmosphere()) {
+                    float atmosScale = anim.entity->getComponent<PlanetComponent>()->getAtmosphere().thickness;
+                    anim.entity->getComponent<PlanetComponent>()->getAtmosphere().thickness = atmosScale * (1.0f - shrinkT);
+                }
+
+                if (shrinkT >= 1.0f) {
+                    m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(anim.entity);
+                    anim.entity = nullptr;
+                }
+            }
+
+            if (t >= 1.0f) anim.done = true;
+        }
+        m_destroyAnims.erase(
+            std::remove_if(m_destroyAnims.begin(), m_destroyAnims.end(),
+                           [](const DestroyAnimation& a){ return a.done; }),
+            m_destroyAnims.end());
+    }
+
+    void DrawDestroyAnimations() {
+        if (m_destroyAnims.empty()) return;
+        auto& renderer = m_game.GetEngine().getRenderer();
+        auto& cam      = m_camera->getComponent<CameraComponent>()->getCamera();
+
+        constexpr int kSegments = 24;
+        constexpr float kStep   = 2.0f * 3.14159265f / kSegments;
+
+        for (const auto& anim : m_destroyAnims) {
+            float t = anim.elapsed / anim.duration;
+
+            float ringT = (t - 0.5f) * 2.0f;
+            if (ringT <= 0.0f) continue;
+
+            float alpha  = 1.0f - ringT;
+            float radius = anim.planetRadius * (1.0f + ringT * 2.0f);
+            Vec3  color  = Vec3(1.0f, 0.8f, 0.3f) * alpha;
+
+            for (int i = 0; i < kSegments; ++i) {
+                float a0 = i       * kStep;
+                float a1 = (i + 1) * kStep;
+                Vec3 p0 = anim.center + Vec3(std::cos(a0) * radius, 0.0f, std::sin(a0) * radius);
+                Vec3 p1 = anim.center + Vec3(std::cos(a1) * radius, 0.0f, std::sin(a1) * radius);
+                renderer.drawLine(p0, p1, cam, m_camera->transform, color, 1.0f, false);
+            }
+        }
+    }
 
     void Update() override {
         float dt = m_game.GetEngine().getDeltaTime();
@@ -660,15 +789,26 @@ public:
             DrawGrid(m_game.GetEngine().getRenderer(), m_camera);
         }
 
+        DrawDestroyAnimations();
+
         if (!physicsPaused) {
             if (simulationRunning) {
                 ApplyGravity(dt * m_game.timeScale);
             }
 
+            Entity* sunEntity = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Sun").get();
+
             for (Entity* planet : planetList) {
                 if (planet) {
                     auto* planetComp = planet->getComponent<PlanetComponent>();
                     if (planetComp) {
+                        if (sunEntity && planet != sunEntity) {
+                            Vec3 toSun = sunEntity->transform.position - planet->transform.position;
+                            float dist = toSun.length();
+                            if (dist > 0.0001f)
+                                planetComp->getPlanetParams().sunDir = toSun * (1.0f / dist);
+                        }
+
                         planetComp->update(dt * m_game.timeScale);
 
                         if (simulationRunning) {
@@ -741,7 +881,17 @@ public:
         m_prevLeftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
         m_prevRightPressed = m_input.isMouseButtonPressed(MOUSE_RIGHT);
 
+        UpdateDestroyAnimations(dt);
+
         DrawMainMenuBar();
+
+        if (m_sun) { // increase the "atmoshpere's" radius as the camera moves away
+            auto* sunComp = m_sun->getComponent<PlanetComponent>();
+            if (sunComp) {
+                float distToSun = (m_camera->transform.position - m_sun->transform.position).length();
+                sunComp->getAtmosphere().thickness = std::max(550.0f, distToSun * 0.1f);
+            }
+        }
     }
 
     void LateUpdate() override {
@@ -849,15 +999,13 @@ public:
         ImGui::End();
 
         ImGuiID sandboxID  = ImGui::GetID("Sandbox");
-        bool isCollapsed = ImGui::GetStateStorage()->GetBool(sandboxID, false);
-        float panelHeight = isCollapsed ? ImGui::GetFrameHeight() : 160.0f;
-
         ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.5f, (float)windowSize.y),
                                 ImGuiCond_Always, ImVec2(0.5f, 1.0f));
-        ImGui::SetNextWindowSize(ImVec2(500, panelHeight), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(500, 200.0), ImGuiCond_Always);
 
         int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
-                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar;
+                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | 
+                    ImGuiWindowFlags_NoDocking;
 
 
         if (!m_showSandbox) return;
@@ -938,7 +1086,7 @@ public:
 
                     ImGui::BeginChild("PlanetTypeSelection", ImVec2(rightSideW, childH));
                     
-                    ImGui::RadioButton("Real", &selectedType, 0);
+                    ImGui::RadioButton("Solar System", &selectedType, 0);
                     ImGui::RadioButton("Campaign", &selectedType, 1);
                     ImGui::RadioButton("Custom", &selectedType, 2);
 
@@ -948,38 +1096,69 @@ public:
                 }
 
                 if (ImGui::BeginTabItem("Properties")) {
-                    if (selectedEntity) {
-                        const GravityBody* bd = FindBodyDef(selectedEntity->name);
+                    if (selectedEntity && selectedEntity->getComponent<PlanetComponent>()) {
+                        auto* pc = selectedEntity->getComponent<PlanetComponent>();
+
+                        std::string name = selectedEntity->name;
+                        float mass = pc->getPlanetParams().mass;
+                        float radius = pc->getPlanetParams().radius;
+                        float period = pc->getPlanetParams().period;
 
                         char nameBuf[64] = {};
-                        strncpy(nameBuf, selectedEntity->name.c_str(), sizeof(nameBuf) - 1);
+                        strncpy(nameBuf, name.c_str(), sizeof(nameBuf) - 1);
 
                         float totalWidth = ImGui::GetContentRegionAvail().x;
                         float spacing    = ImGui::GetStyle().ItemSpacing.x;
 
                         ImGui::SetNextItemWidth((totalWidth - spacing) * 0.75f);
-                        ImGui::InputText("##NameField", nameBuf, IM_ARRAYSIZE(nameBuf),
-                                         ImGuiInputTextFlags_ReadOnly);
-                        ImGui::SameLine();
-                        ImGui::SetNextItemWidth((totalWidth - spacing) * 0.25f);
-                        if (ImGui::ColorEdit3("##ColorField", m_selectedColor,
-                                              ImGuiColorEditFlags_NoInputs)) {
-                            auto* rc = selectedEntity->getComponent<RenderComponent>();
-                            if (rc) rc->setBaseColor(
-                                Vec3(m_selectedColor[0], m_selectedColor[1], m_selectedColor[2]));
+                        if (ImGui::InputText("##NameField", nameBuf, IM_ARRAYSIZE(nameBuf))) {
+                            selectedEntity->name = nameBuf;
+                        }
+
+                        ImGui::SameLine();  
+                        bool locked = pc->getPlanetParams().locked;
+                        if (ImGui::Checkbox("Locked", &locked)) {
+                            pc->getPlanetParams().locked = locked;
                         }
 
                         float halfWidth = (totalWidth - spacing) * 0.5f;
-                        float mass   = bd ? bd->mass   : 0.0f;
-                        float radius = bd ? bd->radius : 0.0f;
 
                         ImGui::SetNextItemWidth(halfWidth);
-                        ImGui::InputFloat("##MassField", &mass, 0.0f, 0.0f,
-                                          "Mass: %.3e", ImGuiInputTextFlags_ReadOnly);
+                        if (ImGui::SliderFloat("##MassField", &mass, 1.0f, 1.0e10f, "Mass: %.3e", ImGuiSliderFlags_Logarithmic)) {
+                            pc->getPlanetParams().mass = mass;
+                        }
+                        
                         ImGui::SameLine();
                         ImGui::SetNextItemWidth(halfWidth);
-                        ImGui::InputFloat("##RadiusField", &radius, 0.0f, 0.0f,
-                                          "Radius: %.1f", ImGuiInputTextFlags_ReadOnly);
+                        if (ImGui::SliderFloat("##RadiusField", &radius, 1.0f, 100000.0f, "Radius: %.1f", ImGuiSliderFlags_Logarithmic)) {
+                            pc->getPlanetParams().radius = radius;
+                            pc->applyScale();
+                        }
+
+                        ImGui::SetNextItemWidth(totalWidth);
+                        if (ImGui::SliderFloat("##PeriodField", &period, 0.0f, 1000.0f, "Period: %.3f")) {
+                            pc->getPlanetParams().period = period;
+                        }
+
+                        ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
+
+                        ImGui::PushStyleColor(ImGuiCol_Button,
+                            ImVec4(0.65f, 0.10f, 0.10f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                            ImVec4(0.85f, 0.18f, 0.18f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive,
+                            ImVec4(0.95f, 0.30f, 0.30f, 1.00f));
+
+                        if (selectedEntity != m_sun) { // CHECK: cannot destroy the sun
+                            if (ImGui::Button("DESTROY", ImVec2(totalWidth, 0))) {
+                                Entity* toDestroy = selectedEntity;
+                                DestroyPlanet(toDestroy);
+                            }
+                        }
+
+                        ImGui::PopStyleColor(3);
                     } else {
                         ImGui::TextDisabled("No planet selected.");
                         ImGui::TextDisabled("Use the Selection tool and click a planet.");
@@ -990,9 +1169,15 @@ public:
 
                 if (ImGui::BeginTabItem("Settings")) {
                     if (ImGui::Button("Grid [G]")) drawGrid = !drawGrid;
+                    ImGui::SameLine();
+                    if (ImGui::Button("Orbit Trails [T]")) drawTrails = !drawTrails;
+                    float totalWidth = ImGui::GetContentRegionAvail().x;
+
+                    ImGui::SetNextItemWidth(totalWidth);
                     ImGui::SliderFloat("##TimeScale", &m_game.timeScale,
                                        1.0f, 10000.0f, "Time Scale: %.2f",
                                        ImGuiSliderFlags_Logarithmic);
+                    ImGui::SetNextItemWidth(totalWidth);
                     ImGui::SliderFloat("##MassScale", &m_massScale,
                                        0.01f, 100.0f, "Mass Scale: %.3fx",
                                        ImGuiSliderFlags_Logarithmic);
@@ -1064,7 +1249,9 @@ public:
             }
             if (ImGui::BeginMenu("View")) {
                 if (ImGui::MenuItem("Sandbox Panel")) m_showSandbox = !m_showSandbox;
+                if (ImGui::MenuItem("Active Planets")) showPlanetsWindow = !showPlanetsWindow;
                 if (ImGui::MenuItem("Grid", "G")) drawGrid = !drawGrid;
+                if (ImGui::MenuItem("Orbit Trails", "T")) drawTrails = !drawTrails;
                 ImGui::EndMenu();
             }
             if (simulationRunning) ImGui::BeginDisabled();
@@ -1121,7 +1308,7 @@ public:
     
     void DrawPlanetsWindow() {
         ImGui::SetNextWindowSize(ImVec2(300, 400), ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Planets", &showPlanetsWindow)) {
+        if (ImGui::Begin("Planets & Stars", &showPlanetsWindow)) {
             if (planetList.empty()) {
                 ImGui::TextDisabled("No planets placed.");
             } else {
