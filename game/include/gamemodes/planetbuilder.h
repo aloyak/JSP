@@ -4,7 +4,7 @@
 #include "moveset/cameraorbit.h"
 #include "components/PlanetComponent.h"
 
-#include "selector.h"
+#include "ui/selector.h"
 
 #include "engine/components/entity.h"
 #include "engine/components/rendererComponent.h"

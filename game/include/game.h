@@ -3,7 +3,7 @@
 #include "engine/engine.h"
 
 #include "gamemode.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 #include <memory>
 

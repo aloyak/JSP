@@ -4,7 +4,7 @@
 #include "gamemode.h"
 #include "moveset/cameraorbit.h"
 
-#include "selector.h"
+#include "ui/selector.h"
 
 #include "engine/components/entity.h"
 #include "engine/components/skyboxComponent.h"

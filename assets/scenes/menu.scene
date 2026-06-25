@@ -100,9 +100,9 @@
             "tag": "Untagged",
             "transform": {
                 "pos": [
-                    -6949.703125,
-                    447.08935546875,
-                    2066.2939453125
+                    -7006.1103515625,
+                    423.6838073730469,
+                    2014.179443359375
                 ],
                 "rot": [
                     0.0,
@@ -118,6 +118,16 @@
         },
         {
             "components": [
+                {
+                    "color": [
+                        1.0,
+                        0.8767300844192505,
+                        0.5343137383460999
+                    ],
+                    "intensity": 15.0,
+                    "radius": 30000.0,
+                    "type": "PointLightComponent"
+                },
                 {
                     "ambientStrength": 1.2999999523162842,
                     "baseColor": [
@@ -139,16 +149,6 @@
                         1.0
                     ],
                     "vert": "assets/shaders/builtin/vert.glsl"
-                },
-                {
-                    "color": [
-                        1.0,
-                        0.8767300844192505,
-                        0.5343137383460999
-                    ],
-                    "intensity": 15.0,
-                    "radius": 30000.0,
-                    "type": "PointLightComponent"
                 }
             ],
             "name": "Sun",
