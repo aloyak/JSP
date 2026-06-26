@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.5.0"
+#define VERSION "0.5.1"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -35,6 +35,7 @@ private:
     Texture logo = Texture("assets/logo.png");
     Texture splashLogo = Texture("assets/originlogo.png");
     float m_splashTime = 0.0f;
+    float m_splashDuration = 4.0f;
     bool m_showSplash;
 
     bool m_sceneSetupDone = false;
@@ -69,9 +70,9 @@ public:
 
                 m_menuPlanet = m_earthEntity->addComponent<PlanetComponent>(m_game);
                 m_menuPlanet->setHasAtmosphere(true);
-                m_menuPlanet->getAtmosphere().thickness = 140.0f;
+                m_menuPlanet->getAtmosphere().thickness = 150.0f;
                 m_menuPlanet->getAtmosphere().rayleighCoeff = Vec3(0.006f, 0.014f, 0.033f);
-                m_menuPlanet->getPlanetParams().sunIntensity = 4.5f;
+                m_menuPlanet->getPlanetParams().sunIntensity = 8.5f;
                 m_menuPlanet->getAtmosphere().edgeFalloff = 300.0f;
 
                 m_menuPlanet->initialize();
@@ -87,7 +88,7 @@ public:
 
         if (m_showSplash) {
             m_splashTime += m_engine.getDeltaTime();
-            if (m_splashTime >= 3.0f) {
+            if (m_splashTime >= m_splashDuration) {
                 m_showSplash = false;
             }
         }
@@ -108,6 +109,11 @@ public:
         if (m_showSplash) {
             float bgAlpha = 1.0f;
             float logoAlpha = 0.0f;
+            float fadeOutStart = m_splashDuration - 1.0f;
+
+            if (fadeOutStart < 2.0f) {
+                fadeOutStart = 2.0f;
+            }
 
             if (m_splashTime <= 0.5f) {
                 bgAlpha = 1.0f;
@@ -115,8 +121,12 @@ public:
             } else if (m_splashTime <= 2.0f) {
                 bgAlpha = 1.0f;
                 logoAlpha = (m_splashTime - 0.5f) / 1.5f;
+            } else if (m_splashTime <= fadeOutStart) {
+                bgAlpha = 1.0f;
+                logoAlpha = 1.0f;
             } else {
-                float fadeOutFactor = (3.0f - m_splashTime) / 1.0f;
+                float fadeOutDuration = m_splashDuration - fadeOutStart;
+                float fadeOutFactor = (m_splashDuration - m_splashTime) / fadeOutDuration;
                 bgAlpha = fadeOutFactor;
                 logoAlpha = fadeOutFactor;
             }
@@ -157,11 +167,14 @@ public:
         m_ui.resetFont();
         m_ui.setFont(1);
 
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.5f, 0.9f, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.4f, 1.0f, 0.75f));
         ImGui::BeginDisabled();
         if (ImGui::Button("Campaign Mode")) {}
         if (ImGui::Button("Explore the Solar System")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
         ImGui::EndDisabled();
 
+        
         if (ImGui::Button("Sandbox Mode")) { showSandbox = !showSandbox; }
         if (showSandbox) {
             ImGui::Indent();
@@ -170,19 +183,18 @@ public:
             if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
             ImGui::Unindent();
         }
-
+        
         if (ImGui::Button("Settings")) { showSettings = !showSettings; }
         if (ImGui::Button("Extras")) { showExtras = !showExtras; }
-
+        
         if (ImGui::Button("Exit")) m_engine.stop();
+        ImGui::PopStyleColor(2);
         m_ui.resetFont();
         ImGui::End();
 
-        ImGui::PopStyleColor();
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(2);
 
-        ImGui::PopStyleVar();
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar(2);
     }
 
     // TODO: user settings (change on engine, not game)

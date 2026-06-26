@@ -38,26 +38,6 @@
   <defs
      id="defs1" />
   <g
-     inkscape:groupmode="layer"
-     id="layer1"
-     inkscape:label="shadow"
-     transform="translate(-3.4981164,-3.1701529)"
-     style="display:none">
-    <path
-       style="fill:#ffd42a;stroke-width:0.994959"
-       id="path2"
-       sodipodi:type="arc"
-       sodipodi:cx="695.07098"
-       sodipodi:cy="711.77942"
-       sodipodi:rx="668.33746"
-       sodipodi:ry="658.31238"
-       sodipodi:start="0"
-       sodipodi:end="6.2257042"
-       sodipodi:open="true"
-       sodipodi:arc-type="arc"
-       d="M 1363.4084,711.77942 A 668.33746,658.31238 0 0 1 704.67485,1370.0238 668.33746,658.31238 0 0 1 27.009531,730.69708 668.33746,658.31238 0 0 1 666.26732,54.078697 668.33746,658.31238 0 0 1 1362.3046,673.95973" />
-  </g>
-  <g
      id="layer4"
      transform="translate(-3.4981164,-3.1701529)">
     <path
@@ -327,14 +307,14 @@
     <text
        xml:space="preserve"
        id="text63"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:133.333px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;white-space:pre;opacity:1;fill:#ffcc00;fill-opacity:1"><textPath
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:133.333px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;white-space:pre;opacity:1;fill:#b3b3b3;fill-opacity:1"><textPath
          xlink:href="#path61"
          id="textPath64"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:133.333px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffcc00;fill-opacity:1">JANITOR SPACE PROGRAM</textPath></text>
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:133.333px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#b3b3b3;fill-opacity:1">JANITOR SPACE PROGRAM</textPath></text>
     <text
        xml:space="preserve"
        id="text64"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:160px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;white-space:pre;opacity:1;fill:#ffcc00;fill-opacity:1"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:160px;font-family:Sans;-inkscape-font-specification:'Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;white-space:pre;opacity:1;fill:#b3b3b3;fill-opacity:1"
        transform="rotate(12.424014,222.5367,747.13776)"><textPath
          xlink:href="#path65"
          id="textPath65">J. S. P.</textPath></text>
