@@ -195,7 +195,7 @@ public:
     void DrawPropertiesWindow() {
         ImGui::SetNextWindowPos(ImVec2(60, 80), ImGuiCond_Once);
         ImGui::Begin("Planet Properties", &showProperties,
-                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
 
         ImGui::PushItemWidth(225.0f);
 
@@ -302,7 +302,7 @@ public:
         ImGui::SetNextWindowPos(
             ImVec2(m_game.GetEngine().getWindow().getSize().x - 500, 80), ImGuiCond_Once);
         ImGui::Begin("Tool Properties", &showTools,
-                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
 
         ImGui::PushItemWidth(250.0f);
 

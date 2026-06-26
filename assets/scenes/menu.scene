@@ -124,8 +124,8 @@
                         0.8767300844192505,
                         0.5343137383460999
                     ],
-                    "intensity": 15.0,
-                    "radius": 30000.0,
+                    "intensity": 7.5,
+                    "radius": 50000.0,
                     "type": "PointLightComponent"
                 },
                 {

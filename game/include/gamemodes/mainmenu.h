@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.4.6"
+#define VERSION "0.5.0"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -69,7 +69,7 @@ public:
 
                 m_menuPlanet = m_earthEntity->addComponent<PlanetComponent>(m_game);
                 m_menuPlanet->setHasAtmosphere(true);
-                m_menuPlanet->getAtmosphere().thickness = 155.0f;
+                m_menuPlanet->getAtmosphere().thickness = 140.0f;
                 m_menuPlanet->getAtmosphere().rayleighCoeff = Vec3(0.006f, 0.014f, 0.033f);
                 m_menuPlanet->getPlanetParams().sunIntensity = 4.5f;
                 m_menuPlanet->getAtmosphere().edgeFalloff = 300.0f;
