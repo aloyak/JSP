@@ -180,7 +180,7 @@ public:
             ImGui::Indent();
             if (ImGui::Button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
             if (ImGui::Button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
-            if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game));
+            if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game), false, false);
             ImGui::Unindent();
         }
         

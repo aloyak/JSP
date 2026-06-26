@@ -19,6 +19,21 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
 }
 
 void Game::Update() {
+    if (m_transitionState == TransitionState::FadingOut) {
+        m_transitionAlpha += m_engine->getDeltaTime() * m_transitionSpeed;
+        if (m_transitionAlpha >= 1.0f) {
+            m_transitionAlpha = 1.0f;
+            m_transitionState = TransitionState::FadingIn;
+            m_pendingModeChange = true;
+        }
+    } else if (m_transitionState == TransitionState::FadingIn) {
+        m_transitionAlpha -= m_engine->getDeltaTime() * m_transitionSpeed;
+        if (m_transitionAlpha <= 0.0f) {
+            m_transitionAlpha = 0.0f;
+            m_transitionState = TransitionState::None;
+        }
+    }
+
     if (m_pendingModeChange) {
         m_pendingModeChange = false;
         ActualSetGameMode(std::move(m_nextGameMode), m_nextForceReload);
@@ -37,13 +52,23 @@ void Game::LateUpdate() {
     // DEBUG: style editor
     //ImGui::ShowStyleEditor();
 
+    if (m_transitionState != TransitionState::None) {
+        m_ui.drawTransitionScreen(m_transitionAlpha);
+    }
+
     m_engine->endUI();
 }
 
-void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) {
+void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload, bool transition) {
     m_nextGameMode = std::move(newGameMode);
     m_nextForceReload = forceReload;
-    m_pendingModeChange = true;
+    
+    if (transition) {
+        m_transitionState = TransitionState::FadingOut;
+        m_transitionAlpha = 0.0f;
+    } else {
+        m_pendingModeChange = true;
+    }
 }
 
 void Game::ActualSetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) {
@@ -98,6 +123,13 @@ void UI::drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId
     ImGui::PopStyleColor();
 }
 
+void UI::drawTransitionScreen(float alpha) {
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    Vec2 windowSize = m_game.GetEngine().getWindow().getSize();
+    ImU32 color = IM_COL32(0, 0, 0, static_cast<int>(alpha * 255));
+    drawList->AddRectFilled(ImVec2(0, 0), ImVec2(windowSize.x, windowSize.y), color);
+}
+
 void UI::loadMainMenu() {
-    m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game, false), true);
+    m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game, false), true, true);
 }

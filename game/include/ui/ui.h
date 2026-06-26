@@ -40,6 +40,7 @@ public:
     // defined in game.cpp
     void loadMainMenu();
     void drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId);
+    void drawTransitionScreen(float alpha);
 
 private:
     Game& m_game;
