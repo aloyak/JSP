@@ -40,7 +40,8 @@ private:
 
     TransitionState m_transitionState = TransitionState::None;
     float m_transitionAlpha = 0.0f;
-    float m_transitionSpeed = 4.0f;
+    float m_transitionSpeed = 8.0f;
+    bool m_waitingForFadeIn = false;
 
     void ActualSetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload = false);
 };

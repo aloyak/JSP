@@ -19,12 +19,15 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
 }
 
 void Game::Update() {
+    m_engine->beginUI();
+
     if (m_transitionState == TransitionState::FadingOut) {
         m_transitionAlpha += m_engine->getDeltaTime() * m_transitionSpeed;
         if (m_transitionAlpha >= 1.0f) {
             m_transitionAlpha = 1.0f;
-            m_transitionState = TransitionState::FadingIn;
+            m_transitionState = TransitionState::None;
             m_pendingModeChange = true;
+            m_waitingForFadeIn = true;
         }
     } else if (m_transitionState == TransitionState::FadingIn) {
         m_transitionAlpha -= m_engine->getDeltaTime() * m_transitionSpeed;
@@ -37,8 +40,11 @@ void Game::Update() {
     if (m_pendingModeChange) {
         m_pendingModeChange = false;
         ActualSetGameMode(std::move(m_nextGameMode), m_nextForceReload);
+    } else if (m_waitingForFadeIn) {
+        m_waitingForFadeIn = false;
+        m_transitionState = TransitionState::FadingIn;
     }
-    m_engine->beginUI();
+
     if (m_currentGameMode) {
         m_currentGameMode->Update();
     }
@@ -52,7 +58,7 @@ void Game::LateUpdate() {
     // DEBUG: style editor
     //ImGui::ShowStyleEditor();
 
-    if (m_transitionState != TransitionState::None) {
+    if (m_transitionState != TransitionState::None || m_transitionAlpha > 0.0f) {
         m_ui.drawTransitionScreen(m_transitionAlpha);
     }
 
@@ -128,6 +134,27 @@ void UI::drawTransitionScreen(float alpha) {
     Vec2 windowSize = m_game.GetEngine().getWindow().getSize();
     ImU32 color = IM_COL32(0, 0, 0, static_cast<int>(alpha * 255));
     drawList->AddRectFilled(ImVec2(0, 0), ImVec2(windowSize.x, windowSize.y), color);
+
+    if (alpha > 0.3f) {
+        float iconAlpha = (alpha - 0.3f) / 0.7f;
+        if (iconAlpha > 1.0f) iconAlpha = 1.0f;
+
+        float time = static_cast<float>(ImGui::GetTime());
+        float angle = time * 3.0f;
+
+        float radius = 12.0f;
+        float thickness = 3.0f;
+        float padding = 28.0f;
+        ImVec2 center = ImVec2(windowSize.x - padding, windowSize.y - padding);
+
+        ImU32 trackColor = IM_COL32(255, 255, 255, static_cast<int>(40 * iconAlpha));
+        drawList->AddCircle(center, radius, trackColor, 32, thickness);
+
+        float arcSpan = M_PI * 1.25f;
+        ImU32 arcColor = IM_COL32(255, 255, 255, static_cast<int>(200 * iconAlpha));
+        drawList->PathArcTo(center, radius, angle, angle + arcSpan, 32);
+        drawList->PathStroke(arcColor, 0, thickness);
+    }
 }
 
 void UI::loadMainMenu() {
