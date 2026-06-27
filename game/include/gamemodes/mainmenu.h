@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.5.1"
+#define VERSION "0.6.4"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -20,12 +20,12 @@ class MainMenuMode : public GameMode {
 private:
     Game& m_game;
     Engine& m_engine;
+    AudioManager& m_audio;
     UI& m_ui;
 
     Entity* m_earthEntity = nullptr;
     PlanetComponent* m_menuPlanet = nullptr;
 
-    bool showSettings = false;
     bool showExtras = false;
     bool showMenuSettings = true;
     bool showSandbox = false;
@@ -35,7 +35,7 @@ private:
     Texture logo = Texture("assets/logo.png");
     Texture splashLogo = Texture("assets/originlogo.png");
     float m_splashTime = 0.0f;
-    float m_splashDuration = 4.0f;
+    float m_splashDuration = 5.0f;
     bool m_showSplash;
 
     bool m_sceneSetupDone = false;
@@ -45,6 +45,7 @@ public:
         : GameMode("assets/scenes/menu.scene") 
         , m_game(game)
         , m_engine(game.GetEngine())
+        , m_audio(game.GetAudioManager())
         , m_ui(game.GetUI())
         , m_showSplash(showSplash) {}
 
@@ -54,9 +55,13 @@ public:
         m_game.timeScale = 25.0f;
         m_sceneSetupDone = false;
         m_menuPlanet = nullptr;
+
+        if (m_showSplash) m_audio.playSound("assets/audio/splash.wav", SFX);
+        else m_audio.playMusic("assets/audio/space_atmosphere.wav", true, 1.5f);
     }
 
     void OnExit() override {
+        m_audio.stopMusic(2.0f);
         m_game.timeScale = 1.0f;
     }
 
@@ -90,6 +95,7 @@ public:
             m_splashTime += m_engine.getDeltaTime();
             if (m_splashTime >= m_splashDuration) {
                 m_showSplash = false;
+                m_audio.playMusic("assets/audio/space_atmosphere.wav", true, 2.0f);
             }
         }
 
@@ -101,7 +107,6 @@ public:
     void LateUpdate() override {
         RenderMainMenu();
 
-        if (showSettings) ShowSettings();
         if (showExtras) ShowExtras();
 
         if (showMenuSettings) ShowMenuSettings();
@@ -170,96 +175,30 @@ public:
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.5f, 0.9f, 0.9f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.4f, 1.0f, 0.75f));
         ImGui::BeginDisabled();
-        if (ImGui::Button("Campaign Mode")) {}
-        if (ImGui::Button("Explore the Solar System")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
+        if (m_ui.button("Campaign Mode")) {}
+        if (m_ui.button("Explore the Solar System")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
         ImGui::EndDisabled();
 
         
-        if (ImGui::Button("Sandbox Mode")) { showSandbox = !showSandbox; }
+        if (m_ui.button("Sandbox Mode")) { showSandbox = !showSandbox; }
         if (showSandbox) {
             ImGui::Indent();
-            if (ImGui::Button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
-            if (ImGui::Button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
-            if (ImGui::Button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game), false, false);
+            if (m_ui.button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
+            if (m_ui.button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
+            if (m_ui.button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game), false, false);
             ImGui::Unindent();
         }
         
-        if (ImGui::Button("Settings")) { showSettings = !showSettings; }
-        if (ImGui::Button("Extras")) { showExtras = !showExtras; }
+        if (m_ui.button("Settings")) { m_game.showSettings = !m_game.showSettings; }
+        if (m_ui.button("Extras")) { showExtras = !showExtras; }
         
-        if (ImGui::Button("Exit")) m_engine.stop();
+        if (m_ui.button("Quit")) m_engine.stop();
         ImGui::PopStyleColor(2);
         m_ui.resetFont();
         ImGui::End();
 
         ImGui::PopStyleColor(2);
 
-        ImGui::PopStyleVar(2);
-    }
-
-    // TODO: user settings (change on engine, not game)
-    void ShowSettings() {
-        auto CenterText = [](const char* text) {
-            float windowWidth = ImGui::GetWindowSize().x;
-            float textWidth = ImGui::CalcTextSize(text).x;
-            ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
-            ImGui::TextUnformatted(text);
-        };
-
-        int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
-        ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
-
-        ImGui::Begin("Settings", &showSettings, flags);
-
-        m_ui.setFont(1);
-        CenterText("Settings");
-        m_ui.resetFont();
-        
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Warning: Settings are not currently saved.");
-        
-        ImGui::SeparatorText("Language");
-        static int langIndex = 0;
-        const char* languages[] = { "English", "SOON" };
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::Combo("##Language", &langIndex, languages, IM_ARRAYSIZE(languages));
-
-        ImGui::SeparatorText("Graphics");
-        
-        bool isFullscreen = m_engine.getWindow().isFullscreen();
-        if (ImGui::Checkbox("Fullscreen", &isFullscreen)) {
-            m_engine.getWindow().setFullscreen(isFullscreen);
-        }
-
-        ImGui::SameLine(150.0f);
-
-        bool vsyncEnabled = m_engine.getWindow().isVSyncEnabled();
-        if (ImGui::Checkbox("VSync", &vsyncEnabled)) {
-            m_engine.getWindow().enableVSync(vsyncEnabled);
-        }
-
-        int targetFPS = m_engine.getTargetFps();
-        ImGui::SetNextItemWidth(-1.0f);
-        if (ImGui::SliderInt("##TargetFPS", &targetFPS, 30, 1000, (targetFPS == 1000) || (targetFPS == -1) ? "Target FPS: Unlimited" : "Target FPS: %d")) {
-            if (targetFPS >= 1000) {
-                targetFPS = -1; // fps < 0 => unlimited
-            }
-            m_engine.setTargetFps(targetFPS);
-        }
-
-        ImGui::SeparatorText("Audio");
-
-        static float masterVolume = 1.0f;
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::SliderFloat("##MasterVolume", &masterVolume, 0.0f, 1.0f, "Volume: %.0f%%", ImGuiSliderFlags_Logarithmic);
-
-        static float musicVolume = 0.8f;
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::SliderFloat("##MusicVolume", &musicVolume, 0.0f, 1.0f, "Music: %.0f%%", ImGuiSliderFlags_Logarithmic);
-
-        ImGui::End();
         ImGui::PopStyleVar(2);
     }
 

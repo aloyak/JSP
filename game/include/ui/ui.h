@@ -3,6 +3,9 @@
 #include <imgui.h>
 
 #include "engine/utils/path.h"
+#include "audio/audioManager.h"
+
+#include <unordered_set>
 
 class Game;
 class MainMenuMode;
@@ -37,13 +40,35 @@ public:
         ImGui::PopFont();
     }
 
+    bool button(const char* label, const ImVec2& size = ImVec2(0, 0)) {
+        const bool clicked = ImGui::Button(label, size);
+        updateButtonSfx(ImGui::GetID(label));
+        return clicked;
+    }
+
+    bool buttonWithId(const char* label, ImGuiID soundId, const ImVec2& size = ImVec2(0, 0)) {
+        const bool clicked = ImGui::Button(label, size);
+        updateButtonSfx(soundId);
+        return clicked;
+    }
+
+    void setButtonHoverSound(const std::string& path) { m_hoverSoundPath = path; }
+    void setButtonPressSound(const std::string& path) { m_pressSoundPath = path; }
+
     // defined in game.cpp
     void loadMainMenu();
     void drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId);
     void drawTransitionScreen(float alpha);
-
+    void drawSettingsWindow();
 private:
     Game& m_game;
+
+    std::string m_hoverSoundPath = "assets/audio/UI/hover.wav";
+    std::string m_pressSoundPath = "assets/audio/UI/press.wav";
+
+    std::unordered_set<ImGuiID> m_hoveredLastFrame;
+
+    void updateButtonSfx(ImGuiID id); // defined in game.cpp, needs Game::GetAudioManager
 
     void setStyle() {
         ImGuiStyle& style = ImGui::GetStyle();

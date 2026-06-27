@@ -1,9 +1,11 @@
 #pragma once
 
 #include "engine/engine.h"
+#include "engine/core/userSettings.h"
 
 #include "gamemode.h"
 #include "ui/ui.h"
+#include "audio/audioManager.h"
 
 #include <memory>
 
@@ -23,11 +25,13 @@ public:
 
     Engine& GetEngine() { return *m_engine; }
     UI& GetUI() { return m_ui; }
+    AudioManager& GetAudioManager() { return m_audio; }
 
     float timeScale = 1.0f;
-
+    bool showSettings = false;
 private:
     Engine* m_engine;
+    AudioManager m_audio;
 
     std::unique_ptr<GameMode> m_currentGameMode;
     std::unique_ptr<GameMode> m_lastGameMode;
@@ -43,5 +47,5 @@ private:
     float m_transitionSpeed = 8.0f;
     bool m_waitingForFadeIn = false;
 
-    void ActualSetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload = false);
+    void ApplyGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload = false);
 };
