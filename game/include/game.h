@@ -7,6 +7,7 @@
 #include "ui/ui.h"
 #include "audio/audioManager.h"
 
+#include <nlohmann/json.hpp>
 #include <memory>
 
 enum class TransitionState {
@@ -14,6 +15,29 @@ enum class TransitionState {
     FadingOut,
     FadingIn
 };
+
+struct GameSettings {
+    bool firstRun = true;
+    int language = 0;
+    bool isFullscreen = true;
+    bool vsyncEnabled = false;
+    int targetFPS = 240;
+    float masterVolume = 1.0f;
+    float musicVolume = 1.0f;
+    float sfxVolume = 1.0f;
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
+    GameSettings, 
+    firstRun,
+    language, 
+    isFullscreen, 
+    vsyncEnabled, 
+    targetFPS, 
+    masterVolume, 
+    musicVolume, 
+    sfxVolume
+)
 
 class Game {
 public:
@@ -29,6 +53,8 @@ public:
 
     float timeScale = 1.0f;
     bool showSettings = false;
+    
+    SettingsManager<GameSettings> settingsManager;
 private:
     Engine* m_engine;
     AudioManager m_audio;

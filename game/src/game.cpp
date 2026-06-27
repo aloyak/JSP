@@ -2,7 +2,7 @@
 #include "engine/utils/logger.h"
 #include "gamemodes/mainmenu.h"
 
-Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(nullptr) {
+Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(nullptr), settingsManager("user/settings.json") {
     m_engine->initUI(); 
 
     m_engine->getRenderer().setupRenderTarget(600, 400);
@@ -10,10 +10,17 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
 
     m_audio.setAudioSystem(&m_engine->getAudioSystem());
 
-    m_engine->getWindow().setFullscreen(true); // TODO: SET ON RELEASE
-    m_engine->getWindow().enableVSync(false);
+    settingsManager.Load();
+    auto& settings = settingsManager.Get();
+
+    m_engine->getWindow().setFullscreen(settings.isFullscreen); // TODO: SET ON RELEASE
+    m_engine->getWindow().enableVSync(settings.vsyncEnabled);
     // m_engine->getWindow().allowResize(false); // TODO
-    m_engine->setTargetFps(240);
+    m_engine->setTargetFps(settings.targetFPS);
+
+    m_audio.setVolume(settings.masterVolume, Master);
+    m_audio.setVolume(settings.musicVolume, Music);
+    m_audio.setVolume(settings.sfxVolume, SFX);
 
     //Logger::setVerbose(1); // TODO: SET ON RELEASE
 
@@ -187,6 +194,8 @@ void UI::updateButtonSfx(ImGuiID id) {
 void UI::drawSettingsWindow() {
     Engine& m_engine = m_game.GetEngine();
     AudioManager& m_audio = m_game.GetAudioManager();
+    auto& settings = m_game.settingsManager.Get();
+    bool settingsChanged = false;
 
     auto CenterText = [](const char* text) {
         float windowWidth = ImGui::GetWindowSize().x;
@@ -207,52 +216,61 @@ void UI::drawSettingsWindow() {
     CenterText("Settings");
     this->resetFont();
         
-    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Warning: Settings are not currently saved.");
-        
     ImGui::SeparatorText("Language");
-    static int langIndex = 0;
     const char* languages[] = { "English", "SOON" };
     ImGui::SetNextItemWidth(-1.0f);
-    ImGui::Combo("##Language", &langIndex, languages, IM_ARRAYSIZE(languages));
+    if (ImGui::Combo("##Language", &settings.language, languages, IM_ARRAYSIZE(languages))) {
+        settingsChanged = true;
+    }
 
     ImGui::SeparatorText("Graphics");
         
-    bool isFullscreen = m_engine.getWindow().isFullscreen();
-    if (ImGui::Checkbox("Fullscreen", &isFullscreen)) {
-        m_engine.getWindow().setFullscreen(isFullscreen);
+    if (ImGui::Checkbox("Fullscreen", &settings.isFullscreen)) {
+        m_engine.getWindow().setFullscreen(settings.isFullscreen);
+        settingsChanged = true;
     }
 
     ImGui::SameLine(150.0f);
 
-    bool vsyncEnabled = m_engine.getWindow().isVSyncEnabled();
-    if (ImGui::Checkbox("VSync", &vsyncEnabled)) {
-        m_engine.getWindow().enableVSync(vsyncEnabled);
+    if (ImGui::Checkbox("VSync", &settings.vsyncEnabled)) {
+        m_engine.getWindow().enableVSync(settings.vsyncEnabled);
+        settingsChanged = true;
     }
 
-    int targetFPS = m_engine.getTargetFps();
     ImGui::SetNextItemWidth(-1.0f);
-    if (ImGui::SliderInt("##TargetFPS", &targetFPS, 30, 1000, (targetFPS == 1000) || (targetFPS == -1) ? "Target FPS: Unlimited" : "Target FPS: %d")) {
-        if (targetFPS >= 1000) {
-            targetFPS = -1; // fps < 0 => unlimited
+    if (ImGui::SliderInt("##TargetFPS", &settings.targetFPS, 30, 1000, (settings.targetFPS == 1000) || (settings.targetFPS == -1) ? "Target FPS: Unlimited" : "Target FPS: %d")) {
+        if (settings.targetFPS >= 1000) {
+            settings.targetFPS = -1;
         }
-        m_engine.setTargetFps(targetFPS);
+        m_engine.setTargetFps(settings.targetFPS);
+        settingsChanged = true;
     }
 
     ImGui::SeparatorText("Audio");
 
-    float masterVolume = m_audio.getVolume(Master) * 100.0f;
-    if (ImGui::SliderFloat("##MasterVolume", &masterVolume, 0.0f, 100.0f, "Master Volume: %.2f"), ImGuiSliderFlags_Logarithmic) {
-        m_audio.setVolume(masterVolume * 0.01f, Master);
+    float masterVol = settings.masterVolume * 100.0f;
+    if (ImGui::SliderFloat("##MasterVolume", &masterVol, 0.0f, 100.0f, "Master Volume: %.2f%%")) {
+        settings.masterVolume = masterVol * 0.01f;
+        m_audio.setVolume(settings.masterVolume, Master);
+        settingsChanged = true;
     }
 
-    float musicVolume = m_audio.getVolume(Music) * 100.0f;
-    if (ImGui::SliderFloat("##MusicVolume", &musicVolume, 0.0f, 100.0f, "Music Volume: %.2f"), ImGuiSliderFlags_Logarithmic) {
-        m_audio.setVolume(musicVolume * 0.01f, Music);
+    float musicVol = settings.musicVolume * 100.0f;
+    if (ImGui::SliderFloat("##MusicVolume", &musicVol, 0.0f, 100.0f, "Music Volume: %.2f%%")) {
+        settings.musicVolume = musicVol * 0.01f;
+        m_audio.setVolume(settings.musicVolume, Music);
+        settingsChanged = true;
     }
 
-    float sfxVolume = m_audio.getVolume(SFX) * 100.0f;
-    if (ImGui::SliderFloat("##SFXVolume", &sfxVolume, 0.0f, 100.0f, "SFX Volume: %.2f"), ImGuiSliderFlags_Logarithmic) {
-        m_audio.setVolume(sfxVolume * 0.01f, SFX);
+    float sfxVol = settings.sfxVolume * 100.0f;
+    if (ImGui::SliderFloat("##SFXVolume", &sfxVol, 0.0f, 100.0f, "SFX Volume: %.2f%%")) {
+        settings.sfxVolume = sfxVol * 0.01f;
+        m_audio.setVolume(settings.sfxVolume, SFX);
+        settingsChanged = true;
+    }
+
+    if (settingsChanged) {
+        m_game.settingsManager.Save();
     }
 
     ImGui::End();

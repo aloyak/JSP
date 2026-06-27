@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.6.4"
+#define VERSION "0.7.0"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -93,11 +93,15 @@ public:
 
         if (m_showSplash) {
             m_splashTime += m_engine.getDeltaTime();
-            if (m_splashTime >= m_splashDuration) {
+
+            if (m_splashTime >= m_splashDuration &&
+                !m_game.settingsManager.Get().firstRun)
+            {
                 m_showSplash = false;
                 m_audio.playMusic("assets/audio/space_atmosphere.wav", true, 2.0f);
             }
         }
+        if (m_game.settingsManager.Get().firstRun) return;
 
         if (m_menuPlanet) {
             m_menuPlanet->update(m_engine.getDeltaTime() * m_game.timeScale);
@@ -106,43 +110,99 @@ public:
 
     void LateUpdate() override {
         RenderMainMenu();
-
         if (showExtras) ShowExtras();
-
         if (showMenuSettings) ShowMenuSettings();
+
+        bool firstRun = m_game.settingsManager.Get().firstRun;
 
         if (m_showSplash) {
             float bgAlpha = 1.0f;
             float logoAlpha = 0.0f;
+
             float fadeOutStart = m_splashDuration - 1.0f;
+            if (fadeOutStart < 2.0f) fadeOutStart = 2.0f;
 
-            if (fadeOutStart < 2.0f) {
-                fadeOutStart = 2.0f;
-            }
-
-            if (m_splashTime <= 0.5f) {
-                bgAlpha = 1.0f;
-                logoAlpha = 0.0f;
-            } else if (m_splashTime <= 2.0f) {
-                bgAlpha = 1.0f;
-                logoAlpha = (m_splashTime - 0.5f) / 1.5f;
-            } else if (m_splashTime <= fadeOutStart) {
-                bgAlpha = 1.0f;
-                logoAlpha = 1.0f;
-            } else {
+            if (m_splashTime <= 0.5f) logoAlpha = 0.0f;
+            else if (m_splashTime <= 2.0f) logoAlpha = (m_splashTime - 0.5f) / 1.5f;
+            else if (m_splashTime <= fadeOutStart) logoAlpha = 1.0f;
+            else {
                 float fadeOutDuration = m_splashDuration - fadeOutStart;
-                float fadeOutFactor = (m_splashDuration - m_splashTime) / fadeOutDuration;
-                bgAlpha = fadeOutFactor;
-                logoAlpha = fadeOutFactor;
+                float factor = (m_splashDuration - m_splashTime) / fadeOutDuration;
+
+                if (firstRun) {
+                    bgAlpha = 1.0f;
+                    logoAlpha = std::max(0.0f, factor);
+                }
+                else {
+                    bgAlpha = factor;
+                    logoAlpha = factor;
+                }
             }
 
-            if (bgAlpha < 0.0f) bgAlpha = 0.0f;
-            if (bgAlpha > 1.0f) bgAlpha = 1.0f;
-            if (logoAlpha < 0.0f) logoAlpha = 0.0f;
-            if (logoAlpha > 1.0f) logoAlpha = 1.0f;
+            bgAlpha = std::clamp(bgAlpha, 0.0f, 1.0f);
+            logoAlpha = std::clamp(logoAlpha, 0.0f, 1.0f);
 
             m_ui.drawSplashScreen(bgAlpha, logoAlpha, splashLogo.getID());
         }
+
+        if (firstRun) {
+            if (!m_showSplash || m_splashTime >= m_splashDuration) {
+                RenderFirstRunScreen();
+            }
+            return;
+        }
+    }
+    
+    void RenderFirstRunScreen() {
+        Vec2 windowSize = m_engine.getWindow().getSize();
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImVec2(windowSize.x, windowSize.y));
+        
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+        ImGui::Begin("FirstRunBg", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        ImGui::End();
+        ImGui::PopStyleColor();
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | 
+                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+        
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(40, 40));
+        
+        ImVec2 center = ImVec2(windowSize.x * 0.5f, windowSize.y * 0.5f);
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+        ImGui::Begin("FirstRunInfo", nullptr, flags);
+
+        m_ui.setFont(1);
+        ImGui::Text("Welcome to J.S.P!");
+        m_ui.resetFont();
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::Text("Before you begin, please note this is an early build.");
+        ImGui::Text("Take a moment to check the availiable options in each game mode.");
+        
+        ImGui::Spacing();
+
+        ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("- 4loyak!").x * 0.5f);
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.6f), "- 4loyak!");
+
+        ImGui::Spacing();
+
+        if (m_ui.button("Acknowledge & Continue")) {
+            m_game.settingsManager.Get().firstRun = false;
+            m_game.settingsManager.Save();
+            m_showSplash = false;
+
+            m_audio.playMusic("assets/audio/space_atmosphere.wav", true, 2.0f);
+        }
+
+        ImGui::End();
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
     }
 
     void RenderMainMenu() {
