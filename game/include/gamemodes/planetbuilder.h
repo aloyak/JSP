@@ -255,23 +255,42 @@ public:
             ImGui::SeparatorText("Atmosphere");
             bool hasAtmosphere = planetComponent->hasAtmosphere();
             if (ImGui::Checkbox("Has Atmosphere", &hasAtmosphere)) {
-                planetComponent->setHasAtmosphere(hasAtmosphere);                
+                planetComponent->setHasAtmosphere(hasAtmosphere);
             }
             if (hasAtmosphere) {
-                float atmosphereThickness = planetComponent->getAtmosphere().thickness;
-                if (ImGui::SliderFloat("Thickness", &atmosphereThickness, 1.0f, 1000.0f)) {
-                    planetComponent->getAtmosphere().thickness = atmosphereThickness;
+                AtmosphereParams& atmo = planetComponent->getAtmosphere();
+                if (ImGui::SliderFloat("Thickness", &atmo.thickness, 1.0f, 1000.0f)) {}
+
+                Vec3& rc = atmo.rayleighCoeff;
+                static constexpr float k_rayleighMax = 0.08f; // displayable ceiling
+                float skyColor[3] = {
+                    std::fmin(rc.x / k_rayleighMax, 1.0f),
+                    std::fmin(rc.y / k_rayleighMax, 1.0f),
+                    std::fmin(rc.z / k_rayleighMax, 1.0f)
+                };
+                if (ImGui::ColorEdit3("Hue##rayleigh", skyColor,
+                        ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_PickerHueWheel)) {
+                    float maxC = std::fmax(skyColor[0], std::fmax(skyColor[1], skyColor[2]));
+                    if (maxC < 1e-5f) maxC = 1.0f;
+                    rc.x = (skyColor[0] / maxC) * k_rayleighMax;
+                    rc.y = (skyColor[1] / maxC) * k_rayleighMax;
+                    rc.z = (skyColor[2] / maxC) * k_rayleighMax;
                 }
 
-                Vec3 rayleighCoeff = planetComponent->getAtmosphere().rayleighCoeff;
-                if (ImGui::ColorEdit3("Rayleigh Coeff", &rayleighCoeff.x)) {
-                    planetComponent->getAtmosphere().rayleighCoeff = rayleighCoeff;
+                float maxCoeff = std::fmax(rc.x, std::fmax(rc.y, rc.z));
+                float scatterStrength = maxCoeff / k_rayleighMax; // [0,1]
+                if (ImGui::SliderFloat("Scatter Density", &scatterStrength, 0.01f, 1.0f)) {
+                    float prevMax = std::fmax(rc.x, std::fmax(rc.y, rc.z));
+                    if (prevMax > 1e-6f) {
+                        float scale = (scatterStrength * k_rayleighMax) / prevMax;
+                        rc.x *= scale;
+                        rc.y *= scale;
+                        rc.z *= scale;
+                    }
                 }
 
-                float edgeFalloff = planetComponent->getAtmosphere().edgeFalloff;
-                if (ImGui::SliderFloat("Edge Falloff", &edgeFalloff, 0.0f, 1200.0f, "%.3f", ImGuiSliderFlags_Logarithmic)) {
-                    planetComponent->getAtmosphere().edgeFalloff = edgeFalloff;
-                }
+                if (ImGui::SliderFloat("Horizon Sharpness", &atmo.edgeFalloff, 0.0f, 1200.0f,
+                        "%.2f", ImGuiSliderFlags_Logarithmic)) {}
             }
 
             ImGui::SeparatorText("Water");
