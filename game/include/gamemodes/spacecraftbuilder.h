@@ -83,12 +83,9 @@ public:
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("Game")) {
-                if (ImGui::MenuItem("Main Menu")) {
-                    m_ui.loadMainMenu();
-                }
-                if (ImGui::MenuItem("Quit")) {
-                    m_game.GetEngine().stop();
-                }
+                if (ImGui::MenuItem("Main Menu")) m_ui.loadMainMenu();
+                if (ImGui::MenuItem("Settings"))  m_game.showSettings = !m_game.showSettings;
+                if (ImGui::MenuItem("Quit")) m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Spacecraft")) {

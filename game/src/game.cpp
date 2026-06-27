@@ -8,6 +8,8 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
     m_engine->getRenderer().setupRenderTarget(600, 400);
     m_engine->getRenderer().setPixelArt(true, 16);
 
+    m_audio.setAudioSystem(&m_engine->getAudioSystem());
+
     m_engine->getWindow().setFullscreen(true); // TODO: SET ON RELEASE
     m_engine->getWindow().enableVSync(false);
     // m_engine->getWindow().allowResize(false); // TODO
@@ -20,6 +22,8 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
 
 void Game::Update() {
     m_engine->beginUI();
+
+    m_audio.update(m_engine->getDeltaTime());
 
     if (m_transitionState == TransitionState::FadingOut) {
         m_transitionAlpha += m_engine->getDeltaTime() * m_transitionSpeed;
@@ -39,15 +43,14 @@ void Game::Update() {
 
     if (m_pendingModeChange) {
         m_pendingModeChange = false;
-        ActualSetGameMode(std::move(m_nextGameMode), m_nextForceReload);
+        ApplyGameMode(std::move(m_nextGameMode), m_nextForceReload);
     } else if (m_waitingForFadeIn) {
         m_waitingForFadeIn = false;
         m_transitionState = TransitionState::FadingIn;
     }
 
-    if (m_currentGameMode) {
-        m_currentGameMode->Update();
-    }
+    if (m_currentGameMode) m_currentGameMode->Update();
+    if (showSettings) m_ui.drawSettingsWindow(); 
 }
 
 void Game::LateUpdate() {
@@ -77,7 +80,7 @@ void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload, 
     }
 }
 
-void Game::ActualSetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) {
+void Game::ApplyGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload) {
     bool same = m_currentGameMode && 
         !newGameMode->GetScenePath().empty() && 
         m_currentGameMode->GetScenePath() == newGameMode->GetScenePath();
@@ -159,4 +162,99 @@ void UI::drawTransitionScreen(float alpha) {
 
 void UI::loadMainMenu() {
     m_game.SetGameMode(std::make_unique<MainMenuMode>(m_game, false), true, true);
+}
+
+void UI::updateButtonSfx(ImGuiID id) {
+    const bool hovered = ImGui::IsItemHovered();
+
+    if (ImGui::IsItemClicked()) {
+        m_game.GetAudioManager().playSound(m_pressSoundPath, UserInterface);
+    }
+
+    const bool wasHovered = m_hoveredLastFrame.count(id) != 0;
+    if (hovered && !wasHovered) {
+        m_game.GetAudioManager().playSound(m_hoverSoundPath, UserInterface);
+    }
+
+    if (hovered) {
+        m_hoveredLastFrame.insert(id);
+    } else {
+        m_hoveredLastFrame.erase(id);
+    }
+}
+
+// TODO: user settings (change on engine, not game)
+void UI::drawSettingsWindow() {
+    Engine& m_engine = m_game.GetEngine();
+    AudioManager& m_audio = m_game.GetAudioManager();
+
+    auto CenterText = [](const char* text) {
+        float windowWidth = ImGui::GetWindowSize().x;
+        float textWidth = ImGui::CalcTextSize(text).x;
+        ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
+        ImGui::TextUnformatted(text);
+    };
+
+    int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+    ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
+
+    ImGui::Begin("Settings", &m_game.showSettings, flags);
+
+    this->setFont(1);
+    CenterText("Settings");
+    this->resetFont();
+        
+    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Warning: Settings are not currently saved.");
+        
+    ImGui::SeparatorText("Language");
+    static int langIndex = 0;
+    const char* languages[] = { "English", "SOON" };
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::Combo("##Language", &langIndex, languages, IM_ARRAYSIZE(languages));
+
+    ImGui::SeparatorText("Graphics");
+        
+    bool isFullscreen = m_engine.getWindow().isFullscreen();
+    if (ImGui::Checkbox("Fullscreen", &isFullscreen)) {
+        m_engine.getWindow().setFullscreen(isFullscreen);
+    }
+
+    ImGui::SameLine(150.0f);
+
+    bool vsyncEnabled = m_engine.getWindow().isVSyncEnabled();
+    if (ImGui::Checkbox("VSync", &vsyncEnabled)) {
+        m_engine.getWindow().enableVSync(vsyncEnabled);
+    }
+
+    int targetFPS = m_engine.getTargetFps();
+    ImGui::SetNextItemWidth(-1.0f);
+    if (ImGui::SliderInt("##TargetFPS", &targetFPS, 30, 1000, (targetFPS == 1000) || (targetFPS == -1) ? "Target FPS: Unlimited" : "Target FPS: %d")) {
+        if (targetFPS >= 1000) {
+            targetFPS = -1; // fps < 0 => unlimited
+        }
+        m_engine.setTargetFps(targetFPS);
+    }
+
+    ImGui::SeparatorText("Audio");
+
+    float masterVolume = m_audio.getVolume(Master) * 100.0f;
+    if (ImGui::SliderFloat("##MasterVolume", &masterVolume, 0.0f, 100.0f, "Master Volume: %.2f"), ImGuiSliderFlags_Logarithmic) {
+        m_audio.setVolume(masterVolume * 0.01f, Master);
+    }
+
+    float musicVolume = m_audio.getVolume(Music) * 100.0f;
+    if (ImGui::SliderFloat("##MusicVolume", &musicVolume, 0.0f, 100.0f, "Music Volume: %.2f"), ImGuiSliderFlags_Logarithmic) {
+        m_audio.setVolume(musicVolume * 0.01f, Music);
+    }
+
+    float sfxVolume = m_audio.getVolume(SFX) * 100.0f;
+    if (ImGui::SliderFloat("##SFXVolume", &sfxVolume, 0.0f, 100.0f, "SFX Volume: %.2f"), ImGuiSliderFlags_Logarithmic) {
+        m_audio.setVolume(sfxVolume * 0.01f, SFX);
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar(2);
 }

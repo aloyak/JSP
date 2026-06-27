@@ -117,7 +117,7 @@ private:
     Vec2   m_velDragStart;
     Vec3   m_velDragWorldOrigin;
     bool   m_velDragging = false; 
-    static constexpr float kVelocityPixelScale = 0.001f;
+    static constexpr float kVelocityPixelScale = 0.0014f;
     static constexpr float kGravConst          = 0.02f; 
     static constexpr float kGravSoftening      = 100.0f;  // prevents singularity at close range
     static constexpr int   kMaxTrailPoints     = 300;
@@ -985,8 +985,8 @@ public:
             }
 
             if (m_input.isKeyPressed(KEY_G)) drawGrid = !drawGrid;
-            if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += 1.0f;
-            if (m_input.isKeyDown(KEY_LCTRL))  m_target->transform.position.y -= 1.0f;
+            if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += 10.0f;
+            if (m_input.isKeyDown(KEY_LCTRL))  m_target->transform.position.y -= 10.0f;
 
             if (m_input.isKeyPressed(KEY_1)) m_toolMode = ToolMode::Selection;
             if (!simulationRunning) {
@@ -1460,10 +1460,19 @@ public:
                             pc->applyScale();
                         }
 
-                        ImGui::SetNextItemWidth(totalWidth);
+                        ImGui::SetNextItemWidth(halfWidth);
                         if (ImGui::SliderFloat("##PeriodField", &period, 0.0f, 1000.0f, "Period: %.3f")) {
                             pc->getPlanetParams().period = period;
                         }
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(halfWidth);
+                        Vec3 velocity = pc->getPlanetParams().velocity;
+                        if (simulationRunning) ImGui::BeginDisabled();
+                        velocity = 1000.0f * velocity;
+                        if (ImGui::InputFloat3("##VelocityField", &velocity.x, "%.3f")) {
+                            pc->getPlanetParams().velocity = velocity / 1000.0f;
+                        }
+                        if (simulationRunning) ImGui::EndDisabled();
 
                         ImGui::Spacing();
                         ImGui::Separator();
@@ -1485,8 +1494,16 @@ public:
 
                         ImGui::PopStyleColor(3);
                     } else {
-                        ImGui::TextDisabled("No planet selected.");
-                        ImGui::TextDisabled("Use the Selection tool and click a planet.");
+                        float halfWidth = ImGui::GetContentRegionAvail().x * 0.5f;
+                        m_ui.setFont(1);
+                        float titleWidth = ImGui::CalcTextSize("No planet selected!").x;
+                        ImGui::SetCursorPosY(ImGui::GetCursorPosY() * 0.5f + 60.0f);
+                        ImGui::SetCursorPosX(halfWidth - titleWidth * 0.5f);
+                        ImGui::TextDisabled("No planet selected!");
+                        m_ui.resetFont();
+                        float subtitleWidth = ImGui::CalcTextSize("Use the Selection tool and with an object.").x;
+                        ImGui::SetCursorPosX(halfWidth - subtitleWidth * 0.5f);
+                        ImGui::TextDisabled("Use the Selection tool and with an object.");
                     }
 
                     ImGui::EndTabItem();
@@ -1557,6 +1574,7 @@ public:
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("Game")) {
                 if (ImGui::MenuItem("Main Menu")) m_ui.loadMainMenu();
+                if (ImGui::MenuItem("Settings"))  m_game.showSettings = !m_game.showSettings;
                 if (ImGui::MenuItem("Quit"))      m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }
