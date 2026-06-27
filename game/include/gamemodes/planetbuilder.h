@@ -259,7 +259,7 @@ public:
             }
             if (hasAtmosphere) {
                 float atmosphereThickness = planetComponent->getAtmosphere().thickness;
-                if (ImGui::SliderFloat("Atmosphere Thickness", &atmosphereThickness, 1.0f, 1000.0f)) {
+                if (ImGui::SliderFloat("Thickness", &atmosphereThickness, 1.0f, 1000.0f)) {
                     planetComponent->getAtmosphere().thickness = atmosphereThickness;
                 }
 

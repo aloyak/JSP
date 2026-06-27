@@ -163,6 +163,7 @@ public:
                 m_atmosphere = nullptr;
             }
         }
+        reorderLayers();
     }
     bool hasAtmosphere() const { return m_hasAtmosphere; }
     AtmosphereParams& getAtmosphere() { return m_atmosphereParams; }
@@ -181,6 +182,7 @@ public:
                 m_water = nullptr;
             }
         }
+        reorderLayers();
     }
     bool hasWater() const { return m_hasWater; }
     WaterParams& getWater() { return m_waterParams; }
@@ -257,6 +259,31 @@ public:
     }
 
 private:
+    void reorderLayers() {
+        if (!m_game) return;
+        auto& renderer = m_game->GetEngine().getRenderer();
+
+        if (m_water) {
+            renderer.removePostProcessor(m_water);
+            m_water = nullptr;
+        }
+        if (m_atmosphere) {
+            renderer.removePostProcessor(m_atmosphere);
+            m_atmosphere = nullptr;
+        }
+
+        if (m_hasWater) {
+            m_water = &renderer.addPostProcessor(
+                "assets/shaders/default_vert.glsl", "assets/shaders/water_frag.glsl"
+            );
+        }
+        if (m_hasAtmosphere) {
+            m_atmosphere = &renderer.addPostProcessor(
+                "assets/shaders/default_vert.glsl", "assets/shaders/atmosphere_frag.glsl"
+            );
+        }
+    }
+
     Game* m_game;
 
     float m_currentRotation = 0.0f;
