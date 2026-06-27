@@ -11,6 +11,7 @@
 #include "engine/render/render.h"
 #include "engine/render/texture.h"
 
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -22,7 +23,8 @@ class Game;
 enum class PlanetToolMode {
     None,
     Terrain,
-    Paint
+    Paint,
+    ColorHistory
 };
 
 class PlanetBuilderMode : public GameMode {
@@ -54,6 +56,8 @@ private:
     float terrainBrushStrength  = 150.0f;  
     float terrainBrushFalloff   = 1.5f; 
 
+    std::vector<std::array<float, 3>> colorHistory;
+
     std::shared_ptr<Texture> m_paintTexture;
 
     static constexpr int   k_textureSize  = 512;
@@ -65,6 +69,9 @@ private:
     bool m_isHoveringPlanet = false;
     Vec3 m_hoverWorldPos    = Vec3(0.0f, 0.0f, 0.0f);
     Vec3 m_hoverLocalPos    = Vec3(0.0f, 0.0f, 0.0f);
+
+    bool m_leftButtonWasDown = false;
+    bool m_leftButtonClicked = false;
 
     bool m_rightButtonWasDown   = false;
     bool m_rightClickIsOrbiting = false;
@@ -123,6 +130,10 @@ public:
         }
         m_rightButtonWasDown = rightButtonDown;
 
+        const bool leftButtonDown = m_input.isMouseButtonPressed(MOUSE_LEFT);
+        m_leftButtonClicked = leftButtonDown && !m_leftButtonWasDown;
+        m_leftButtonWasDown = leftButtonDown;
+
         if (rightButtonDown && m_rightClickIsOrbiting) {
             m_input.setCursorMode(true);
             m_orbitCamera->Update(&m_input, m_game.GetEngine().getDeltaTime());
@@ -131,9 +142,9 @@ public:
         }
         m_orbitCamera->ApplyScroll(&m_input);
 
-        // shortcuts
         if (m_input.isKeyPressed(KEY_1)) { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
-        if (m_input.isKeyPressed(KEY_2)) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
+        if (m_input.isKeyPressed(KEY_2)) { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
+        if (m_input.isKeyPressed(KEY_3)) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
 
         UpdateMouseIntersection();
         TryPaint();
@@ -164,13 +175,15 @@ public:
             }
             if (ImGui::BeginMenu("Tools")) {
                 if (ImGui::MenuItem("Paint",   "1")) { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
-                if (ImGui::MenuItem("Terrain", "2")) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
+                if (ImGui::MenuItem("Color History", "2")) { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
+                if (ImGui::MenuItem("Terrain", "3")) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
                 ImGui::EndMenu();
             }
 
             const char* toolName = (currentTool == PlanetToolMode::Terrain) ? "Terrain"
                                  : (currentTool == PlanetToolMode::Paint)   ? "Paint"
-                                                                             : "None";
+                                 : (currentTool == PlanetToolMode::ColorHistory) ? "Color History"
+                                                                                 : "None";
             float textWidth = ImGui::CalcTextSize(toolName).x + 8.0f;
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth);
             ImGui::TextDisabled("%s", toolName);
@@ -299,21 +312,28 @@ public:
     }
 
     void DrawToolsWindow() {
+        ImGui::SetNextWindowSize(ImVec2(375, 0), ImGuiCond_Once);
         ImGui::SetNextWindowPos(
             ImVec2(m_game.GetEngine().getWindow().getSize().x - 500, 80), ImGuiCond_Once);
-        ImGui::Begin("Tool Properties", &showTools,
-                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Tool Properties", &showTools, 
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
 
         ImGui::PushItemWidth(250.0f);
 
+        bool consumeSync = syncToolTab;
+        syncToolTab = false;
+
         if (ImGui::BeginTabBar("Tools")) {
-            ImGuiTabItemFlags paintFlags = (syncToolTab && currentTool == PlanetToolMode::Paint)
+            ImGuiTabItemFlags paintFlags = (consumeSync && currentTool == PlanetToolMode::Paint)
                                          ? ImGuiTabItemFlags_SetSelected : 0;
             if (ImGui::BeginTabItem("Paint", nullptr, paintFlags)) {
-                if (!syncToolTab) currentTool = PlanetToolMode::Paint;
+                if (!consumeSync) currentTool = PlanetToolMode::Paint;
 
                 ImGui::SliderFloat("Brush Size",    &brushSize,    1.0f,  150.0f);
                 ImGui::ColorEdit3 ("Brush Color",    brushColor);
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    colorHistory.push_back({ brushColor[0], brushColor[1], brushColor[2] });
+                }
                 ImGui::SliderFloat("Brush Opacity", &brushOpacity, 0.0f,  1.0f);
 
                 ImGui::Spacing();
@@ -326,16 +346,43 @@ public:
                 ImGui::EndTabItem();
             }
 
-            ImGuiTabItemFlags terrainFlags = (syncToolTab && currentTool == PlanetToolMode::Terrain)
+            ImGuiTabItemFlags colorHistoryFlags = (consumeSync && currentTool == PlanetToolMode::ColorHistory)
+                                            ? ImGuiTabItemFlags_SetSelected : 0;
+            if (ImGui::BeginTabItem("Color History", nullptr, colorHistoryFlags)) {
+                if (!consumeSync) currentTool = PlanetToolMode::ColorHistory;
+
+                ImGui::ColorEdit3("Brush Color", brushColor);
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    colorHistory.push_back({ brushColor[0], brushColor[1], brushColor[2] });
+                }
+                
+                ImGui::SeparatorText("History");
+                for (size_t i = 0; i < colorHistory.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i));
+                    if (ImGui::ColorButton("##ColorHistory",
+                            ImVec4(colorHistory[i][0], colorHistory[i][1], colorHistory[i][2], 1.0f),
+                            ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop,
+                            ImVec2(30, 30))) {
+                        std::memcpy(brushColor, colorHistory[i].data(), sizeof(float) * 3);
+                        currentTool = PlanetToolMode::Paint;
+                        syncToolTab = true;
+                    }
+                    ImGui::PopID();
+                    if ((i + 1) % 8 != 0) {
+                        ImGui::SameLine();
+                    }
+                }
+                ImGui::EndTabItem();
+            }
+
+            ImGuiTabItemFlags terrainFlags = (consumeSync && currentTool == PlanetToolMode::Terrain)
                                             ? ImGuiTabItemFlags_SetSelected : 0;
             if (ImGui::BeginTabItem("Terrain", nullptr, terrainFlags)) {
-                if (!syncToolTab) currentTool = PlanetToolMode::Terrain;
+                if (!consumeSync) currentTool = PlanetToolMode::Terrain;
 
                 ImGui::SliderFloat("Brush Size",     &terrainBrushSize,     10.0f, 800.0f);
                 ImGui::SliderFloat("Strength",       &terrainBrushStrength,  0.1f,  400.0f);
                 ImGui::SliderFloat("Falloff",        &terrainBrushFalloff,   0.5f,   4.0f);
-
-                ImGui::Spacing();
 
                 ImGui::Spacing();
                 if (ImGui::Button("Reset Mesh")) {
@@ -345,7 +392,6 @@ public:
                 ImGui::EndTabItem();
             }
 
-            syncToolTab = false;
             ImGui::EndTabBar();
         }
 
@@ -354,6 +400,15 @@ public:
     }
 
 private:
+    float toLinear(float c) const {
+        auto& r = m_game.GetEngine().getRenderer();
+        if (r.isGammaCorrectionEnabled())
+            c = std::pow(std::max(0.0f, c), r.getGammaCorrection());
+        const float exposure = r.getExposure();
+        if (exposure > 0.0f) c /= exposure;
+        return std::max(0.0f, c);
+    }
+
     void PaintUVGradient() {
         if (!m_paintTexture) return;
         for (int py = 0; py < k_textureSize; ++py) {
@@ -399,12 +454,7 @@ private:
         m_isHoveringPlanet = true;
     }
 
-    void TryPaint() {
-        if (currentTool != PlanetToolMode::Paint) return;
-        if (!m_input.isMouseButtonPressed(MOUSE_LEFT)) return;
-        if (!m_isHoveringPlanet) return;
-        if (!m_paintTexture) return;
-
+    void GetHoverUV(float& outU, float& outV) const {
         const float pi = 3.1415926535f;
         const float radY = planet->transform.rotation.y * (pi / 180.0f);
         const float cosY = std::cos(radY);
@@ -423,21 +473,32 @@ private:
         u += k_uOffset;
         u -= std::floor(u);
 
-        u = std::fmax(0.0f, std::fmin(1.0f, u));
-        v = std::fmax(0.0f, std::fmin(1.0f, v));
+        outU = std::fmax(0.0f, std::fmin(1.0f, u));
+        outV = std::fmax(0.0f, std::fmin(1.0f, v));
+    }
+
+    void TryPaint() {
+        if (currentTool != PlanetToolMode::Paint) return;
+        if (!m_input.isMouseButtonPressed(MOUSE_LEFT)) return;
+        if (!m_isHoveringPlanet) return;
+        if (!m_paintTexture) return;
+
+        float u, v;
+        GetHoverUV(u, v);
 
         const float uvRadius = brushSize * k_brushUVScale;
         m_paintTexture->paint(
             u, v, uvRadius,
-            Vec4(brushColor[0], brushColor[1], brushColor[2], brushOpacity)
+            Vec4(toLinear(brushColor[0]), toLinear(brushColor[1]), toLinear(brushColor[2]), brushOpacity)
         );
     }
 
     void DrawBrushIndicator() {
         const bool isPaint   = currentTool == PlanetToolMode::Paint;
         const bool isTerrain = currentTool == PlanetToolMode::Terrain;
-        if (!m_isHoveringPlanet || ImGui::GetIO().WantCaptureMouse) return;
+        if (ImGui::GetIO().WantCaptureMouse) return;
         if (!isPaint && !isTerrain) return;
+        if ((isPaint || isTerrain) && !m_isHoveringPlanet) return;
 
         ImGui::SetMouseCursor(ImGuiMouseCursor_None);
 
