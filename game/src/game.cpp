@@ -225,14 +225,14 @@ void UI::drawSettingsWindow() {
 
     ImGui::SeparatorText("Graphics");
         
-    if (ImGui::Checkbox("Fullscreen", &settings.isFullscreen)) {
+    if (checkbox("Fullscreen", &settings.isFullscreen)) {
         m_engine.getWindow().setFullscreen(settings.isFullscreen);
         settingsChanged = true;
     }
 
     ImGui::SameLine(150.0f);
 
-    if (ImGui::Checkbox("VSync", &settings.vsyncEnabled)) {
+    if (checkbox("VSync", &settings.vsyncEnabled)) {
         m_engine.getWindow().enableVSync(settings.vsyncEnabled);
         settingsChanged = true;
     }
@@ -243,6 +243,15 @@ void UI::drawSettingsWindow() {
             settings.targetFPS = -1;
         }
         m_engine.setTargetFps(settings.targetFPS);
+        settingsChanged = true;
+    }
+
+    ImGui::SeparatorText("Gameplay");
+    if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.1f, 25.0f, "Mouse Sensitivity: %.2f")) {
+        settingsChanged = true;
+    }
+
+    if (ImGui::SliderFloat("##HeadBobIntensity", &settings.headbobIntensity, 0.0f, 1.0f, "Head Bob Intensity: %.2f")) {
         settingsChanged = true;
     }
 

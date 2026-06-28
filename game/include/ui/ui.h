@@ -52,6 +52,30 @@ public:
         return clicked;
     }
 
+    bool checkbox(const char* label, bool* v) {
+        const bool clicked = ImGui::Checkbox(label, v);
+        updateButtonSfx(ImGui::GetID(label));
+        return clicked;
+    }
+
+    bool beginTabItem(const char* label, bool* p_open = nullptr, ImGuiTabItemFlags flags = 0) {
+        const bool opened = ImGui::BeginTabItem(label, p_open, flags);
+        updateButtonSfx(ImGui::GetID(label));
+        return opened;
+    }
+
+    bool beginMenu(const char* label, bool enabled = true) {
+        const bool opened = ImGui::BeginMenu(label, enabled);
+        updateButtonSfx(ImGui::GetID(label));
+        return opened;
+    }
+
+    bool menuItem(const char* label, const char* shortcut = nullptr, bool selected = false, bool enabled = true) {
+        const bool clicked = ImGui::MenuItem(label, shortcut, selected, enabled);
+        updateButtonSfx(ImGui::GetID(label));
+        return clicked;
+    }
+
     void setButtonHoverSound(const std::string& path) { m_hoverSoundPath = path; }
     void setButtonPressSound(const std::string& path) { m_pressSoundPath = path; }
 
