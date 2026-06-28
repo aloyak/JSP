@@ -86,4 +86,14 @@ public:
     void SetMaxRadius(float maxRadius) { m_maxRadius = maxRadius; }
 
     float& GetRadius() { return m_radius; }
+
+    Vec3 GetComputedPosition() const {
+        if (!m_target) return Vec3(0.0f);
+
+        Vec3 targetPos = m_target->transform.position;
+        return Vec3(
+            targetPos.x + m_radius * cosf(m_pitch) * cosf(m_yaw),
+            targetPos.y + m_radius * sinf(m_pitch),
+            targetPos.z + m_radius * cosf(m_pitch) * sinf(m_yaw));
+    }
 };

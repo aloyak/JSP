@@ -22,6 +22,8 @@ struct GameSettings {
     bool isFullscreen = true;
     bool vsyncEnabled = false;
     int targetFPS = 240;
+    float mouseSens = 1.0f;
+    float headbobIntensity = 0.2f;
     float masterVolume = 1.0f;
     float musicVolume = 1.0f;
     float sfxVolume = 1.0f;
@@ -34,6 +36,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
     isFullscreen, 
     vsyncEnabled, 
     targetFPS, 
+    mouseSens,
+    headbobIntensity,
     masterVolume, 
     musicVolume, 
     sfxVolume
