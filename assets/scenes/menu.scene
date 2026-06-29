@@ -57,7 +57,7 @@
                     "normal": "",
                     "shininess": 1.0,
                     "specular": "",
-                    "specularStrength": 0.019999999552965164,
+                    "specularStrength": 0.0,
                     "type": "RenderComponent",
                     "uvScale": [
                         1.0,
@@ -119,6 +119,16 @@
         {
             "components": [
                 {
+                    "color": [
+                        1.0,
+                        0.8767300844192505,
+                        0.5343137383460999
+                    ],
+                    "intensity": 7.5,
+                    "radius": 50000.0,
+                    "type": "PointLightComponent"
+                },
+                {
                     "ambientStrength": 1.2999999523162842,
                     "baseColor": [
                         1.0,
@@ -139,16 +149,6 @@
                         1.0
                     ],
                     "vert": "assets/shaders/builtin/vert.glsl"
-                },
-                {
-                    "color": [
-                        1.0,
-                        0.8767300844192505,
-                        0.5343137383460999
-                    ],
-                    "intensity": 7.5,
-                    "radius": 50000.0,
-                    "type": "PointLightComponent"
                 }
             ],
             "name": "Sun",

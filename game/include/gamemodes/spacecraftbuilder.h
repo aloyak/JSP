@@ -41,12 +41,16 @@ private:
     Vec3 m_transitionFromRot{0.0f};
     Vec3 m_transitionToRot{0.0f};
 
-    Vec3 m_firstPersonStartPos{0.0f, 2.0f, 0.0f};
+    Vec3 m_firstPersonStartPos{0.0f, 3.0f, 0.0f};
 
     float m_orbitFov = 55.0f;
     float m_transitionFromFov = m_orbitFov;
     float m_transitionToFov = m_orbitFov;
 
+    // fpv
+    bool m_isSprinting = false;
+    float m_sprintMultiplier = 1.5f;
+    float m_baseMoveSpeed = 3.5f; // used as buffer, set to the value in firstperson.h
 public:
     SpacecraftBuilderMode(Game& game)
         : GameMode("assets/scenes/builder_wip.scene")
@@ -56,10 +60,12 @@ public:
         m_game.timeScale = 1.0f;
 
         m_camera = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Camera");
-        m_camera->addComponent<CameraComponent>(m_orbitFov, 1600.0f / 900.0f, 0.1f, 30000.0f);
+        m_camera->addComponent<CameraComponent>(m_orbitFov, 1600.0f / 900.0f, 0.1f, 1000.0f);
         m_game.GetEngine().setActiveCamera(m_camera);
+
+        m_game.GetEngine().getRenderer().setMinimumAmbientLight(0.2f);
         
-        float distance = 10.0f;
+        float distance = 20.0f;
         float offset = distance / std::sqrt(3.0f);
         
         m_camera->transform.position = Vec3(offset, offset, offset);
@@ -69,16 +75,18 @@ public:
         m_camera->transform.rotation = orientation;
 
         m_target = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Target");
+        m_target->transform.position = Vec3(0.0f, 5.0f, 0.0f);
 
         m_skybox = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Skybox").get();
         
         m_orbitCamera = new OrbitCamera(m_camera);
         m_orbitCamera->SetTarget(m_target, distance);
         m_orbitCamera->SyncFromCurrentPosition();
-        m_orbitCamera->SetMaxRadius(35.0f);
+        m_orbitCamera->SetMaxRadius(25.0f);
         m_orbitCamera->ApplyPosition();
 
         m_firstPersonCamera = new FirstPersonCamera(m_camera);
+        m_baseMoveSpeed = m_firstPersonCamera->getMoveSpeed();
     }
 
     void OnExit() override {
@@ -149,17 +157,24 @@ public:
             auto& settings = m_game.settingsManager.Get();
             m_firstPersonCamera->setSensitivity(settings.mouseSens);
             m_firstPersonCamera->setHeadBobAmplitude(settings.headbobIntensity);
+
+            if (m_input.isKeyDown(KEY_LSHIFT)) {
+                m_isSprinting = true;
+                m_firstPersonCamera->setMoveSpeed(m_baseMoveSpeed * m_sprintMultiplier);
+            } else {
+                m_isSprinting = false;
+                m_firstPersonCamera->setMoveSpeed(m_baseMoveSpeed);
+            }
+
             m_firstPersonCamera->Update(&m_input, deltaTime, m_game.GetEngine().getTime());
         }
 
         if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += .015f;
         if (m_input.isKeyDown(KEY_LCTRL)) m_target->transform.position.y -= .015f;
-        // clamp y axis to 0, 300
+
         m_target->transform.position.y = std::clamp(m_target->transform.position.y, 0.0f, 60.0f);
 
-        float transitionDepth = 5.0f;
-        float intensity = std::clamp((m_camera->transform.position.y + transitionDepth) / transitionDepth, 0.0f, 1.0f);
-        m_skybox->getComponent<SkyboxComponent>()->setColorTint(Vec3(intensity, intensity, intensity));
+        m_camera->transform.position.y = std::clamp(m_camera->transform.position.y, 2.0f, 300.0f);
     }
 
     void LateUpdate() override {
