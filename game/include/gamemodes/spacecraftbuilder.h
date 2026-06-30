@@ -51,6 +51,8 @@ private:
     bool m_isSprinting = false;
     float m_sprintMultiplier = 1.5f;
     float m_baseMoveSpeed = 3.5f; // used as buffer, set to the value in firstperson.h
+
+    float m_musicDelay = 2.5f;
 public:
     SpacecraftBuilderMode(Game& game)
         : GameMode("assets/scenes/builder_wip.scene")
@@ -90,6 +92,7 @@ public:
     }
 
     void OnExit() override {
+        m_game.GetAudioManager().stopMusic(1.5f);
         delete m_orbitCamera;
         delete m_firstPersonCamera;
     }
@@ -115,6 +118,13 @@ public:
     }
 
     void Update() override {
+        if (m_musicDelay > 0.0f) {
+            m_musicDelay -= m_game.GetEngine().getDeltaTime();
+            if (m_musicDelay <= 0.0f) {
+                m_game.GetAudioManager().playMusic("assets/audio/terminal_pt2.wav", 10.0f, true, -0.5f);
+            }
+        }
+
         float deltaTime = m_game.GetEngine().getDeltaTime();
 
         if (m_isTransitioning) {
@@ -191,6 +201,10 @@ public:
                 if (m_ui.menuItem("New Spacecraft")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game), true, true);
                 if (m_ui.menuItem("Save Spacecraft")) {}
                 if (m_ui.menuItem("Load Spacecraft")) {}
+                ImGui::EndMenu();
+            }
+            if (m_ui.beginMenu("View")) {
+                
                 ImGui::EndMenu();
             }
             bool wasTransitioning = m_isTransitioning;

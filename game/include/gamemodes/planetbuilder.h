@@ -32,6 +32,7 @@ private:
     Game& m_game;
     Input& m_input = m_game.GetEngine().getInput();
     UI& m_ui = m_game.GetUI();
+    AudioManager& m_audio = m_game.GetAudioManager();
 
     Selector m_selector = Selector(m_game, "user/planets", ".planet");
 
@@ -76,6 +77,11 @@ private:
     bool m_rightButtonWasDown   = false;
     bool m_rightClickIsOrbiting = false;
 
+    AudioManager::SoundHandle m_brushSoundHandle = 0;
+    bool m_isActivelyEditing = false;
+    bool m_brushSoundEnabled = false;
+
+    float m_musicDelay = 2.5f;
 public:
     PlanetBuilderMode(Game& game)
         : GameMode("assets/scenes/space.scene")
@@ -116,11 +122,20 @@ public:
     }
 
     void OnExit() override {
+        StopBrushSound();
+        m_game.GetAudioManager().stopMusic(1.5f);
         m_paintTexture.reset();
         delete m_orbitCamera;
     }
 
     void Update() override {
+        if (m_musicDelay > 0.0f) {
+            m_musicDelay -= m_game.GetEngine().getDeltaTime();
+            if (m_musicDelay <= 0.0f) {
+                m_game.GetAudioManager().playMusic("assets/audio/anotherkindofworld.wav", 10.0f, true, -0.6f);
+            }
+        }
+
         const bool rightButtonDown = m_input.isMouseButtonPressed(MOUSE_RIGHT);
 
         if (rightButtonDown && !m_rightButtonWasDown) {
@@ -147,8 +162,10 @@ public:
         if (m_input.isKeyPressed(KEY_3)) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
 
         UpdateMouseIntersection();
+        m_isActivelyEditing = false;
         TryPaint();
         TryTerrain();
+        if (!m_isActivelyEditing) StopBrushSound();
     }
 
     void LateUpdate() override {
@@ -363,6 +380,9 @@ public:
                     }
                 }
 
+                ImGui::SameLine();
+                if (m_ui.checkbox("Brush Sound", &m_brushSoundEnabled)) {}
+
                 ImGui::EndTabItem();
             }
 
@@ -497,11 +517,25 @@ private:
         outV = std::fmax(0.0f, std::fmin(1.0f, v));
     }
 
+    void StartBrushSound() {
+        m_isActivelyEditing = true;
+        if (m_brushSoundHandle != 0 && m_audio.isSoundPlaying(m_brushSoundHandle)) return;
+        if (m_brushSoundEnabled) m_brushSoundHandle = m_audio.playSound("assets/audio/paint.wav", SFX, true, -0.35f);
+    }
+
+    void StopBrushSound() {
+        if (m_brushSoundHandle == 0) return;
+        m_audio.stopSound(m_brushSoundHandle, 0.1f);
+        m_brushSoundHandle = 0;
+    }
+
     void TryPaint() {
         if (currentTool != PlanetToolMode::Paint) return;
         if (!m_input.isMouseButtonPressed(MOUSE_LEFT)) return;
         if (!m_isHoveringPlanet) return;
         if (!m_paintTexture) return;
+
+        StartBrushSound();
 
         float u, v;
         GetHoverUV(u, v);

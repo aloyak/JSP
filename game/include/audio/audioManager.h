@@ -30,19 +30,19 @@ public:
         pruneFinishedHandles();
     }
 
-    SoundHandle playSound(const std::string& soundPath, AudioContext context = Master, bool loop = false) {
+    SoundHandle playSound(const std::string& soundPath, AudioContext context = Master, bool loop = false, float volumeOffset = 0.0f) {
         if (!m_audioSystem) {
             return 0;
         }
 
-        const SoundHandle handle = m_audioSystem->playSound(soundPath, getVolume(context), loop);
+        const SoundHandle handle = m_audioSystem->playSound(soundPath, getVolume(context) + volumeOffset, loop);
         if (handle != 0 && context != Master) {
             trackHandle(handle, context);
         }
         return handle;
     }
 
-    SoundHandle playMusic(const std::string& soundPath, bool loop = true, float fadeInDuration = 0.0f) {
+    SoundHandle playMusic(const std::string& soundPath, bool loop = true, float fadeInDuration = 0.0f, float volumeOffset = 0.0f) {
         if (!m_audioSystem) {
             return 0;
         }
@@ -52,7 +52,7 @@ public:
             m_currentMusicHandle = 0;
         }
 
-        const float targetVolume = getVolume(Music);
+        const float targetVolume = getVolume(Music) + volumeOffset;
         const float startVolume = fadeInDuration > 0.0f ? 0.0f : targetVolume;
 
         m_currentMusicHandle = m_audioSystem->playSound(soundPath, startVolume, loop);
@@ -63,6 +63,24 @@ public:
         }
 
         return m_currentMusicHandle;
+    }
+
+    void stopSound(SoundHandle handle, float fadeOutDuration = 0.0f) {
+        if (!m_audioSystem || handle == 0) {
+            return;
+        }
+
+        if (fadeOutDuration > 0.0f) {
+            m_audioSystem->fadeOutAndStop(handle, fadeOutDuration);
+        } else {
+            m_audioSystem->stopSound(handle);
+        }
+
+        m_sfxHandles.erase(handle);
+    }
+
+    bool isSoundPlaying(SoundHandle handle) const {
+        return handle != 0 && m_audioSystem && m_audioSystem->isHandleValid(handle);
     }
 
     void stopMusic(float fadeOutDuration = 0.0f) {

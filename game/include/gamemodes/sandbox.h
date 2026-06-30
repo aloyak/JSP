@@ -131,10 +131,11 @@ private:
     bool  m_followingPlanet = false;   // camera tracks selectedEntity during simulation
 
     PlanetRegistry m_registry;
+    Entity* m_centralBody = nullptr;
 
     bool showPlanetsWindow = false;
 
-    Entity* m_centralBody = nullptr;
+    float m_musicDelay = 2.5f;
 public:
     SandboxMode(Game& game)
         : GameMode("assets/scenes/menu.scene")
@@ -163,7 +164,7 @@ public:
             sunComp->setHasAtmosphere(true);
             sunComp->getAtmosphere().thickness = 550.0f;
             sunComp->getAtmosphere().edgeFalloff = 1200.0f;
-            sunComp->getAtmosphere().rayleighCoeff = Vec3(0.003f, 0.001f, 0.0f);
+            sunComp->getAtmosphere().rayleighCoeff = Vec3(0.003f, 0.0012f, 0.0002f);
             planetList.push_back(m_centralBody);
         }
 
@@ -182,6 +183,7 @@ public:
     }
 
     void OnExit() override {
+        m_game.GetAudioManager().stopMusic(1.5f);
         delete m_orbitCamera;
     }
 
@@ -892,6 +894,13 @@ public:
     }
 
     void Update() override {
+        if (m_musicDelay > 0.0f) {
+            m_musicDelay -= m_game.GetEngine().getDeltaTime();
+            if (m_musicDelay <= 0.0f) {
+                m_game.GetAudioManager().playMusic("assets/audio/anotherkindofworld.wav", 10.0f, true, -0.6f);
+            }
+        }
+
         float dt = m_game.GetEngine().getDeltaTime();
 
         if (drawGrid && movingEnabled) {

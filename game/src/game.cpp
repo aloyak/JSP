@@ -247,7 +247,7 @@ void UI::drawSettingsWindow() {
     }
 
     ImGui::SeparatorText("Gameplay");
-    if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.1f, 25.0f, "Mouse Sensitivity: %.2f")) {
+    if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.1f, 100.0f, "Mouse Sensitivity: %.2f")) {
         settingsChanged = true;
     }
 
