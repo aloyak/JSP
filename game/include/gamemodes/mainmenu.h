@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.8.0"
+#define VERSION "0.8.3"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -32,7 +32,7 @@ private:
 
     double m_simulatedTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    Texture logo = Texture("assets/logo.png");
+    Texture logo = Texture("assets/logo_pixelized.png");
     Texture splashLogo = Texture("assets/originlogo.png");
     float m_splashTime = 0.0f;
     float m_splashDuration = 5.0f;
@@ -184,6 +184,9 @@ public:
         
         ImGui::Text("Before you begin, please note this is an early build.");
         ImGui::Text("Take a moment to check the availiable options in each game mode.");
+        ImGui::Text("You can also adjust the settings in the main menu.");
+        ImGui::Text("Many features or assets are still placeholders or incomplete.");
+        ImGui::Text("For any feedback, which is wanted, please reach out!");
         
         ImGui::Spacing();
 

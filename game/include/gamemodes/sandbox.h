@@ -8,7 +8,7 @@
 #include "engine/utils/logger.h"
 
 #include "components/PlanetComponent.h"
-#include "planetRegistry.h"
+#include "registries/planetRegistry.h"
 #include "ui/selector.h"
 #include "engine/utils/path.h"
 #include <nlohmann/json.hpp>
@@ -134,8 +134,6 @@ private:
     Entity* m_centralBody = nullptr;
 
     bool showPlanetsWindow = false;
-
-    float m_musicDelay = 2.5f;
 public:
     SandboxMode(Game& game)
         : GameMode("assets/scenes/menu.scene")
@@ -183,7 +181,6 @@ public:
     }
 
     void OnExit() override {
-        m_game.GetAudioManager().stopMusic(1.5f);
         delete m_orbitCamera;
     }
 
@@ -894,13 +891,6 @@ public:
     }
 
     void Update() override {
-        if (m_musicDelay > 0.0f) {
-            m_musicDelay -= m_game.GetEngine().getDeltaTime();
-            if (m_musicDelay <= 0.0f) {
-                m_game.GetAudioManager().playMusic("assets/audio/anotherkindofworld.wav", 10.0f, true, -0.6f);
-            }
-        }
-
         float dt = m_game.GetEngine().getDeltaTime();
 
         if (drawGrid && movingEnabled) {
@@ -994,6 +984,7 @@ public:
             }
 
             if (m_input.isKeyPressed(KEY_G)) drawGrid = !drawGrid;
+            if (m_input.isKeyPressed(KEY_T)) drawTrails = !drawTrails;
             if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += 10.0f;
             if (m_input.isKeyDown(KEY_LCTRL))  m_target->transform.position.y -= 10.0f;
 

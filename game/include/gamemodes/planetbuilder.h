@@ -80,8 +80,6 @@ private:
     AudioManager::SoundHandle m_brushSoundHandle = 0;
     bool m_isActivelyEditing = false;
     bool m_brushSoundEnabled = false;
-
-    float m_musicDelay = 2.5f;
 public:
     PlanetBuilderMode(Game& game)
         : GameMode("assets/scenes/space.scene")
@@ -123,19 +121,11 @@ public:
 
     void OnExit() override {
         StopBrushSound();
-        m_game.GetAudioManager().stopMusic(1.5f);
         m_paintTexture.reset();
         delete m_orbitCamera;
     }
 
     void Update() override {
-        if (m_musicDelay > 0.0f) {
-            m_musicDelay -= m_game.GetEngine().getDeltaTime();
-            if (m_musicDelay <= 0.0f) {
-                m_game.GetAudioManager().playMusic("assets/audio/anotherkindofworld.wav", 10.0f, true, -0.6f);
-            }
-        }
-
         const bool rightButtonDown = m_input.isMouseButtonPressed(MOUSE_RIGHT);
 
         if (rightButtonDown && !m_rightButtonWasDown) {

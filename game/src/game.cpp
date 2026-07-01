@@ -4,6 +4,8 @@
 
 Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(nullptr), settingsManager("user/settings.json") {
     m_engine->initUI(); 
+    ImGuiIO& io = m_engine->getIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
     m_engine->getRenderer().setupRenderTarget(600, 400);
     m_engine->getRenderer().setPixelArt(true, 16);
