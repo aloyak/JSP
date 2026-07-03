@@ -4,8 +4,14 @@
 
 #include "engine/utils/path.h"
 #include "audio/audioManager.h"
+#include "engine/render/texture.h"
 
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 class Game;
 class MainMenuMode;
@@ -52,6 +58,52 @@ public:
         return clicked;
     }
 
+    bool imageButton(const char* iconName, const ImVec2& size = ImVec2(0, 0), int padding = 50) {
+        const std::string iconPath = "assets/textures/icons/" + std::string(iconName) + ".png";
+
+        auto it = m_iconTextures.find(iconName);
+        if (it == m_iconTextures.end()) {
+            auto texture = std::make_unique<Texture>(iconPath);
+            it = m_iconTextures.emplace(iconName, std::move(texture)).first;
+        }
+
+        Texture* texture = it->second.get();
+        if (!texture || texture->getID() == 0) {
+            return ImGui::Button(iconName, size);
+        }
+
+        const float imagePadding = padding > 0 ? static_cast<float>(padding) : 0.0f;
+        ImVec2 buttonSize = size;
+        if (buttonSize.x == 0.0f) {
+            buttonSize.x = static_cast<float>(texture->getWidth()) + (imagePadding * 2.0f);
+        } else if (buttonSize.x < 0.0f) {
+            buttonSize.x = ImGui::GetContentRegionAvail().x + buttonSize.x;
+            if (buttonSize.x < 0.0f) {
+                buttonSize.x = 0.0f;
+            }
+        }
+
+        if (buttonSize.y == 0.0f) {
+            buttonSize.y = static_cast<float>(texture->getHeight()) + (imagePadding * 2.0f);
+        } else if (buttonSize.y < 0.0f) {
+            buttonSize.y = ImGui::GetContentRegionAvail().y + buttonSize.y;
+            if (buttonSize.y < 0.0f) {
+                buttonSize.y = 0.0f;
+            }
+        }
+
+        const ImVec2 imageSize(
+            buttonSize.x > (imagePadding * 2.0f) ? buttonSize.x - (imagePadding * 2.0f) : 0.0f,
+            buttonSize.y > (imagePadding * 2.0f) ? buttonSize.y - (imagePadding * 2.0f) : 0.0f
+        );
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(imagePadding, imagePadding));
+        const bool clicked = ImGui::ImageButton(iconName, (ImTextureID)(intptr_t)texture->getID(), imageSize);
+        updateButtonSfx(ImGui::GetID(iconName));
+        ImGui::PopStyleVar();
+        return clicked;
+    }
+
     bool checkbox(const char* label, bool* v) {
         const bool clicked = ImGui::Checkbox(label, v);
         updateButtonSfx(ImGui::GetID(label));
@@ -90,6 +142,7 @@ private:
     std::string m_hoverSoundPath = "assets/audio/UI/hover.wav";
     std::string m_pressSoundPath = "assets/audio/UI/press.wav";
 
+    std::unordered_map<std::string, std::unique_ptr<Texture>> m_iconTextures;
     std::unordered_set<ImGuiID> m_hoveredLastFrame;
 
     void updateButtonSfx(ImGuiID id); // defined in game.cpp, needs Game::GetAudioManager
