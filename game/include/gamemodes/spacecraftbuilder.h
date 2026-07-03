@@ -1,20 +1,31 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include "gamemode.h"
+
 #include "moveset/cameraorbit.h"
 #include "moveset/firstperson.h"
+#include "moveset/blueprint.h"
+
+#include "registries/partsRegistry.h"
 
 #include "ui/selector.h"
 
 #include "engine/components/entity.h"
+#include "engine/components/rendererComponent.h"
 #include "engine/components/skyboxComponent.h"
 
 class Game;
 
 enum class MoveMode {
     CameraOrbit,
-    CameraFirstPerson,
+    CameraFirstPerson
+};
+
+enum class OperationMode {
+    Assembly,
+    Blueprint
 };
 
 class SpacecraftBuilderMode : public GameMode {
@@ -43,16 +54,62 @@ private:
 
     Vec3 m_firstPersonStartPos{0.0f, 3.0f, 0.0f};
 
+    bool m_hasSavedFirstPersonPos = false;
+    Vec3 m_savedFirstPersonPos{0.0f};
+    Vec3 m_savedFirstPersonRot{0.0f};
+
     float m_orbitFov = 55.0f;
     float m_transitionFromFov = m_orbitFov;
     float m_transitionToFov = m_orbitFov;
 
-    // fpv
     bool m_isSprinting = false;
     float m_sprintMultiplier = 1.5f;
-    float m_baseMoveSpeed = 3.5f; // used as buffer, set to the value in firstperson.h
+    float m_baseMoveSpeed = 3.5f;
 
     float m_musicDelay = 2.5f;
+
+    bool m_assemblyPanelVisible = true;
+
+    Category m_selectedCategory = Category::Engine;
+    Spaceship m_spaceship;
+
+    std::vector<Part> m_parts = CreateDefaultParts();
+
+    static constexpr Category m_categorys[] = {
+        Category::Information,
+        Category::Customization,
+        Category::Engine,
+        Category::FuelTank,
+        Category::Cockpit,
+        Category::Structural,
+        Category::RocketBooster,
+        Category::Electrical,
+        Category::Utility,
+    };
+
+    // Modular placement / snapping
+    struct PlacedPart {
+        Entity* entity = nullptr;
+        Part* partDef = nullptr;
+        std::vector<bool> usedAttachments; // true = already mated to another part
+    };
+    std::vector<PlacedPart> m_placedParts;
+
+    Entity* m_ghostEntity = nullptr;
+    Part* m_ghostPartDef = nullptr;
+    bool m_ghostSnapped = false;
+    Vec3 m_ghostSnapPosition{0.0f};
+    Vec3 m_ghostSnapRotation{0.0f};
+
+    bool m_prevLeftPressed = false;
+    bool m_prevRightPressed = false;
+
+    static constexpr float k_snapPixelThreshold = 28.0f;
+    static constexpr float k_ghostFloatDistance = 20.0f;
+    static constexpr float k_gizmoArmLength = 0.35f;
+    static constexpr float k_gizmoLineWidth = 2.0f;
+
+    PostProcessor* m_barrier = nullptr;
 public:
     SpacecraftBuilderMode(Game& game)
         : GameMode("assets/scenes/builder_wip.scene")
@@ -89,22 +146,51 @@ public:
 
         m_firstPersonCamera = new FirstPersonCamera(m_camera);
         m_baseMoveSpeed = m_firstPersonCamera->getMoveSpeed();
+
+        m_barrier = &m_game.GetEngine().getRenderer().addPostProcessor(
+            "assets/shaders/default_vert.glsl", "assets/shaders/barrier_frag.glsl"
+        );
     }
 
     void OnExit() override {
+        m_game.GetEngine().getRenderer().removePostProcessor(m_barrier);
         m_game.GetAudioManager().stopMusic(1.5f);
+        CancelGhostPlacement();
         delete m_orbitCamera;
         delete m_firstPersonCamera;
     }
 
+    Vec3 ComputeDefaultFirstPersonPos() const {
+        Vec3 center = m_target->transform.position;
+        return Vec3(center.x, m_firstPersonStartPos.y, center.z + 8.0f);
+    }
+
     void StartTransitionTo(MoveMode mode) {
+        if (mode == MoveMode::CameraFirstPerson) CancelGhostPlacement();
+
         m_transitionFromPos = m_camera->transform.position;
         m_transitionFromRot = m_camera->transform.rotation;
         m_transitionFromFov = m_camera->getComponent<CameraComponent>()->getFOV();
 
+        if (m_moveMode == MoveMode::CameraFirstPerson) {
+            m_savedFirstPersonPos = m_transitionFromPos;
+            m_savedFirstPersonRot = m_transitionFromRot;
+            m_hasSavedFirstPersonPos = true;
+        }
+
         if (mode == MoveMode::CameraFirstPerson) {
-            m_transitionToPos = m_firstPersonStartPos;
-            m_transitionToRot = Vec3(0.0f, m_camera->transform.rotation.y, 0.0f);
+            if (m_hasSavedFirstPersonPos) {
+                m_transitionToPos = m_savedFirstPersonPos;
+                m_transitionToRot = m_savedFirstPersonRot;
+            } else {
+                m_transitionToPos = ComputeDefaultFirstPersonPos();
+
+                Vec3 previousPos = m_camera->transform.position;
+                m_camera->transform.position = m_transitionToPos;
+                m_camera->getComponent<CameraComponent>()->lookAt(*m_target);
+                m_transitionToRot = m_camera->transform.rotation;
+                m_camera->transform.position = previousPos; // restore; the transition will animate to it
+            }
             m_transitionToFov = m_firstPersonCamera->getFov();
         } else {
             m_transitionToPos = m_orbitCamera->GetComputedPosition();
@@ -126,6 +212,20 @@ public:
         }
 
         float deltaTime = m_game.GetEngine().getDeltaTime();
+
+        if (m_barrier) {
+            m_barrier->setVec3("u_cameraPos", m_camera->transform.position);
+            m_barrier->setMat4("u_invView", m_camera->getComponent<CameraComponent>()->getCamera().getInvViewMatrix(m_camera->transform));
+            m_barrier->setMat4("u_invProj", m_camera->getComponent<CameraComponent>()->getCamera().getInvProjMatrix());
+
+            m_barrier->setFloat("u_near", m_camera->getComponent<CameraComponent>()->getNear());
+            m_barrier->setFloat("u_far", m_camera->getComponent<CameraComponent>()->getFar());
+            m_barrier->setFloat("u_time", m_game.GetEngine().getTime());
+
+            m_barrier->setVec3("u_cageCenter", Vec3(0.0f, 0.5f, 0.0f)); // ground level, not old center
+            m_barrier->setFloat("u_cageSize", 10.5f);
+            m_barrier->setFloat("u_barrierHeight", 2.0f);
+        }
 
         if (m_isTransitioning) {
             m_transitionElapsed += deltaTime;
@@ -179,15 +279,333 @@ public:
             m_firstPersonCamera->Update(&m_input, deltaTime, m_game.GetEngine().getTime());
         }
 
-        if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += .015f;
-        if (m_input.isKeyDown(KEY_LCTRL)) m_target->transform.position.y -= .015f;
+        bool targetHeightChanged = false;
+        if (m_input.isKeyDown(KEY_LSHIFT)) {
+            m_target->transform.position.y += 10.0f * deltaTime;
+            targetHeightChanged = true;
+        }
+        if (m_input.isKeyDown(KEY_LCTRL)) {
+            m_target->transform.position.y -= 10.0f * deltaTime;
+            targetHeightChanged = true;
+        }
 
         m_target->transform.position.y = std::clamp(m_target->transform.position.y, 0.0f, 60.0f);
-
         m_camera->transform.position.y = std::clamp(m_camera->transform.position.y, 2.0f, 300.0f);
+
+        if (targetHeightChanged && !m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) {
+            m_orbitCamera->ApplyPosition();
+        }
+
+        if (m_moveMode == MoveMode::CameraFirstPerson) {
+            Vec3& pos = m_camera->transform.position;
+            pos.x = std::clamp(pos.x, -20.0f, 20.0f);
+            pos.z = std::clamp(pos.z, -20.0f, 20.0f);
+        }
+
+        if (!m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) HandlePartPlacement();
+        showAssemblyWindow();
+    }
+
+    Vec3 RotateEuler(const Vec3& v, const Vec3& eulerDegrees) const {
+        const float pi = 3.1415926535f;
+        float rx = eulerDegrees.x * (pi / 180.0f);
+        float ry = eulerDegrees.y * (pi / 180.0f);
+        float rz = eulerDegrees.z * (pi / 180.0f);
+
+        // Yaw (Y)
+        Vec3 p(v.x * std::cos(ry) + v.z * std::sin(ry),
+               v.y,
+               -v.x * std::sin(ry) + v.z * std::cos(ry));
+
+        // Pitch (X)
+        Vec3 q(p.x,
+               p.y * std::cos(rx) - p.z * std::sin(rx),
+               p.y * std::sin(rx) + p.z * std::cos(rx));
+
+        // Roll (Z)
+        Vec3 r(q.x * std::cos(rz) - q.y * std::sin(rz),
+               q.x * std::sin(rz) + q.y * std::cos(rz),
+               q.z);
+
+        return r;
+    }
+
+    float YawToFaceHorizontal(const Vec3& from, const Vec3& to, float fallbackYawDegrees) const {
+        float fx = from.x, fz = from.z;
+        float tx = to.x, tz = to.z;
+
+        if ((fx * fx + fz * fz) < 1e-6f || (tx * tx + tz * tz) < 1e-6f) {
+            return fallbackYawDegrees;
+        }
+
+        float angleFrom = std::atan2(fz, fx);
+        float angleTo = std::atan2(tz, tx);
+        float theta = angleFrom - angleTo;
+
+        return theta * (180.0f / 3.1415926535f);
+    }
+
+    void StartGhostPlacement(Part& part) {
+        CancelGhostPlacement();
+
+        if (m_placedParts.empty()) {
+            PlacePartInstant(part, Vec3(0.0f, 10.0f, 0.0f), Vec3(0.0f));
+            return;
+        }
+
+        m_ghostPartDef = &part;
+        m_ghostEntity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity(part.name);
+        m_ghostEntity->addComponent<RenderComponent>(part.modelPath);
+        m_ghostSnapped = false;
+    }
+
+    void PlacePartInstant(Part& part, Vec3 position, Vec3 rotation) {
+        Entity* entity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity(part.name);
+        entity->addComponent<RenderComponent>(part.modelPath);
+        entity->transform.position = position;
+        entity->transform.rotation = rotation;
+
+        m_placedParts.push_back({entity, &part, std::vector<bool>(part.attachmentPoints.size(), false)});
+        m_spaceship.parts.push_back(part);
+
+        m_spaceship.mass += part.mass;
+        m_spaceship.thrust += part.thrust;
+        m_spaceship.fuelCapacity += part.fuelCapacity;
+    }
+
+    // TODO: move this to engine or a utility class, since it's useful in general
+    bool WorldToScreen(const Vec3& worldPos, ImVec2& outScreen) const {
+        Vec2 winSize  = m_game.GetEngine().getWindow().getSize();
+        auto* camComp = m_camera->getComponent<CameraComponent>();
+        if (!camComp) return false;
+        Mat4 proj; camComp->getCamera().getProjectionMatrix(proj);
+
+        Vec3 toPoint  = worldPos - m_camera->transform.position;
+        Vec3 lookDir  = (m_target->transform.position - m_camera->transform.position).normalize();
+        Vec3 worldUp(0.0f, 1.0f, 0.0f);
+        Vec3 rightDir = cross(lookDir, worldUp).normalize();
+        Vec3 upDir    = cross(rightDir, lookDir).normalize();
+
+        float depth = dot(toPoint, lookDir);
+        if (depth <= 0.0f) return false;
+
+        float projX = dot(toPoint, rightDir) / depth * proj[0][0];
+        float projY = dot(toPoint, upDir)    / depth * proj[1][1];
+
+        outScreen.x = (projX + 1.0f) * 0.5f * winSize.x;
+        outScreen.y = (1.0f - projY) * 0.5f * winSize.y;
+        return true;
+    }
+
+    void DrawAttachmentPointGizmos() {
+        if (!m_ghostEntity || !m_ghostPartDef) return;
+
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+
+        for (auto& placed : m_placedParts) {
+            if (!placed.entity || !placed.partDef) continue;
+
+            for (size_t idx = 0; idx < placed.partDef->attachmentPoints.size(); ++idx) {
+                if (idx < placed.usedAttachments.size() && placed.usedAttachments[idx]) continue; // already mated
+
+                auto& attach = placed.partDef->attachmentPoints[idx];
+                Vec3 worldPos = placed.entity->transform.position +
+                    RotateEuler(attach.position, placed.entity->transform.rotation);
+
+                ImVec2 screenPos;
+                if (!WorldToScreen(worldPos, screenPos)) continue;
+
+                bool allowed = !m_ghostPartDef || attach.AllowsCategory(m_ghostPartDef->category);
+                ImU32 fillColor = allowed ? IM_COL32(100, 255, 200, 230) : IM_COL32(255, 90, 90, 200);
+                ImU32 ringColor = allowed ? IM_COL32(100, 255, 200, 120) : IM_COL32(255, 90, 90, 100);
+
+                dl->AddCircleFilled(screenPos, 5.0f, fillColor);
+                dl->AddCircle(screenPos, 7.0f, ringColor, 16, 1.0f);
+            }
+        }
+    }
+
+    bool FindSnapPoint(const Ray& ray, Vec3& outPos, Vec3& outRot,
+                        PlacedPart*& outTargetPart, int& outTargetIdx, int& outGhostIdx) {
+        auto* camComp = m_camera->getComponent<CameraComponent>();
+        if (!camComp) return false;
+
+        Vec2 winSize = m_game.GetEngine().getWindow().getSize();
+        const Mat4& proj = *reinterpret_cast<const Mat4*>(camComp->getCamera().getProjectionMatrix());
+
+        float bestScore = 1e9f;
+        bool found = false;
+        Vec3 bestPos{0.0f};
+        Vec3 bestRot{0.0f};
+        PlacedPart* bestTargetPart = nullptr;
+        int bestTargetIdx = -1;
+        int bestGhostIdx = -1;
+
+        for (auto& placed : m_placedParts) {
+            if (!placed.entity || !placed.partDef) continue;
+
+            for (size_t idx = 0; idx < placed.partDef->attachmentPoints.size(); ++idx) {
+                if (idx < placed.usedAttachments.size() && placed.usedAttachments[idx]) continue; // already mated
+
+                auto& attach = placed.partDef->attachmentPoints[idx];
+                if (m_ghostPartDef && !attach.AllowsCategory(m_ghostPartDef->category)) continue;
+
+                Vec3 worldPos = placed.entity->transform.position +
+                    RotateEuler(attach.position, placed.entity->transform.rotation);
+                Vec3 worldNormal = RotateEuler(attach.normal, placed.entity->transform.rotation).normalize();
+
+                Vec3 toPoint = worldPos - ray.origin;
+                float t = dot(toPoint, ray.direction);
+                if (t < 0.0f) continue;
+
+                float worldDist = (ray.origin + ray.direction * t - worldPos).length();
+                float distToCam = toPoint.length();
+
+                float ndcRadius = (1.0f / std::max(distToCam, 0.01f)) * proj[0][0];
+                float pixelRadius = std::max(ndcRadius * winSize.x * 0.5f, k_snapPixelThreshold);
+                float pickThreshold = (pixelRadius / (winSize.x * 0.5f)) * distToCam / proj[0][0];
+
+                if (worldDist < pickThreshold && t < bestScore) {
+                    Vec3 snapRotation = placed.entity->transform.rotation; // fallback: ghost has no attachment points at all
+                    Vec3 snapPosition = worldPos;
+                    int matedGhostIdx = -1;
+
+                    if (m_ghostPartDef && !m_ghostPartDef->attachmentPoints.empty()) {
+                        Vec3 desiredDir = worldNormal * -1.0f;
+
+                        float bestDot = -1e9f;
+                        for (size_t g = 0; g < m_ghostPartDef->attachmentPoints.size(); ++g) {
+                            auto& ghostAttach = m_ghostPartDef->attachmentPoints[g];
+                            if (!ghostAttach.AllowsCategory(placed.partDef->category)) continue;
+
+                            float d = dot(ghostAttach.normal, desiredDir);
+                            if (d > bestDot) { bestDot = d; matedGhostIdx = static_cast<int>(g); }
+                        }
+
+                        if (matedGhostIdx < 0) continue;
+
+                        auto& ghostAttach = m_ghostPartDef->attachmentPoints[matedGhostIdx];
+
+                        float yaw = YawToFaceHorizontal(
+                            ghostAttach.normal, desiredDir, placed.entity->transform.rotation.y);
+                        snapRotation = Vec3(0.0f, yaw, 0.0f);
+
+                        Vec3 ghostOffset = RotateEuler(ghostAttach.position, snapRotation);
+                        snapPosition = worldPos - ghostOffset;
+                    }
+
+                    bestScore = t;
+                    found = true;
+                    bestPos = snapPosition;
+                    bestRot = snapRotation;
+                    bestTargetPart = &placed;
+                    bestTargetIdx = static_cast<int>(idx);
+                    bestGhostIdx = matedGhostIdx;
+                }
+            }
+        }
+
+        if (found) {
+            outPos = bestPos;
+            outRot = bestRot;
+            outTargetPart = bestTargetPart;
+            outTargetIdx = bestTargetIdx;
+            outGhostIdx = bestGhostIdx;
+        }
+        return found;
+    }
+
+    void ConfirmGhostPlacement(PlacedPart* targetPart, int targetAttachIdx, int ghostAttachIdx) {
+        if (!m_ghostEntity || !m_ghostPartDef || !m_ghostSnapped) return;
+
+        m_ghostEntity->transform.position = m_ghostSnapPosition;
+        m_ghostEntity->transform.rotation = m_ghostSnapRotation;
+
+        auto* rc = m_ghostEntity->getComponent<RenderComponent>();
+        if (rc) rc->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));
+
+        if (targetPart && targetAttachIdx >= 0 &&
+            targetAttachIdx < static_cast<int>(targetPart->usedAttachments.size())) {
+            targetPart->usedAttachments[targetAttachIdx] = true;
+        }
+
+        std::vector<bool> ghostUsed(m_ghostPartDef->attachmentPoints.size(), false);
+        if (ghostAttachIdx >= 0 && ghostAttachIdx < static_cast<int>(ghostUsed.size())) {
+            ghostUsed[ghostAttachIdx] = true;
+        }
+
+        m_placedParts.push_back({m_ghostEntity, m_ghostPartDef, ghostUsed});
+        m_spaceship.parts.push_back(*m_ghostPartDef);
+
+        m_spaceship.mass += m_ghostPartDef->mass;
+        m_spaceship.thrust += m_ghostPartDef->thrust;
+        m_spaceship.fuelCapacity += m_ghostPartDef->fuelCapacity;
+
+        m_ghostEntity = nullptr;
+        m_ghostPartDef = nullptr;
+        m_ghostSnapped = false;
+    }
+
+    void CancelGhostPlacement() {
+        if (m_ghostEntity) {
+            m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(m_ghostEntity);
+            m_ghostEntity = nullptr;
+        }
+        m_ghostPartDef = nullptr;
+        m_ghostSnapped = false;
+    }
+
+    void HandlePartPlacement() {
+        bool leftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
+        bool rightPressed = m_input.isMouseButtonPressed(MOUSE_RIGHT);
+        bool leftJustPressed = leftPressed && !m_prevLeftPressed;
+        bool rightJustPressed = rightPressed && !m_prevRightPressed;
+        m_prevLeftPressed = leftPressed;
+        m_prevRightPressed = rightPressed;
+
+        if (!m_ghostEntity || !m_ghostPartDef) return;
+
+        auto* camComp = m_camera->getComponent<CameraComponent>();
+        if (!camComp) return;
+
+        Vec2 mousePos = m_input.getMousePos();
+        Ray ray = m_game.GetEngine().getRenderer().pickRay(
+            mousePos.x, mousePos.y, camComp->getCamera(), m_camera->transform);
+
+        Vec3 snapPos{0.0f};
+        Vec3 snapRot{0.0f};
+        PlacedPart* targetPart = nullptr;
+        int targetIdx = -1;
+        int ghostIdx = -1;
+        bool found = FindSnapPoint(ray, snapPos, snapRot, targetPart, targetIdx, ghostIdx);
+
+        m_ghostSnapped = found;
+        if (found) {
+            m_ghostSnapPosition = snapPos;
+            m_ghostSnapRotation = snapRot;
+            m_ghostEntity->transform.position = snapPos;
+            m_ghostEntity->transform.rotation = snapRot;
+        } else {
+            m_ghostEntity->transform.position = ray.origin + ray.direction * k_ghostFloatDistance;
+        }
+
+        float pulse = std::sin(m_game.GetEngine().getTime() * 5.0f) * 0.25f + 0.5f;
+        auto* rc = m_ghostEntity->getComponent<RenderComponent>();
+        if (rc) {
+            rc->setBaseColor(found ? Vec3(0.5f, 1.0f, 0.5f) * pulse : Vec3(1.0f, 0.6f, 0.3f) * pulse);
+        }
+
+        if (ImGui::GetIO().WantCaptureMouse) return;
+
+        if (leftJustPressed && found) { ConfirmGhostPlacement(targetPart, targetIdx, ghostIdx); return; }
+        if (rightJustPressed)         { CancelGhostPlacement();  return; }
     }
 
     void LateUpdate() override {
+        if (!m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) {
+            DrawAttachmentPointGizmos();
+        }
+
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         if (ImGui::BeginMainMenuBar()) {
@@ -203,20 +621,217 @@ public:
                 if (m_ui.menuItem("Load Spacecraft")) {}
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("View")) {
-                
+            if (m_ui.beginMenu("Operation Mode")) {
+                if (m_ui.menuItem("Assembly View")) {}
+                if (m_ui.menuItem("Blueprint View")) {}
                 ImGui::EndMenu();
             }
             bool wasTransitioning = m_isTransitioning;
             if (wasTransitioning) ImGui::BeginDisabled();
-            if (m_moveMode == MoveMode::CameraOrbit) {
-                if (m_ui.menuItem("First Person View")) StartTransitionTo(MoveMode::CameraFirstPerson);
-            } else if (m_moveMode == MoveMode::CameraFirstPerson) {
-                if (m_ui.menuItem("Orbit Camera View")) StartTransitionTo(MoveMode::CameraOrbit);
+            if (m_ui.beginMenu("Movement Mode")) {
+                if (m_ui.menuItem("Orbit Camera View", "1")) StartTransitionTo(MoveMode::CameraOrbit);
+                if (m_ui.menuItem("First Person View", "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
+                ImGui::EndMenu();
             }
             if (wasTransitioning) ImGui::EndDisabled();
         }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleColor(2);
+
+        // shortcuts
+        if (!m_isTransitioning && m_input.isKeyPressed(KEY_1)) StartTransitionTo(MoveMode::CameraOrbit);
+        if (!m_isTransitioning && m_input.isKeyPressed(KEY_2)) StartTransitionTo(MoveMode::CameraFirstPerson);
+    }
+
+    void showAssemblyWindow() {
+        if (m_moveMode == MoveMode::CameraFirstPerson || m_isTransitioning) return;
+
+        ImGuiIO& io = ImGui::GetIO();
+        float screenW = io.DisplaySize.x;
+        float screenH = io.DisplaySize.y;
+
+        float panelHeight = screenH * 0.5f;
+        float panelWidth = std::max(300.0f, screenW * 0.2f);
+        float panelY = (screenH - panelHeight) * 0.5f;
+        float panelX = screenW - panelWidth;
+
+        const float buttonWidth = 48.0f;
+        const float buttonHeight = 64.0f;
+        float buttonY = panelY + (panelHeight - buttonHeight) * 0.5f;
+        float buttonX = m_assemblyPanelVisible ? (panelX - buttonWidth) : (screenW - buttonWidth);
+
+        ImGui::SetNextWindowPos(ImVec2(buttonX, buttonY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(buttonWidth, buttonHeight), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::Begin("##AssemblyToggleButton", nullptr,
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoBringToFrontOnFocus);
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 10.0f);
+        m_ui.setFont(1); 
+        if (m_ui.button(m_assemblyPanelVisible ? ">" : "<", ImVec2(buttonWidth, buttonHeight))) {
+            m_assemblyPanelVisible = !m_assemblyPanelVisible;
+        }
+        m_ui.resetFont();
+
+        ImGui::End();
+        ImGui::PopStyleColor();
+
+        if (!m_assemblyPanelVisible) return;
+
+        ImGui::SetNextWindowPos(ImVec2(panelX, panelY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(panelWidth, panelHeight), ImGuiCond_Always);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(panelWidth, panelHeight), ImVec2(panelWidth, panelHeight));
+
+        ImGui::Begin("Assembly", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+
+        const float categoryBarWidth = 56.0f;
+        const float categoryButtonSize = 48.0f;
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+
+        float contentHeight = ImGui::GetContentRegionAvail().y;
+        float partsListWidth = ImGui::GetContentRegionAvail().x - categoryBarWidth - spacing;
+
+        ImGui::BeginChild("##PartsList", ImVec2(partsListWidth, contentHeight), false);
+        {
+            if (m_selectedCategory == Category::Information) {
+                drawInformation();
+            } else if (m_selectedCategory == Category::Customization) {
+                drawCustomization();
+            } else {
+                const float cellWidth = ImGui::GetContentRegionAvail().x * 0.5f;
+                const float cellHeight = 96.0f;
+                const float textPadding = 8.0f;
+
+                std::vector<Part*> visibleParts;
+                for (auto& part : m_parts) {
+                    if (part.category == m_selectedCategory) visibleParts.push_back(&part);
+                }
+
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+                auto drawCell = [&](Part* part, int idInRow) {
+                    ImVec2 cellSize(cellWidth - spacing, cellHeight);
+                    ImVec2 cellStartScreen = ImGui::GetCursorScreenPos();
+
+                    ImGui::PushID(idInRow);
+                    if (m_ui.button((std::string("##PartCell_") + part->name).c_str(), cellSize)) {
+                        StartGhostPlacement(*part);
+                    }
+                    ImGui::PopID();
+
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 20.0f);
+                        ImGui::TextUnformatted(part->name.c_str());
+                        ImGui::Separator();
+                        ImGui::TextUnformatted(part->description.c_str());
+
+                        if (part->mass > 0.0f) ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.6f, 1.0f), "+%.2f kg mass", part->mass);
+                        if (part->thrust > 0.0f) ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "+%.2f N thrust", part->thrust);
+                        if (part->fuelCapacity > 0.0f) ImGui::TextColored(ImVec4(0.6f, 0.6f, 1.0f, 1.0f), "+%.2f L fuel", part->fuelCapacity);
+
+                        ImGui::PopTextWrapPos();
+                        ImGui::EndTooltip();
+                    }
+
+                    float wrapWidth = cellSize.x - textPadding * 2.0f;
+                    ImVec2 titlePos(cellStartScreen.x + textPadding, cellStartScreen.y + textPadding);
+                    drawList->AddText(nullptr, 0.0f, titlePos, ImGui::GetColorU32(ImGuiCol_Text),
+                        part->name.c_str(), nullptr, wrapWidth);
+
+                    ImVec2 titleSize = ImGui::CalcTextSize(part->name.c_str(), nullptr, false, wrapWidth);
+                    ImVec2 subtitlePos(titlePos.x, titlePos.y + titleSize.y + 2.0f);
+                    drawList->AddText(nullptr, 0.0f, subtitlePos, ImGui::GetColorU32(ImGuiCol_TextDisabled),
+                        CategoryToString(part->category), nullptr, wrapWidth);
+                };
+
+                for (size_t i = 0; i < visibleParts.size(); i += 2) {
+                    drawCell(visibleParts[i], static_cast<int>(i));
+
+                    if (i + 1 < visibleParts.size()) {
+                        ImGui::SameLine(0.0f, spacing);
+                        drawCell(visibleParts[i + 1], static_cast<int>(i + 1));
+                    }
+                }
+
+                if (visibleParts.empty()) {
+                    ImGui::TextDisabled("No parts in this category yet.");
+                }
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+
+        // right side category bar
+        ImGui::BeginChild("##CategorySidebar", ImVec2(categoryBarWidth, contentHeight), false,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        {
+            for (Category cat : m_categorys) {
+                bool isSelected = (cat == m_selectedCategory);
+
+                if (isSelected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+                }
+
+                ImGui::PushID(static_cast<int>(cat));
+                if (m_ui.button(CategoryAbbrev(cat), ImVec2(categoryButtonSize, categoryButtonSize))) {
+                    m_selectedCategory = cat;
+                }
+                ImGui::PopID();
+
+                if (isSelected) {
+                    ImGui::PopStyleColor();
+                }
+
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::TextUnformatted(CategoryToString(cat));
+                    ImGui::EndTooltip();
+                }
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::End();
+    }
+
+    void drawInformation() {
+        //categorybarwidht = 56.0f
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 56.0f);
+        m_ui.setFont(1);
+        ImGui::TextUnformatted("Spaceship Information");
+        m_ui.resetFont();
+        ImGui::Separator();
+
+        char nameBuffer[128];
+        std::strncpy(nameBuffer, m_spaceship.name.c_str(), sizeof(nameBuffer));
+        if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
+            m_spaceship.name = std::string(nameBuffer);
+        }
+
+        char descBuffer[512];
+        std::strncpy(descBuffer, m_spaceship.description.c_str(), sizeof(descBuffer));
+        if (ImGui::InputTextMultiline("Description", descBuffer, sizeof(descBuffer), ImVec2(-1.0f, 150.0f))) {
+            m_spaceship.description = std::string(descBuffer);
+        }
+
+        ImGui::BeginDisabled();
+        if (ImGui::DragFloat("Mass (kg)", &m_spaceship.mass, 0.1f, 1.0f)) {}
+        if (ImGui::DragFloat("Thrust (N)", &m_spaceship.thrust, 0.1f, 1.0f)) {} 
+        if (ImGui::DragFloat("Fuel Capacity (L)", &m_spaceship.fuelCapacity, 0.1f, 1.0f)) {}
+        ImGui::EndDisabled();
+    }
+
+    void drawCustomization() {
+        ImGui::TextUnformatted("Customization");
     }
 };
