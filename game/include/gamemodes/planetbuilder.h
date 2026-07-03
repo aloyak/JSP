@@ -241,11 +241,9 @@ public:
                     planetComponent->getPlanetParams().mass = mass;
                 }
 
-                float periodHours = planetComponent->getPlanetParams().period;
-                float periodMinutes = periodHours * 60.0f;
-                
-                if (ImGui::SliderFloat("Rotation Period (min)", &periodMinutes, 0.08333f, 40.0f)) {
-                    planetComponent->getPlanetParams().period = periodMinutes / 60.0f;
+                float period = planetComponent->getPlanetParams().period;                
+                if (ImGui::SliderFloat("Rotation Period", &period, 0.01f, 100.0f, nullptr, ImGuiSliderFlags_Logarithmic)) {
+                    planetComponent->getPlanetParams().period = period;
                 }
 
                 ImGui::SeparatorText("Sun");

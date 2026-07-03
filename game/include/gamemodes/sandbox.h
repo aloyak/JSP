@@ -47,6 +47,10 @@ private:
     Entity* m_target = nullptr;
     Entity* m_camera = nullptr;
 
+    bool m_inputEnabled = true;
+    bool m_topBarActive = false;
+    bool m_sandboxWindowActive = false;
+    bool m_saveDialogActive = false;
     bool movingEnabled = false;
 
     float moveSpeed = 500.0f;
@@ -944,10 +948,10 @@ public:
             Vec3 rightXZ = Vec3(forwardXZ.z, 0.0f, -forwardXZ.x);
 
             Vec3 movement(0, 0, 0);
-            if (m_input.isKeyDown(KEY_W)) { movement += forwardXZ; m_followingPlanet = false; }
-            if (m_input.isKeyDown(KEY_S)) { movement -= forwardXZ; m_followingPlanet = false; }
-            if (m_input.isKeyDown(KEY_A)) { movement += rightXZ;   m_followingPlanet = false; }
-            if (m_input.isKeyDown(KEY_D)) { movement -= rightXZ;   m_followingPlanet = false; }
+            if (m_input.isKeyDown(KEY_W) && m_inputEnabled) { movement += forwardXZ; m_followingPlanet = false; }
+            if (m_input.isKeyDown(KEY_S) && m_inputEnabled) { movement -= forwardXZ; m_followingPlanet = false; }
+            if (m_input.isKeyDown(KEY_A) && m_inputEnabled) { movement += rightXZ;   m_followingPlanet = false; }
+            if (m_input.isKeyDown(KEY_D) && m_inputEnabled) { movement -= rightXZ;   m_followingPlanet = false; }
 
             m_target->transform.position += movement * dt * moveSpeed;
 
@@ -983,23 +987,24 @@ public:
                 HandlePlacementLogic();
             }
 
+            // shortcuts
             if (m_input.isKeyPressed(KEY_G)) drawGrid = !drawGrid;
             if (m_input.isKeyPressed(KEY_T)) drawTrails = !drawTrails;
-            if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += 10.0f;
-            if (m_input.isKeyDown(KEY_LCTRL))  m_target->transform.position.y -= 10.0f;
+            if (m_input.isKeyDown(KEY_LSHIFT) && m_inputEnabled) m_target->transform.position.y += 10.0f;
+            if (m_input.isKeyDown(KEY_LCTRL) && m_inputEnabled)  m_target->transform.position.y -= 10.0f;
 
-            if (m_input.isKeyPressed(KEY_1)) m_toolMode = ToolMode::Selection;
+            if (m_input.isKeyPressed(KEY_1) && m_inputEnabled) m_toolMode = ToolMode::Selection;
             if (!simulationRunning) {
-                if (m_input.isKeyPressed(KEY_2)) m_toolMode = ToolMode::Reallocation;
+                if (m_input.isKeyPressed(KEY_2) && m_inputEnabled) m_toolMode = ToolMode::Reallocation;
             }
-            if (m_input.isKeyPressed(KEY_3)) m_toolMode = ToolMode::Velocity;
+            if (m_input.isKeyPressed(KEY_3) && m_inputEnabled) m_toolMode = ToolMode::Velocity;
 
-            if (m_input.isKeyPressed(KEY_P)) {
+            if (m_input.isKeyPressed(KEY_P) && m_inputEnabled) {
                 if (!simulationRunning) StartSimulation();
                 else                    ResumeSimulation();
             }
-            if (m_input.isKeyPressed(KEY_SPACE)) PauseSimulation();
-            if (m_input.isKeyPressed(KEY_R))     ResetSimulation();
+            if (m_input.isKeyPressed(KEY_SPACE) && m_inputEnabled) PauseSimulation();
+            if (m_input.isKeyPressed(KEY_R) && m_inputEnabled)     ResetSimulation();
         }
 
         m_prevLeftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
@@ -1042,6 +1047,8 @@ public:
         }
 
         DrawSaveDialog();
+        
+        m_inputEnabled = !(m_topBarActive || m_sandboxWindowActive || m_saveDialogActive);
     }
 
     // Save/Loading
@@ -1179,7 +1186,9 @@ public:
     }
 
     void DrawSaveDialog() {
-        if (!m_showSaveDialog) return;
+        if (!m_showSaveDialog) { m_saveDialogActive = false; return; }
+
+        m_saveDialogActive = true;
 
         ImGui::SetNextWindowPos(
             ImVec2(m_game.GetEngine().getWindow().getSize().x * 0.5f - 160.0f,
@@ -1220,29 +1229,12 @@ public:
 
         CancelPlacement();
 
-        Entity* earth = nullptr;
         for (Entity* planet : planetList) {
-            if (planet && planet != m_centralBody && planet->name == "Earth") {
-                earth = planet;
-                break;
-            }
-        }
-
-        for (Entity* planet : planetList) {
-            if (!planet || planet == m_centralBody || planet == earth) continue;
+            if (!planet || planet == m_centralBody) continue;
             m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(planet);
         }
         planetList.clear();
         if (m_centralBody)   planetList.push_back(m_centralBody);
-
-        if (earth) {
-            if (const GravityBody* def = m_registry.find("Earth")) {
-                def->apply(*earth->getComponent<PlanetComponent>());
-            }
-            earth->getComponent<PlanetComponent>()->getPlanetParams().velocity = Vec3(0.2f, 0.0f, 0.3f);
-            earth->transform.position = Vec3(0.0f, 0.0f, 0.0f);
-            planetList.push_back(earth);
-        }
 
         selectedEntity    = nullptr;
         m_followingPlanet = false;
@@ -1308,7 +1300,7 @@ public:
 
     // UI
     void DrawUI() {
-        if (isTransitioning) return;
+        if (isTransitioning) { m_sandboxWindowActive = false; return; }
 
         auto windowSize = m_game.GetEngine().getWindow().getSize();
 
@@ -1331,8 +1323,11 @@ public:
                     ImGuiWindowFlags_NoDocking;
 
 
-        if (!m_showSandbox) return;
+        if (!m_showSandbox) { m_sandboxWindowActive = false; return; }
         ImGui::Begin("Sandbox", nullptr, flags);
+
+        m_sandboxWindowActive = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) ||
+                                 ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 
         if (!ImGui::IsWindowCollapsed()) {
             if (ImGui::BeginTabBar("SandboxTabBar")) {
@@ -1344,24 +1339,24 @@ public:
                     float totalSpacing = ImGui::GetStyle().ItemSpacing.x * 2.0f;
                     float buttonW = (ImGui::GetContentRegionAvail().x - totalSpacing) / 3.0f;
 
-                    auto toolButton = [&](const char* label, ToolMode mode) {
+                    auto toolButton = [&](const char* path, ToolMode mode) {
                         bool active = (m_toolMode == mode);
                         if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
                         
-                        if (m_ui.button(label, ImVec2(buttonW, childH)))
+                        if (m_ui.imageButton(path, ImVec2(buttonW, childH), 50.0f))
                             m_toolMode = mode;
                             
                         if (active) ImGui::PopStyleColor();
                         ImGui::SameLine();
                     };
 
-                    toolButton("Selection [1]",    ToolMode::Selection);
+                    toolButton("select", ToolMode::Selection);
 
                     if (simulationRunning) ImGui::BeginDisabled();
-                    toolButton("Reallocation [2]", ToolMode::Reallocation);
+                    toolButton("move", ToolMode::Reallocation);
                     if (simulationRunning) ImGui::EndDisabled();
                     
-                    toolButton("Velocity [3]",     ToolMode::Velocity);
+                    toolButton("velocity", ToolMode::Velocity);
 
                     ImGui::EndChild();
                     ImGui::EndTabItem();
@@ -1535,7 +1530,7 @@ public:
                     bool isPlaying = simulationRunning && !physicsPaused;
 
                     if (isPlaying) ImGui::BeginDisabled();
-                    if (m_ui.button("Play [P]", ImVec2(buttonW, -1))) {
+                    if (m_ui.imageButton("play", ImVec2(buttonW, -1))) {
                         if (!simulationRunning) StartSimulation();
                         else                    ResumeSimulation();
                     }
@@ -1544,7 +1539,7 @@ public:
                     ImGui::SameLine();
 
                     if (!simulationRunning) ImGui::BeginDisabled();
-                    if (m_ui.button("Pause [Space]", ImVec2(buttonW, -1))) {
+                    if (m_ui.imageButton("pause", ImVec2(buttonW, -1))) {
                         PauseSimulation();
                     }
                     if (!simulationRunning) ImGui::EndDisabled();
@@ -1552,7 +1547,7 @@ public:
                     ImGui::SameLine();
 
                     if (!m_hasSnapshot) ImGui::BeginDisabled();
-                    if (m_ui.button("Reset [R]", ImVec2(buttonW, -1))) {
+                    if (m_ui.imageButton("reset", ImVec2(buttonW, -1))) {
                         ResetSimulation();
                     }
                     if (!m_hasSnapshot) ImGui::EndDisabled();
@@ -1567,11 +1562,14 @@ public:
     }
 
     void DrawMainMenuBar() {
-        if (isTransitioning) return;
+        if (isTransitioning) { m_topBarActive = false; return; }
 
         ImGui::PushStyleColor(ImGuiCol_WindowBg,   ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg,  ImVec4(0, 0, 0, 0));
         if (ImGui::BeginMainMenuBar()) {
+            m_topBarActive = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) ||
+                              ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
+
             if (m_ui.beginMenu("Game")) {
                 if (m_ui.menuItem("Main Menu")) m_ui.loadMainMenu();
                 if (m_ui.menuItem("Settings"))  m_game.showSettings = !m_game.showSettings;
@@ -1643,6 +1641,8 @@ public:
             float textWidth = ImGui::CalcTextSize(toolName).x + 8.0f;
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth);
             ImGui::TextDisabled("%s", toolName);
+        } else {
+            m_topBarActive = false;
         }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleColor(2);
