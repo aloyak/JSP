@@ -20,7 +20,8 @@ class Game;
 
 enum class MoveMode {
     CameraOrbit,
-    CameraFirstPerson
+    CameraFirstPerson,
+    Blueprint
 };
 
 enum class OperationMode {
@@ -37,6 +38,7 @@ private:
     Entity* m_camera = nullptr;
     OrbitCamera* m_orbitCamera = nullptr;
     FirstPersonCamera* m_firstPersonCamera = nullptr;
+    Blueprint* m_blueprintMode = nullptr;
 
     MoveMode m_moveMode = MoveMode::CameraOrbit;
 
@@ -58,6 +60,8 @@ private:
     Vec3 m_savedFirstPersonPos{0.0f};
     Vec3 m_savedFirstPersonRot{0.0f};
 
+    Vec3 m_targetPosBeforeBlueprint{0.0f};
+
     float m_orbitFov = 55.0f;
     float m_transitionFromFov = m_orbitFov;
     float m_transitionToFov = m_orbitFov;
@@ -70,7 +74,7 @@ private:
 
     bool m_assemblyPanelVisible = true;
 
-    Category m_selectedCategory = Category::Engine;
+    Category m_selectedCategory = Category::FuelTank;
     Spaceship m_spaceship;
 
     std::vector<Part> m_parts = CreateDefaultParts();
@@ -110,9 +114,10 @@ private:
     static constexpr float k_gizmoLineWidth = 2.0f;
 
     PostProcessor* m_barrier = nullptr;
+    bool m_barrierEnabled = true;
 public:
     SpacecraftBuilderMode(Game& game)
-        : GameMode("assets/scenes/builder_wip.scene")
+        : GameMode("assets/scenes/assembly.scene")
         , m_game(game) {}
 
     void OnEnter() override {
@@ -142,6 +147,7 @@ public:
         m_orbitCamera->SetTarget(m_target, distance);
         m_orbitCamera->SyncFromCurrentPosition();
         m_orbitCamera->SetMaxRadius(25.0f);
+        m_orbitCamera->SetHeightLimits(2.0f, 300.0f);
         m_orbitCamera->ApplyPosition();
 
         m_firstPersonCamera = new FirstPersonCamera(m_camera);
@@ -158,6 +164,7 @@ public:
         CancelGhostPlacement();
         delete m_orbitCamera;
         delete m_firstPersonCamera;
+        delete m_blueprintMode;
     }
 
     Vec3 ComputeDefaultFirstPersonPos() const {
@@ -166,7 +173,7 @@ public:
     }
 
     void StartTransitionTo(MoveMode mode) {
-        if (mode == MoveMode::CameraFirstPerson) CancelGhostPlacement();
+        if (mode == MoveMode::CameraFirstPerson || mode == MoveMode::Blueprint) CancelGhostPlacement();
 
         m_transitionFromPos = m_camera->transform.position;
         m_transitionFromRot = m_camera->transform.rotation;
@@ -176,6 +183,12 @@ public:
             m_savedFirstPersonPos = m_transitionFromPos;
             m_savedFirstPersonRot = m_transitionFromRot;
             m_hasSavedFirstPersonPos = true;
+        }
+
+        if (m_moveMode == MoveMode::Blueprint && mode != MoveMode::Blueprint) {
+            delete m_blueprintMode;
+            m_blueprintMode = nullptr;
+            m_target->transform.position = m_targetPosBeforeBlueprint;
         }
 
         if (mode == MoveMode::CameraFirstPerson) {
@@ -192,10 +205,25 @@ public:
                 m_camera->transform.position = previousPos; // restore; the transition will animate to it
             }
             m_transitionToFov = m_firstPersonCamera->getFov();
+        } else if (mode == MoveMode::Blueprint) {
+            // Remember where the target was so we can put it back once we
+            // leave blueprint mode, then lock it onto the ship's actual
+            // center of mass (not just its height) so the transition and
+            // subsequent blueprint view are centered on it correctly.
+            m_targetPosBeforeBlueprint = m_target->transform.position;
+            m_target->transform.position = m_spaceship.centerOfMass;
+
+            int presetIndex = Blueprint::nearestPresetIndex(m_target->transform.position, m_transitionFromPos);
+            m_transitionToPos = Blueprint::presetPosition(m_target->transform.position, presetIndex);
+            m_transitionToRot = m_camera->transform.rotation; // blueprint drives via lookAt, not rotation
+            m_transitionToFov = m_orbitFov;
+            m_barrierEnabled = false;
         } else {
             m_transitionToPos = m_orbitCamera->GetComputedPosition();
             m_transitionToRot = m_camera->transform.rotation; // orbit drives via lookAt, not rotation
             m_transitionToFov = m_orbitFov;
+            m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Platform")->getComponent<RenderComponent>()->isEnabled = true; 
+            m_barrierEnabled = true;
         }
 
         m_transitionTarget = mode;
@@ -212,20 +240,6 @@ public:
         }
 
         float deltaTime = m_game.GetEngine().getDeltaTime();
-
-        if (m_barrier) {
-            m_barrier->setVec3("u_cameraPos", m_camera->transform.position);
-            m_barrier->setMat4("u_invView", m_camera->getComponent<CameraComponent>()->getCamera().getInvViewMatrix(m_camera->transform));
-            m_barrier->setMat4("u_invProj", m_camera->getComponent<CameraComponent>()->getCamera().getInvProjMatrix());
-
-            m_barrier->setFloat("u_near", m_camera->getComponent<CameraComponent>()->getNear());
-            m_barrier->setFloat("u_far", m_camera->getComponent<CameraComponent>()->getFar());
-            m_barrier->setFloat("u_time", m_game.GetEngine().getTime());
-
-            m_barrier->setVec3("u_cageCenter", Vec3(0.0f, 0.5f, 0.0f)); // ground level, not old center
-            m_barrier->setFloat("u_cageSize", 10.5f);
-            m_barrier->setFloat("u_barrierHeight", 2.0f);
-        }
 
         if (m_isTransitioning) {
             m_transitionElapsed += deltaTime;
@@ -248,6 +262,8 @@ public:
 
                 if (m_moveMode == MoveMode::CameraFirstPerson) {
                     m_firstPersonCamera->SetPlayerPosition(m_transitionToPos);
+                } else if (m_moveMode == MoveMode::Blueprint) {
+                    m_blueprintMode = new Blueprint(m_camera, m_target, m_game, m_spaceship);
                 } else {
                     m_orbitCamera->ApplyPosition();
                 }
@@ -277,6 +293,9 @@ public:
             }
 
             m_firstPersonCamera->Update(&m_input, deltaTime, m_game.GetEngine().getTime());
+        } else if (m_moveMode == MoveMode::Blueprint) {
+            m_input.setCursorMode(false);
+            if (m_blueprintMode) m_blueprintMode->update(deltaTime);
         }
 
         bool targetHeightChanged = false;
@@ -303,7 +322,30 @@ public:
         }
 
         if (!m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) HandlePartPlacement();
+
         showAssemblyWindow();
+        drawBarrier();
+    }
+
+    void drawBarrier() {
+        if (!m_barrierEnabled) {
+            m_barrier->setBool("u_enabled", false);
+            return;
+        } else m_barrier->setBool("u_enabled", true);
+        
+        if (m_barrier) {
+            m_barrier->setVec3("u_cameraPos", m_camera->transform.position);
+            m_barrier->setMat4("u_invView", m_camera->getComponent<CameraComponent>()->getCamera().getInvViewMatrix(m_camera->transform));
+            m_barrier->setMat4("u_invProj", m_camera->getComponent<CameraComponent>()->getCamera().getInvProjMatrix());
+
+            m_barrier->setFloat("u_near", m_camera->getComponent<CameraComponent>()->getNear());
+            m_barrier->setFloat("u_far", m_camera->getComponent<CameraComponent>()->getFar());
+            m_barrier->setFloat("u_time", m_game.GetEngine().getTime());
+
+            m_barrier->setVec3("u_cageCenter", Vec3(0.0f, 0.5f, 0.0f));
+            m_barrier->setFloat("u_cageSize", 10.5f);
+            m_barrier->setFloat("u_barrierHeight", 2.0f);
+        }
     }
 
     Vec3 RotateEuler(const Vec3& v, const Vec3& eulerDegrees) const {
@@ -602,10 +644,20 @@ public:
     }
 
     void LateUpdate() override {
+        updateCenterOfMass();
+
         if (!m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) {
             DrawAttachmentPointGizmos();
         }
 
+        drawMenuBar();
+
+        // shortcuts
+        if (!m_isTransitioning && m_input.isKeyPressed(KEY_1)) StartTransitionTo(MoveMode::CameraOrbit);
+        if (!m_isTransitioning && m_input.isKeyPressed(KEY_2)) StartTransitionTo(MoveMode::CameraFirstPerson);
+    }
+
+    void drawMenuBar() {
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         if (ImGui::BeginMainMenuBar()) {
@@ -621,13 +673,15 @@ public:
                 if (m_ui.menuItem("Load Spacecraft")) {}
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Operation Mode")) {
-                if (m_ui.menuItem("Assembly View")) {}
-                if (m_ui.menuItem("Blueprint View")) {}
-                ImGui::EndMenu();
-            }
             bool wasTransitioning = m_isTransitioning;
             if (wasTransitioning) ImGui::BeginDisabled();
+            if (m_ui.beginMenu("Operation Mode")) {
+                if (m_ui.menuItem("Assembly View")) StartTransitionTo(MoveMode::CameraOrbit);
+                if (m_spaceship.parts.empty()) ImGui::BeginDisabled();
+                if (m_ui.menuItem("Blueprint View")) StartTransitionTo(MoveMode::Blueprint);
+                if (m_spaceship.parts.empty()) ImGui::EndDisabled();
+                ImGui::EndMenu();
+            }
             if (m_ui.beginMenu("Movement Mode")) {
                 if (m_ui.menuItem("Orbit Camera View", "1")) StartTransitionTo(MoveMode::CameraOrbit);
                 if (m_ui.menuItem("First Person View", "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
@@ -637,14 +691,36 @@ public:
         }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleColor(2);
+    }
 
-        // shortcuts
-        if (!m_isTransitioning && m_input.isKeyPressed(KEY_1)) StartTransitionTo(MoveMode::CameraOrbit);
-        if (!m_isTransitioning && m_input.isKeyPressed(KEY_2)) StartTransitionTo(MoveMode::CameraFirstPerson);
+    void updateCenterOfMass() {
+        if (m_placedParts.empty()) return;
+
+        Vec3 com(0.0f);
+        float totalMass = 0.0f;
+
+        for (auto& placed : m_placedParts) {
+            if (!placed.entity || !placed.partDef) continue;
+            com += placed.entity->transform.position * placed.partDef->mass;
+            totalMass += placed.partDef->mass;
+        }
+
+        if (totalMass > 0.0f) {
+            com = com / totalMass;
+            m_spaceship.centerOfMass = com;
+        }
+
+        if (m_moveMode != MoveMode::CameraOrbit || m_isTransitioning) return;
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+        ImVec2 screenPos;
+        if (WorldToScreen(com, screenPos)) {
+            dl->AddCircleFilled(screenPos, 6.0f, IM_COL32(255, 255, 0, 255));
+            dl->AddCircle(screenPos, 8.0f, IM_COL32(255, 255, 0, 150), 16, 1.0f);
+        }
     }
 
     void showAssemblyWindow() {
-        if (m_moveMode == MoveMode::CameraFirstPerson || m_isTransitioning) return;
+        if (m_moveMode == MoveMode::CameraFirstPerson || m_moveMode == MoveMode::Blueprint || m_isTransitioning) return;
 
         ImGuiIO& io = ImGui::GetIO();
         float screenW = io.DisplaySize.x;

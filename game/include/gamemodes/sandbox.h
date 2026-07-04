@@ -546,77 +546,77 @@ public:
 
     static constexpr float kVelocityArrowWorldScale = 5.0f;
 
-   void DrawAllVelocityVectors() {
-    if (m_toolMode != ToolMode::Velocity) return;
+    void DrawAllVelocityVectors() {
+        if (m_toolMode != ToolMode::Velocity) return;
 
-    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
-    auto* camComp = m_camera->getComponent<CameraComponent>();
-    if (!camComp) return;
+        auto* camComp = m_camera->getComponent<CameraComponent>();
+        if (!camComp) return;
 
-    Vec3 camPos  = m_camera->transform.position;
-    Vec3 lookDir = (m_target->transform.position - camPos).normalize();
-    Vec3 worldUp(0.0f, 1.0f, 0.0f);
-    Vec3 camRight = cross(lookDir, worldUp).normalize();
-    Vec3 camUp    = cross(camRight, lookDir).normalize();
+        Vec3 camPos  = m_camera->transform.position;
+        Vec3 lookDir = (m_target->transform.position - camPos).normalize();
+        Vec3 worldUp(0.0f, 1.0f, 0.0f);
+        Vec3 camRight = cross(lookDir, worldUp).normalize();
+        Vec3 camUp    = cross(camRight, lookDir).normalize();
 
-    Mat4 proj;
-    camComp->getCamera().getProjectionMatrix(proj);
-    Vec2 winSize = m_game.GetEngine().getWindow().getSize();
+        Mat4 proj;
+        camComp->getCamera().getProjectionMatrix(proj);
+        Vec2 winSize = m_game.GetEngine().getWindow().getSize();
 
-    const float kArrowPixels = 80.0f;
+        const float kArrowPixels = 80.0f;
 
-    for (Entity* planet : planetList) {
-        if (!planet) continue;
-        if (m_velDragging && planet == m_velocityTarget) continue;
+        for (Entity* planet : planetList) {
+            if (!planet) continue;
+            if (m_velDragging && planet == m_velocityTarget) continue;
 
-        auto* planetComp = planet->getComponent<PlanetComponent>();
-        if (!planetComp) continue;
+            auto* planetComp = planet->getComponent<PlanetComponent>();
+            if (!planetComp) continue;
 
-        Vec3 vel = planetComp->getPlanetParams().velocity;
-        float speed = vel.length();
-        if (speed < 0.0001f) continue;
+            Vec3 vel = planetComp->getPlanetParams().velocity;
+            float speed = vel.length();
+            if (speed < 0.0001f) continue;
 
-        Vec3 velDir      = vel * (1.0f / speed);
-        Vec3 worldOrigin = planet->transform.position;
+            Vec3 velDir      = vel * (1.0f / speed);
+            Vec3 worldOrigin = planet->transform.position;
 
-        ImVec2 screenOrigin;
-        if (!WorldToScreen(worldOrigin, screenOrigin)) continue;
+            ImVec2 screenOrigin;
+            if (!WorldToScreen(worldOrigin, screenOrigin)) continue;
 
-        float depth = dot(worldOrigin - camPos, lookDir);
-        if (depth <= 0.0f) continue;
-        float pixelToWorld = (depth / proj[0][0]) * (2.0f / winSize.x);
+            float depth = dot(worldOrigin - camPos, lookDir);
+            if (depth <= 0.0f) continue;
+            float pixelToWorld = (depth / proj[0][0]) * (2.0f / winSize.x);
 
-        Vec3  worldTip = worldOrigin + velDir * kArrowPixels * pixelToWorld;
-        ImVec2 tip;
-        if (!WorldToScreen(worldTip, tip)) continue;
+            Vec3  worldTip = worldOrigin + velDir * kArrowPixels * pixelToWorld;
+            ImVec2 tip;
+            if (!WorldToScreen(worldTip, tip)) continue;
 
-        Vec2 delta(tip.x - screenOrigin.x, tip.y - screenOrigin.y);
-        float length = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+            Vec2 delta(tip.x - screenOrigin.x, tip.y - screenOrigin.y);
+            float length = std::sqrt(delta.x * delta.x + delta.y * delta.y);
 
-        const ImU32 col = IM_COL32(120, 200, 255, 220);
+            const ImU32 col = IM_COL32(120, 200, 255, 220);
 
-        dl->AddLine(screenOrigin, tip, col, 2.5f);
+            dl->AddLine(screenOrigin, tip, col, 2.5f);
 
-        if (length > 8.0f) {
-            Vec2 dir (delta.x / length, delta.y / length);
-            Vec2 perp(-dir.y, dir.x);
-            float hs = 8.0f;
-            ImVec2 p1(tip.x - dir.x * hs + perp.x * hs * 0.5f,
-                      tip.y - dir.y * hs + perp.y * hs * 0.5f);
-            ImVec2 p2(tip.x - dir.x * hs - perp.x * hs * 0.5f,
-                      tip.y - dir.y * hs - perp.y * hs * 0.5f);
-            dl->AddTriangleFilled(tip, p1, p2, col);
+            if (length > 8.0f) {
+                Vec2 dir (delta.x / length, delta.y / length);
+                Vec2 perp(-dir.y, dir.x);
+                float hs = 8.0f;
+                ImVec2 p1(tip.x - dir.x * hs + perp.x * hs * 0.5f,
+                        tip.y - dir.y * hs + perp.y * hs * 0.5f);
+                ImVec2 p2(tip.x - dir.x * hs - perp.x * hs * 0.5f,
+                        tip.y - dir.y * hs - perp.y * hs * 0.5f);
+                dl->AddTriangleFilled(tip, p1, p2, col);
+            }
+
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%.1f u/s", speed * 1000.0f);
+            dl->AddText(ImVec2(tip.x + 8.0f, tip.y - 14.0f),
+                        IM_COL32(255, 255, 255, 200), buf);
+
+            dl->AddCircleFilled(screenOrigin, 5.0f, col);
         }
-
-        char buf[64];
-        snprintf(buf, sizeof(buf), "%.1f u/s", speed * 1000.0f);
-        dl->AddText(ImVec2(tip.x + 8.0f, tip.y - 14.0f),
-                    IM_COL32(255, 255, 255, 200), buf);
-
-        dl->AddCircleFilled(screenOrigin, 5.0f, col);
     }
-}
 
     void DrawSelectionHighlight() {
         if (m_toolMode != ToolMode::Selection || !selectedEntity) return;

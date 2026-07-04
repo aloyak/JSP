@@ -28,7 +28,7 @@ public:
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->AddFontFromFileTTF(Path::resolve("assets/fonts/Jersey10-Regular.ttf").c_str(), 24.0f);
         io.Fonts->AddFontFromFileTTF(Path::resolve("assets/fonts/Jersey10-Regular.ttf").c_str(), 32.0f);
-        io.Fonts->AddFontFromFileTTF(Path::resolve("assets/fonts/Jersey10-Regular.ttf").c_str(), 128.0f);
+        io.Fonts->AddFontFromFileTTF(Path::resolve("assets/fonts/Jersey10-Regular.ttf").c_str(), 64.0f);
         fonts.push_back(io.Fonts->Fonts.back());
         fonts.push_back(io.Fonts->Fonts[io.Fonts->Fonts.size() - 2]);
         fonts.push_back(io.Fonts->Fonts[io.Fonts->Fonts.size() - 3]);

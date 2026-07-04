@@ -42,28 +42,6 @@
             }
         },
         {
-            "components": [],
-            "name": "Origin",
-            "tag": "Untagged",
-            "transform": {
-                "pos": [
-                    0.0,
-                    0.0,
-                    0.05743122100830078
-                ],
-                "rot": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "sca": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
             "components": [
                 {
                     "ambientStrength": 0.0,
@@ -88,7 +66,7 @@
                     "vert": "assets/shaders/builtin/vert.glsl"
                 }
             ],
-            "name": "Entity",
+            "name": "Platform",
             "tag": "Untagged",
             "transform": {
                 "pos": [

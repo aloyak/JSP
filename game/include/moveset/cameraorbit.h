@@ -6,6 +6,7 @@
 #include "engine/input/input.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 class OrbitCamera {
 private:
@@ -18,6 +19,9 @@ private:
 
     float m_maxRadius = 10000.0f;
 
+    float m_minHeight = -std::numeric_limits<float>::infinity();
+    float m_maxHeight = std::numeric_limits<float>::infinity();
+
 public:
     OrbitCamera(Entity* camera) : m_camera(camera) {}
 
@@ -25,16 +29,24 @@ public:
         m_target = target;
         m_radius = initialRadius;
     }
-    
+
+    void SetHeightLimits(float minHeight, float maxHeight) {
+        m_minHeight = minHeight;
+        m_maxHeight = maxHeight;
+    }
+
     void ApplyPosition() {
         if (!m_camera || !m_target) return;
 
         Vec3 targetPos = m_target->transform.position;
-        m_camera->transform.position = Vec3(
+        Vec3 pos(
             targetPos.x + m_radius * cosf(m_pitch) * cosf(m_yaw),
             targetPos.y + m_radius * sinf(m_pitch),
             targetPos.z + m_radius * cosf(m_pitch) * sinf(m_yaw));
 
+        pos.y = std::clamp(pos.y, m_minHeight, m_maxHeight);
+
+        m_camera->transform.position = pos;
         m_camera->getComponent<CameraComponent>()->lookAt(*m_target);
     }
 
@@ -91,9 +103,12 @@ public:
         if (!m_target) return Vec3(0.0f);
 
         Vec3 targetPos = m_target->transform.position;
-        return Vec3(
+        Vec3 pos(
             targetPos.x + m_radius * cosf(m_pitch) * cosf(m_yaw),
             targetPos.y + m_radius * sinf(m_pitch),
             targetPos.z + m_radius * cosf(m_pitch) * sinf(m_yaw));
+
+        pos.y = std::clamp(pos.y, m_minHeight, m_maxHeight);
+        return pos;
     }
 };
