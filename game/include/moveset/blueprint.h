@@ -22,8 +22,7 @@ private:
     Entity* m_target = nullptr;
     PostProcessor* m_blueprint;
 
-    // Owned by SpacecraftBuilderMode (m_spaceship.centerOfMass); outlives this object.
-    const Vec3* m_centerOfMass = nullptr;
+    const Vec3* m_geometryCenter = nullptr;
 
     int m_presetIndex = 0;
 
@@ -82,7 +81,7 @@ public:
           m_camera(camera),
           m_ship(ship) {
 
-        m_centerOfMass = &ship.centerOfMass;
+        m_geometryCenter = &ship.geometryCenter;
         m_blueprint = &m_game->GetEngine().getRenderer().addPostProcessor(
               "assets/shaders/default_vert.glsl", "assets/shaders/blueprint_frag.glsl"
         );
@@ -91,8 +90,8 @@ public:
 
         // Keep the target locked to the ship's actual center of mass (not
         // just its height) so it's always centered on screen in blueprint mode.
-        if (m_centerOfMass) {
-            m_target->transform.position = *m_centerOfMass;
+        if (m_geometryCenter) {
+            m_target->transform.position = *m_geometryCenter;
         }
 
         m_presetIndex = nearestPresetIndex(m_target->transform.position, m_camera->transform.position);
@@ -106,8 +105,8 @@ public:
     }
 
     void update(float deltaTime) {
-        if (m_centerOfMass) {
-            m_target->transform.position = *m_centerOfMass;
+        if (m_geometryCenter) {
+            m_target->transform.position = *m_geometryCenter;
         }
 
         if (!m_isTurning) {

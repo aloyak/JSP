@@ -82,7 +82,7 @@ private:
     bool m_brushSoundEnabled = false;
 public:
     PlanetBuilderMode(Game& game)
-        : GameMode("assets/scenes/space.scene")
+        : GameMode("PlanetBuilder", "assets/scenes/space.scene")
         , m_game(game) {}
 
     void OnEnter() override {
@@ -165,6 +165,7 @@ public:
             if (m_ui.beginMenu("Game")) {
                 if (m_ui.menuItem("Main Menu")) { m_ui.loadMainMenu(); }
                 if (m_ui.menuItem("Settings"))  { m_game.showSettings = !m_game.showSettings; }
+                if (m_ui.menuItem("Help"))      { m_game.showHelp = !m_game.showHelp; }
                 if (m_ui.menuItem("Quit"))      { m_game.GetEngine().stop(); }
                 ImGui::EndMenu();
             }

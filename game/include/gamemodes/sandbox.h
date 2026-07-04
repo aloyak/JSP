@@ -140,7 +140,7 @@ private:
     bool showPlanetsWindow = false;
 public:
     SandboxMode(Game& game)
-        : GameMode("assets/scenes/menu.scene")
+        : GameMode("Sandbox", "assets/scenes/menu.scene")
         , m_game(game) {}
 
     void OnEnter() override {
@@ -1573,6 +1573,7 @@ public:
             if (m_ui.beginMenu("Game")) {
                 if (m_ui.menuItem("Main Menu")) m_ui.loadMainMenu();
                 if (m_ui.menuItem("Settings"))  m_game.showSettings = !m_game.showSettings;
+                if (m_ui.menuItem("Help"))      { m_game.showHelp = !m_game.showHelp; }
                 if (m_ui.menuItem("Quit"))      m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }

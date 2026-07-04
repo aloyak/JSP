@@ -60,6 +60,7 @@ void Game::Update() {
 
     if (m_currentGameMode) m_currentGameMode->Update();
     if (showSettings) m_ui.drawSettingsWindow(); 
+    if (showHelp) m_ui.drawHelpWindow();
 }
 
 void Game::LateUpdate() {
@@ -199,12 +200,7 @@ void UI::drawSettingsWindow() {
     auto& settings = m_game.settingsManager.Get();
     bool settingsChanged = false;
 
-    auto CenterText = [](const char* text) {
-        float windowWidth = ImGui::GetWindowSize().x;
-        float textWidth = ImGui::CalcTextSize(text).x;
-        ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
-        ImGui::TextUnformatted(text);
-    };
+    
 
     int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
     ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
@@ -215,7 +211,7 @@ void UI::drawSettingsWindow() {
     ImGui::Begin("Settings", &m_game.showSettings, flags);
 
     this->setFont(1);
-    CenterText("Settings");
+    centerText("Settings");
     this->resetFont();
         
     ImGui::SeparatorText("Language");
@@ -287,3 +283,49 @@ void UI::drawSettingsWindow() {
     ImGui::End();
     ImGui::PopStyleVar(2);
 }
+
+void UI::drawHelpWindow() {
+    int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+    ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
+    ImGui::Begin("Help", &m_game.showHelp, flags);
+
+    this->setFont(1);
+    centerText("Help");
+    this->resetFont();
+    
+    std::string gamemode = m_game.GetCurrentGameMode()->modeName;
+
+    ImGui::SeparatorText(gamemode.c_str());
+
+    if (gamemode == "Sandbox") {
+        ImGui::Text("WASD - Move");
+        ImGui::Text("Shift - Y+");
+        ImGui::Text("Ctrl - Y-");
+        ImGui::Text("Scroll - Zoom In/Out");
+        ImGui::Text("Left Click - Move Camera");
+        ImGui::Text("Right Click - Apply Tool");
+        ImGui::Text("1,2,3 - Tools");
+    } else if (gamemode == "PlanetBuilder") {
+        ImGui::Text("Right Click - Apply Tool");
+        ImGui::Text("Left Click - Move Camera");
+        ImGui::Text("Scroll - Zoom In/Out");
+        ImGui::Text("1,2,3 - Tools");
+    } else if (gamemode == "SpacecraftBuilder") {
+        ImGui::SeparatorText("Orbit Camera");
+        ImGui::Text("Left Click - Move Camera");
+        ImGui::Text("Scroll - Zoom In/Out");
+        ImGui::Text("Shift - Y+");
+        ImGui::Text("Ctrl - Y-");
+        ImGui::SeparatorText("First Person Camera");
+        ImGui::Text("WASD - Move");
+        ImGui::Text("Left Alt - Show Cursor");
+        ImGui::SeparatorText("Blueprint Controls");
+        ImGui::TextDisabled("Operation Mode > Blueprint");
+        ImGui::Text("A - Rotate Left");
+        ImGui::Text("D - Rotate Right");
+    } else {
+        ImGui::Text("No help available for this game mode.");
+    }
+
+    ImGui::End();
+};

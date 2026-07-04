@@ -55,8 +55,12 @@ public:
     UI& GetUI() { return m_ui; }
     AudioManager& GetAudioManager() { return m_audio; }
 
+    auto& GetCurrentGameMode() { return m_currentGameMode; }
+
     float timeScale = 1.0f;
+
     bool showSettings = false;
+    bool showHelp = false;
     
     SettingsManager<GameSettings> settingsManager;
 private:

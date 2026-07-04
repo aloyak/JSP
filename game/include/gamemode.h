@@ -4,7 +4,8 @@
 
 class GameMode {
 public:
-    GameMode(const std::string& scenePath) : m_scenePath(scenePath) {}
+    std::string modeName;
+    GameMode(std::string name, const std::string& scenePath) : modeName(name), m_scenePath(scenePath) {}
     virtual ~GameMode() = default;
 
     virtual void OnEnter() = 0;

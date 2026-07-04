@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.8.3"
+#define VERSION "0.9.1"
 
 #include "gamemode.h"
 #include "components/PlanetComponent.h"
@@ -42,7 +42,7 @@ private:
 
 public:
     MainMenuMode(Game& game, bool showSplash = false)
-        : GameMode("assets/scenes/menu.scene") 
+        : GameMode("MainMenu", "assets/scenes/menu.scene")
         , m_game(game)
         , m_engine(game.GetEngine())
         , m_audio(game.GetAudioManager())
@@ -187,6 +187,11 @@ public:
         ImGui::Text("You can also adjust the settings in the main menu.");
         ImGui::Text("Many features or assets are still placeholders or incomplete.");
         ImGui::Text("For any feedback, which is wanted, please reach out!");
+
+        ImGui::Spacing();
+        ImGui::Text("Tutorial & instructions:");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 0.6f, 1.0f, 1.0f), "Game > Help");
         
         ImGui::Spacing();
 

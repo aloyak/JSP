@@ -136,6 +136,7 @@ public:
     void drawSplashScreen(float bgAlpha, float logoAlpha, unsigned int textureId);
     void drawTransitionScreen(float alpha);
     void drawSettingsWindow();
+    void drawHelpWindow();
 private:
     Game& m_game;
 
@@ -176,4 +177,11 @@ private:
         colors[ImGuiCol_Tab]                    = ImVec4(0.24f, 0.24f, 0.24f, 0.63f);
         colors[ImGuiCol_TabSelected]            = ImVec4(0.37f, 0.37f, 0.37f, 1.00f);
     }
+
+    void centerText(const char* text) {
+        float windowWidth = ImGui::GetWindowSize().x;
+        float textWidth = ImGui::CalcTextSize(text).x;
+        ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
+        ImGui::TextUnformatted(text);
+    };
 };

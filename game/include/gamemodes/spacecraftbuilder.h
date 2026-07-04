@@ -117,7 +117,7 @@ private:
     bool m_barrierEnabled = true;
 public:
     SpacecraftBuilderMode(Game& game)
-        : GameMode("assets/scenes/assembly.scene")
+        : GameMode("SpacecraftBuilder", "assets/scenes/assembly.scene")
         , m_game(game) {}
 
     void OnEnter() override {
@@ -211,7 +211,7 @@ public:
             // center of mass (not just its height) so the transition and
             // subsequent blueprint view are centered on it correctly.
             m_targetPosBeforeBlueprint = m_target->transform.position;
-            m_target->transform.position = m_spaceship.centerOfMass;
+            m_target->transform.position = m_spaceship.geometryCenter;
 
             int presetIndex = Blueprint::nearestPresetIndex(m_target->transform.position, m_transitionFromPos);
             m_transitionToPos = Blueprint::presetPosition(m_target->transform.position, presetIndex);
@@ -645,6 +645,7 @@ public:
 
     void LateUpdate() override {
         updateCenterOfMass();
+        updateGeometryCenter();
 
         if (!m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) {
             DrawAttachmentPointGizmos();
@@ -664,6 +665,7 @@ public:
             if (m_ui.beginMenu("Game")) {
                 if (m_ui.menuItem("Main Menu")) m_ui.loadMainMenu();
                 if (m_ui.menuItem("Settings"))  m_game.showSettings = !m_game.showSettings;
+                if (m_ui.menuItem("Help"))      { m_game.showHelp = !m_game.showHelp; }
                 if (m_ui.menuItem("Quit")) m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }
@@ -677,9 +679,17 @@ public:
             if (wasTransitioning) ImGui::BeginDisabled();
             if (m_ui.beginMenu("Operation Mode")) {
                 if (m_ui.menuItem("Assembly View")) StartTransitionTo(MoveMode::CameraOrbit);
-                if (m_spaceship.parts.empty()) ImGui::BeginDisabled();
+                
+                bool isBlueprintDisabled = m_spaceship.parts.empty();
+                
+                if (isBlueprintDisabled) ImGui::BeginDisabled();
                 if (m_ui.menuItem("Blueprint View")) StartTransitionTo(MoveMode::Blueprint);
-                if (m_spaceship.parts.empty()) ImGui::EndDisabled();
+                if (isBlueprintDisabled) ImGui::EndDisabled();
+
+                if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip("Add at least 1 part");
+                }
+
                 ImGui::EndMenu();
             }
             if (m_ui.beginMenu("Movement Mode")) {
@@ -716,6 +726,32 @@ public:
         if (WorldToScreen(com, screenPos)) {
             dl->AddCircleFilled(screenPos, 6.0f, IM_COL32(255, 255, 0, 255));
             dl->AddCircle(screenPos, 8.0f, IM_COL32(255, 255, 0, 150), 16, 1.0f);
+        }
+    }
+
+    void updateGeometryCenter() {
+        if (m_placedParts.empty()) return;
+
+        Vec3 geomCenter(0.0f);
+        int count = 0;
+
+        for (auto& placed : m_placedParts) {
+            if (!placed.entity || !placed.partDef) continue;
+            geomCenter += placed.entity->transform.position;
+            count++;
+        }
+
+        if (count > 0) {
+            geomCenter = geomCenter / static_cast<float>(count);
+            m_spaceship.geometryCenter = geomCenter;
+        }
+
+        if (m_moveMode != MoveMode::CameraOrbit || m_isTransitioning) return;
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+        ImVec2 screenPos;
+        if (WorldToScreen(geomCenter, screenPos)) {
+            dl->AddCircleFilled(screenPos, 6.0f, IM_COL32(0, 255, 255, 255));
+            dl->AddCircle(screenPos, 8.0f, IM_COL32(0, 255, 255, 150), 16, 1.0f);
         }
     }
 

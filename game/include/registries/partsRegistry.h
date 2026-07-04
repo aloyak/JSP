@@ -80,6 +80,7 @@ struct Spaceship {
     float thrust = 0.0f;
     float fuelCapacity = 0.0f;
     Vec3 centerOfMass = Vec3(0.0f);
+    Vec3 geometryCenter = Vec3(0.0f);
 };
 
 inline std::vector<Part> CreateDefaultParts() {
