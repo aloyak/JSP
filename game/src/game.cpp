@@ -98,10 +98,10 @@ void Game::ApplyGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload
         m_currentGameMode->GetScenePath() == newGameMode->GetScenePath();
 
     if (m_currentGameMode) {
+        m_currentGameMode->OnExit();
         if ((!same || forceReload) && !m_currentGameMode->GetScenePath().empty() && (forceReload || m_engine->getSceneManager().getActiveScene() != nullptr)) {
             m_engine->getSceneManager().unload();
         }
-        m_currentGameMode->OnExit();
     }
 
     m_lastGameMode = std::move(m_currentGameMode);

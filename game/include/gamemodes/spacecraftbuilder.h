@@ -175,6 +175,7 @@ public:
     }
 
     void StartTransitionTo(MoveMode mode) {
+        if (m_moveMode == mode || m_transitionTarget == mode) return;
         if (mode == MoveMode::CameraFirstPerson || mode == MoveMode::Blueprint) CancelGhostPlacement();
 
         m_transitionFromPos = m_camera->transform.position;
@@ -760,7 +761,7 @@ public:
             if (m_ui.beginMenu(m_ui.getText("tm.game"))) {
                 if (m_ui.menuItem(m_ui.getText("tm.mm"))) m_ui.loadMainMenu();
                 if (m_ui.menuItem(m_ui.getText("tm.settings")))  m_game.showSettings = !m_game.showSettings;
-                if (m_ui.menuItem(m_ui.getText("tm.help")))      { m_game.showHelp = !m_game.showHelp; }
+                if (m_ui.menuItem(m_ui.getText("tm.help"))) { m_game.showHelp = !m_game.showHelp; }
                 if (m_ui.menuItem(m_ui.getText("tm.quit"))) m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }
