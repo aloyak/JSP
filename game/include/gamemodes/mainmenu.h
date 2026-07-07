@@ -1,10 +1,10 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.9.1"
+#define VERSION "0.10.0"
 
 #include "gamemode.h"
-#include "components/PlanetComponent.h"
+#include "components/planetComponent.h"
 #include "engine/components/entity.h"
 #include "game.h"
 

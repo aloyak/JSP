@@ -7,7 +7,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "engine/utils/logger.h"
-#include "components/PlanetComponent.h"
+#include "components/planetComponent.h"
 
 struct RegistryAtmosphere {
     bool  hasAtmosphere = false;

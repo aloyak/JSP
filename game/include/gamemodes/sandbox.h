@@ -7,7 +7,7 @@
 #include "engine/components/rendererComponent.h"
 #include "engine/utils/logger.h"
 
-#include "components/PlanetComponent.h"
+#include "components/planetComponent.h"
 #include "registries/planetRegistry.h"
 #include "ui/selector.h"
 #include "engine/utils/path.h"

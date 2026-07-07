@@ -2,7 +2,7 @@
 
 #include "engine/components/entity.h"
 #include "engine/components/cameraComponent.h"
-#include "components/PlanetComponent.h"
+#include "components/planetComponent.h"
 #include "engine/input/input.h"
 #include <algorithm>
 #include <cmath>

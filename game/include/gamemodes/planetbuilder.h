@@ -2,7 +2,7 @@
 
 #include "gamemode.h"
 #include "moveset/cameraorbit.h"
-#include "components/PlanetComponent.h"
+#include "components/planetComponent.h"
 
 #include "ui/selector.h"
 
