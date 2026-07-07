@@ -1,0 +1,167 @@
+key,EN,ES
+notimplemented,Not Implemented Yet,Aún no se ha implementado
+mm.campaign,Play Campaign,Jugar Campaña
+mm.explore,Explore the Solar System,Explora el Sistema Solar
+mm.sandbox,Sandbox Mode,Modo Sandbox
+mm.planeteditor,Planet Editor,Editor de Planetas
+mm.sceditor,Spaceship Editor,Editor de Naves
+mm.gravitysandbox,Gravity Sandbox,Sandbox de Gravedad
+mm.settings,Settings,Configuración
+mm.extras,Extras,Extras
+mm.quit,Quit,Salir
+mm.credits,Credits,Créditos
+crdt.author,Developer: 4loyak! (@aloyak),Desarrollador: 4loyak! (@aloyak)
+crdt.src,This project is open source!,¡Este proyecto es código abierto!
+crdt.eng,Built with Origin Engine,Creado con Origin Engine
+crdt.thank,Special thanks to:,Agradecimientos especiales a:
+crdt.1,NASA & ESA for free quality assets,NASA & ESA por recursos de calidad
+crdt.2,Hack Club for being awesome!,Hack Club por ser genial
+sttngs,Settings,Configuración
+sttngs.lang,Language,Idioma
+sttngs.fullscreen,Fullscreen,Pantalla Completa
+sttngs.graphics,Graphics,Gráficos
+sttngs.target,"Target FPS: ","FPS Objetivo: "
+sttngs.target.unlimited,Tartet FPS: Unlimited,FPS Objetivo: Ilimitado
+sttngs.gameplay,Gameplay,Jugabilidad
+sttngs.audio,Audio,Audio
+sttngs.sens,"Mouse Sensitivity: ","Sensibilidad del Ratón: "
+sttngs.headBob,"Head Bob Intensity: ","Movimiento de la Cámara: "
+sttngs.vol.master,"Master Volume: ","Volumen Principal: "
+sttngs.vol.music,"Music Volume: ","Volumen Música: "
+sttngs.vol.sfx,"SFX Volume: ","Volumen SFX: "
+tm.game,Game,Modo
+tm.mm,Main Menu,Menu Principal
+tm.settings,Settings,Configuración
+tm.help,Help,Ayuda
+tm.quit,Quit,Salir
+tm.view,View,Vista
+tm.tools,Tools,Herramientas
+tm.properties,Properties,Propiedades
+tm.pb.planet,Planet,Planeta
+tm.pb.new,New Planet,Nuevo Planeta
+tm.pb.save,Save Planet,Guardar Planeta
+tm.pb.load,Load Planet,Cargar Planeta
+tm.sbox.new,New Sandbox,Nuevo Sandbox
+tm.sbox.save,Save Sandbox,Guardar Sandbox
+tm.sbox.load,Load Sandbox,Cargar Sandbox
+tm.scb.new,New Spaceship,Nueva Nave
+tm.scb.save,Save Spaceship,Guardar Nave
+tm.scb.load,Load Spaceship,Cargar Nave
+selector.open,Open File,Abrir Archivo
+selector.nsfod,"No files found in path: ","Ningún archivo encontrado en el directorio: "
+pb.paint,Paint,Pintar
+pb.colhis,Color History,Historial de Colores
+pb.terrain,Terrain,Terreno
+name,Name,Nombre
+radius,Radius,Radio
+period,Rotation Period,Periodo de Rotación
+mass,Mass,Masa
+thrust,Thrust,Empuje
+fuel,Fuel,Combustible
+sun.intensity,Sun Intensity,Intensidad del Sol
+sun.dir,Sun Direction,Dirección del Sol
+atms,Atmosphere,Atmosfera
+atms.has,Has Atmosphere?,¿Tiene Atmosfera?
+atms.thickness,Thickness,Espesor
+atms.scatter,Scatter Intensity,Intensidad de Dispersión
+atms.sharpness,Horizon Sharpness,Nitidez del Horizonte
+wtr,Water,Agua
+wtr.has,Has Water?,¿Tiene Agua?
+wtr.lvl,Water Level,Nivel del Agua
+wtr.colA,Color A,Color A
+wtr.colB,Color B,Color B
+wtr.depthMult,Depth Multiplier,Multiplicador de Profundidad
+wtr.alphaMult,Transparency Multiplier,Multiplicador de Transparencia
+paint.brush.size,Brush Size,Tamaño del Pincel
+paint.brush.col,Brush Color,Color del Pincel
+paint.brush.opacity,Color Opacity,Opacidad del Color
+paint.brush.sound,Brush Sound,Sonido del Pincel
+paint.clear,Clear Texture,Borrar la Textura
+colhis,History,Historial
+colhis.title,Color History,Historial de Colores
+trrn,Terrain,Terreno
+trrn.strenght,Strenght,Fuerza
+trrn.size,Size,Tamaño
+trrn.falloff,Falloff,Atenuación
+trrn.clear,Clear Terrain,Borrar Terreno
+diag.save,Save,Guardar
+diag.close,Close,Cerrar
+sbox.name,"Sandbox Name: ","Nombre del Sandbox: "
+sbox.save,Save Sandbox,Guardar Sandbox
+sbox.tool.select,Selection,Selección
+sbox.tool.move,Reallocation,Realocación
+sbox.tool.velocity,Velocity,Velocidad
+sbox.tabs.tools,Tools,Herramientas
+sbox.tabs.planets,Planets,Planetas
+sbox.tabs.cb,Central Body,Cuerpo Central
+sbox.tabs.properties,Properties,Propiedades
+sbox.tabs.sttngs,Settings,Configuración
+sbox.tabs.sim,Simulation,Simulación
+sbox.planets.load,Load Custom Planet...,Cargar Planeta Personalizado...
+sbox.planets.ss,Solar System,Sistema Solar
+sbox.planets.campaign,Campaign,Campaña
+sbox.planets.custom,Custom,Propios
+sbox.prpts.locked,Locked,Bloquear
+sbox.prpts.destroy,DESTROY,DESTRUIR
+sbox.prpts.nps1,No planet selected!,¡No hay ningún planeta seleccionado!
+sbox.prpts.nps2,Use the Selection tool and with an object.,Usa la herramienta de Seleción con un objeto.
+sbox.trails,Orbital Trails,Trayectorias Orbitales
+sbox.grid,Grid,Cuadrícula
+sbox.resetY,Reset Y Axis,Reestablecer Coordenada Y
+sbox.timescale,Time Scale,Escala del Tiempo
+sbox.massscale,Mass Scale,Escala de la masa
+sbox.sim.play,Play,Ejecutar
+sbox.sim.pause,Pause,Pausar
+sbox.sim.reset,Reset,Reestablecer
+sbox.sim.running,Simulation Running,Simulación en Ejecución
+sbox.sim.paused,Simulation Paused,Simulación Pausada
+sbox.npp,No planets placed!,¡Ningún planeta colocado!
+sbox.planetsstars,Planets & Stars,Planetas y Estrellas
+sbox.viw,View in Window,Ver en Ventana
+sbox.show,Sandbox,Sandbox
+scb,Spaceship,Nave
+scb.om,Operation Mode,Modo de Operación
+scb.asmbview,Assembly View,Ensamblaje
+scb.blueprintview,Blueprint View,Plano
+scb.mm,Movement Mode,Mode de Movimiento
+scb.ocv,Orbit Camera View,Cámara Orbital
+scb.fpv,First Person View,Primera Persona
+scb.launch,Launch!,¡Lanzar!
+scb.noparts,No parts in this category yet!,No hay partes en esta categoria todavia
+scb.info,Spaceship Information,Información de la Nave
+scb.info.name,Name,Nombre
+scb.info.version,Version,Versión
+scb.info.desc,Description,Descripción
+scb.addpart,Add at least 1 part,Añade al menos 1 parte
+scb.bp.info,Show Information,Mostrar Información
+scb.bp.stats,Show Statistics,Mostrar Estadisticas
+help,Help,Ayuda
+help.nohelp,No help available for this game mode.,No hay ayuda disponible en este modo de juego.
+help.key.lclick,Left Click,Click Izq.
+help.key.rclick,Right Click,Click Der.
+help.key.scroll,Scroll,Rueda
+help.key.lalt,Left Alt,Alt Izq.
+help.action.zoom,Zoom In/Out,Ampliar/Alejar
+help.action.movecam,Move Camera,Mover Cámara
+help.action.applytool,Apply Tool,Usar Herramienta
+help.action.tools,Tools,Herramientas
+help.action.move,Move,Movimiento
+help.action.cursor,Show Cursor,Mostrar Cursor
+help.action.rot.up,Rotate Up,Rotar Arriba
+help.action.rot.dn,Rotate Down,Rotar Abajo
+help.hint.bp,Operation Mode > Blueprint,Modo de Operación > Plano
+help.movemode.oc,Orbit Camera,Cámara Orbital
+help.movemode.fpv,First Person Camera,Primera Persona
+help.movemode.bp,Blueprint Controls,Controles del Plano
+EOF,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,

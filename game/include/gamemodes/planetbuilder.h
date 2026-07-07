@@ -162,37 +162,37 @@ public:
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         if (ImGui::BeginMainMenuBar()) {
-            if (m_ui.beginMenu("Game")) {
-                if (m_ui.menuItem("Main Menu")) { m_ui.loadMainMenu(); }
-                if (m_ui.menuItem("Settings"))  { m_game.showSettings = !m_game.showSettings; }
-                if (m_ui.menuItem("Help"))      { m_game.showHelp = !m_game.showHelp; }
-                if (m_ui.menuItem("Quit"))      { m_game.GetEngine().stop(); }
+            if (m_ui.beginMenu(m_ui.getText("tm.game"))) {
+                if (m_ui.menuItem(m_ui.getText("tm.mm"))) { m_ui.loadMainMenu(); }
+                if (m_ui.menuItem(m_ui.getText("tm.settings")))  { m_game.showSettings = !m_game.showSettings; }
+                if (m_ui.menuItem(m_ui.getText("tm.help")))      { m_game.showHelp = !m_game.showHelp; }
+                if (m_ui.menuItem(m_ui.getText("tm.quit")))      { m_game.GetEngine().stop(); }
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Planet")) {
-                if (m_ui.menuItem("New Planet")) { 
+            if (m_ui.beginMenu(m_ui.getText("tm.pb.planet"))) {
+                if (m_ui.menuItem(m_ui.getText("tm.pb.new"))) { 
                     m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game), true);
                 }
-                if (m_ui.menuItem("Save Planet")) { Save(); }
-                if (m_ui.menuItem("Load Planet")) { m_selector.toggleOpen(); }
+                if (m_ui.menuItem(m_ui.getText("tm.pb.save"))) { Save(); }
+                if (m_ui.menuItem(m_ui.getText("tm.pb.load"))) { m_selector.toggleOpen(); }
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("View")) {
-                if (m_ui.menuItem("Properties")) { showProperties = !showProperties; }
-                if (m_ui.menuItem("Tools"))      { showTools      = !showTools; }
+            if (m_ui.beginMenu(m_ui.getText("tm.view"))) {
+                if (m_ui.menuItem(m_ui.getText("tm.properties"))) { showProperties = !showProperties; }
+                if (m_ui.menuItem(m_ui.getText("tm.tools")))      { showTools      = !showTools; }
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Tools")) {
-                if (m_ui.menuItem("Paint",   "1")) { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
-                if (m_ui.menuItem("Color History", "2")) { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
-                if (m_ui.menuItem("Terrain", "3")) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
+            if (m_ui.beginMenu(m_ui.getText("tm.tools"))) {
+                if (m_ui.menuItem(m_ui.getText("pb.paint"), "1")) { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
+                if (m_ui.menuItem(m_ui.getText("pb.colhis"), "2")) { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
+                if (m_ui.menuItem(m_ui.getText("pb.terrain"), "3")) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
                 ImGui::EndMenu();
             }
 
-            const char* toolName = (currentTool == PlanetToolMode::Terrain) ? "Terrain"
-                                 : (currentTool == PlanetToolMode::Paint)   ? "Paint"
-                                 : (currentTool == PlanetToolMode::ColorHistory) ? "Color History"
-                                                                                 : "None";
+            const char* toolName = (currentTool == PlanetToolMode::Terrain) ? m_ui.getText("pb.terrain")
+                                 : (currentTool == PlanetToolMode::Paint)   ? m_ui.getText("pb.paint")
+                                 : (currentTool == PlanetToolMode::ColorHistory) ? m_ui.getText("pb.colhis")
+                                                                                 : m_ui.getText("tm.tools");
             float textWidth = ImGui::CalcTextSize(toolName).x + 8.0f;
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth);
             ImGui::TextDisabled("%s", toolName);
@@ -225,48 +225,48 @@ public:
             ImGui::SeparatorText("General");
             char nameBuffer[128];
             std::strncpy(nameBuffer, planet->name.c_str(), sizeof(nameBuffer));
-            if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
+            if (ImGui::InputText(m_ui.getText("name"), nameBuffer, sizeof(nameBuffer))) {
                 planet->name = std::string(nameBuffer);
             }
 
             auto* planetComponent = planet->getComponent<PlanetComponent>();
             if (planetComponent) {
                 float radius = planetComponent->getPlanetParams().radius;
-                if (ImGui::SliderFloat("Radius", &radius, 50.0f, 1500.0f)) {
+                if (ImGui::SliderFloat(m_ui.getText("radius"), &radius, 50.0f, 1500.0f)) {
                     planetComponent->getPlanetParams().radius = radius;
                     planetComponent->initialize();
                 }
 
                 float mass = planetComponent->getPlanetParams().mass;
-                if (ImGui::SliderFloat("Mass", &mass, 1.0f, 10000.0f)) {
+                if (ImGui::SliderFloat(m_ui.getText("mass"), &mass, 1.0f, 10000.0f)) {
                     planetComponent->getPlanetParams().mass = mass;
                 }
 
                 float period = planetComponent->getPlanetParams().period;                
-                if (ImGui::SliderFloat("Rotation Period", &period, 0.01f, 100.0f, nullptr, ImGuiSliderFlags_Logarithmic)) {
+                if (ImGui::SliderFloat(m_ui.getText("period"), &period, 0.01f, 100.0f, nullptr, ImGuiSliderFlags_Logarithmic)) {
                     planetComponent->getPlanetParams().period = period;
                 }
 
                 ImGui::SeparatorText("Sun");
                 float sunIntensity = planetComponent->getPlanetParams().sunIntensity;
-                if (ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 50.0f)) {
+                if (ImGui::SliderFloat(m_ui.getText("sun.intensity"), &sunIntensity, 0.0f, 50.0f)) {
                     planetComponent->getPlanetParams().sunIntensity = sunIntensity;
                 }
 
                 Vec3 sunDir = planetComponent->getPlanetParams().sunDir;
-                if (ImGui::SliderFloat3("Sun Direction", &sunDir.x, -1.0f, 1.0f)) {
+                if (ImGui::SliderFloat3(m_ui.getText("sun.dir"), &sunDir.x, -1.0f, 1.0f)) {
                     planetComponent->getPlanetParams().sunDir = sunDir.normalize();
                 }
             }
 
             ImGui::SeparatorText("Atmosphere");
             bool hasAtmosphere = planetComponent->hasAtmosphere();
-            if (m_ui.checkbox("Has Atmosphere", &hasAtmosphere)) {
+            if (m_ui.checkbox(m_ui.getText("atms.has"), &hasAtmosphere)) {
                 planetComponent->setHasAtmosphere(hasAtmosphere);
             }
             if (hasAtmosphere) {
                 AtmosphereParams& atmo = planetComponent->getAtmosphere();
-                if (ImGui::SliderFloat("Thickness", &atmo.thickness, 1.0f, 1000.0f)) {}
+                if (ImGui::SliderFloat(m_ui.getText("atms.thickness"), &atmo.thickness, 1.0f, 1000.0f)) {}
 
                 Vec3& rc = atmo.rayleighCoeff;
                 static constexpr float k_rayleighMax = 0.08f; // displayable ceiling
@@ -275,7 +275,7 @@ public:
                     std::fmin(rc.y / k_rayleighMax, 1.0f),
                     std::fmin(rc.z / k_rayleighMax, 1.0f)
                 };
-                if (ImGui::ColorEdit3("Hue##rayleigh", skyColor,
+                if (ImGui::ColorEdit3(m_ui.getText("atms.scatter"), skyColor,
                         ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_PickerHueWheel)) {
                     float maxC = std::fmax(skyColor[0], std::fmax(skyColor[1], skyColor[2]));
                     if (maxC < 1e-5f) maxC = 1.0f;
@@ -286,7 +286,7 @@ public:
 
                 float maxCoeff = std::fmax(rc.x, std::fmax(rc.y, rc.z));
                 float scatterStrength = maxCoeff / k_rayleighMax; // [0,1]
-                if (ImGui::SliderFloat("Scatter Density", &scatterStrength, 0.01f, 1.0f)) {
+                if (ImGui::SliderFloat(m_ui.getText("atms.scatter"), &scatterStrength, 0.01f, 1.0f)) {
                     float prevMax = std::fmax(rc.x, std::fmax(rc.y, rc.z));
                     if (prevMax > 1e-6f) {
                         float scale = (scatterStrength * k_rayleighMax) / prevMax;
@@ -296,38 +296,38 @@ public:
                     }
                 }
 
-                if (ImGui::SliderFloat("Horizon Sharpness", &atmo.edgeFalloff, 0.0f, 1200.0f,
+                if (ImGui::SliderFloat(m_ui.getText("atms.sharpness"), &atmo.edgeFalloff, 0.0f, 1200.0f,
                         "%.2f", ImGuiSliderFlags_Logarithmic)) {}
             }
 
-            ImGui::SeparatorText("Water");
+            ImGui::SeparatorText(m_ui.getText("wtr"));
             bool hasWater = planetComponent->hasWater();
-            if (m_ui.checkbox("Has Water", &hasWater)) {
+            if (m_ui.checkbox(m_ui.getText("wtr.has"), &hasWater)) {
                 planetComponent->setHasWater(hasWater);
             }
             if (hasWater) {
                 float waterLevel = planetComponent->getWater().level;
-                if (ImGui::SliderFloat("Water Level", &waterLevel, -100.0f, 1000.0f)) {
+                if (ImGui::SliderFloat(m_ui.getText("wtr.lvl"), &waterLevel, -100.0f, 1000.0f)) {
                     planetComponent->getWater().level = waterLevel;
                 }
 
                 Vec3 waterColorA = planetComponent->getWater().colorA;
-                if (ImGui::ColorEdit3("Water Color A", &waterColorA.x)) {
+                if (ImGui::ColorEdit3(m_ui.getText("wtr.colA"), &waterColorA.x)) {
                     planetComponent->getWater().colorA = waterColorA;
                 }
 
                 Vec3 waterColorB = planetComponent->getWater().colorB;
-                if (ImGui::ColorEdit3("Water Color B", &waterColorB.x)) {
+                if (ImGui::ColorEdit3(m_ui.getText("wtr.colB"), &waterColorB.x)) {
                     planetComponent->getWater().colorB = waterColorB;
                 }
 
                 float depthMultiplier = planetComponent->getWater().depthMultiplier;
-                if (ImGui::SliderFloat("Depth Multiplier", &depthMultiplier, 0.0f, 0.5f)) {
+                if (ImGui::SliderFloat(m_ui.getText("wtr.depthMult"), &depthMultiplier, 0.0f, 0.5f)) {
                     planetComponent->getWater().depthMultiplier = depthMultiplier;
                 }
 
                 float alphaMultiplier = planetComponent->getWater().alphaMultiplier;
-                if (ImGui::SliderFloat("Alpha Multiplier", &alphaMultiplier, 0.0f, 0.5f)) {
+                if (ImGui::SliderFloat(m_ui.getText("wtr.alphaMult"), &alphaMultiplier, 0.0f, 0.5f)) {
                     planetComponent->getWater().alphaMultiplier = alphaMultiplier;
                 }
             }
@@ -349,43 +349,43 @@ public:
         bool consumeSync = syncToolTab;
         syncToolTab = false;
 
-        if (ImGui::BeginTabBar("Tools")) {
+        if (ImGui::BeginTabBar(m_ui.getText("tm.tools"))) {
             ImGuiTabItemFlags paintFlags = (consumeSync && currentTool == PlanetToolMode::Paint)
                                          ? ImGuiTabItemFlags_SetSelected : 0;
-            if (m_ui.beginTabItem("Paint", nullptr, paintFlags)) {
+            if (m_ui.beginTabItem(m_ui.getText("pb.paint"), nullptr, paintFlags)) {
                 if (!consumeSync) currentTool = PlanetToolMode::Paint;
 
-                ImGui::SliderFloat("Brush Size",    &brushSize,    1.0f,  150.0f);
-                ImGui::ColorEdit3 ("Brush Color",    brushColor);
+                ImGui::SliderFloat(m_ui.getText("paint.brush.size"), &brushSize, 1.0f, 150.0f);
+                ImGui::ColorEdit3 (m_ui.getText("paint.brush.col"), brushColor);
                 if (ImGui::IsItemDeactivatedAfterEdit()) {
                     colorHistory.push_back({ brushColor[0], brushColor[1], brushColor[2] });
                 }
-                ImGui::SliderFloat("Brush Opacity", &brushOpacity, 0.0f,  1.0f);
+                ImGui::SliderFloat(m_ui.getText("paint.brush.opacity"), &brushOpacity, 0.0f,  1.0f);
 
                 ImGui::Spacing();
-                if (m_ui.button("Clear Texture")) {
+                if (m_ui.button(m_ui.getText("paint.clear"))) {
                     if (m_paintTexture) {
                         m_paintTexture->fill(Vec4(1.0f, 1.0f, 1.0f, 1.0f));
                     }
                 }
 
                 ImGui::SameLine();
-                if (m_ui.checkbox("Brush Sound", &m_brushSoundEnabled)) {}
+                if (m_ui.checkbox(m_ui.getText("paint.brush.sound"), &m_brushSoundEnabled)) {}
 
                 ImGui::EndTabItem();
             }
 
             ImGuiTabItemFlags colorHistoryFlags = (consumeSync && currentTool == PlanetToolMode::ColorHistory)
                                             ? ImGuiTabItemFlags_SetSelected : 0;
-            if (m_ui.beginTabItem("Color History", nullptr, colorHistoryFlags)) {
+            if (m_ui.beginTabItem(m_ui.getText("colhis.title"), nullptr, colorHistoryFlags)) {
                 if (!consumeSync) currentTool = PlanetToolMode::ColorHistory;
 
-                ImGui::ColorEdit3("Brush Color", brushColor);
+                ImGui::ColorEdit3(m_ui.getText("paint.brush.col"), brushColor);
                 if (ImGui::IsItemDeactivatedAfterEdit()) {
                     colorHistory.push_back({ brushColor[0], brushColor[1], brushColor[2] });
                 }
-                
-                ImGui::SeparatorText("History");
+
+                ImGui::SeparatorText(m_ui.getText("colhis"));
                 for (size_t i = 0; i < colorHistory.size(); ++i) {
                     ImGui::PushID(static_cast<int>(i));
                     if (ImGui::ColorButton("##ColorHistory",
@@ -406,15 +406,15 @@ public:
 
             ImGuiTabItemFlags terrainFlags = (consumeSync && currentTool == PlanetToolMode::Terrain)
                                             ? ImGuiTabItemFlags_SetSelected : 0;
-            if (m_ui.beginTabItem("Terrain", nullptr, terrainFlags)) {
+            if (m_ui.beginTabItem(m_ui.getText("trrn"), nullptr, terrainFlags)) {
                 if (!consumeSync) currentTool = PlanetToolMode::Terrain;
 
-                ImGui::SliderFloat("Brush Size",     &terrainBrushSize,     10.0f, 800.0f);
-                ImGui::SliderFloat("Strength",       &terrainBrushStrength,  0.1f,  400.0f);
-                ImGui::SliderFloat("Falloff",        &terrainBrushFalloff,   0.5f,   4.0f);
+                ImGui::SliderFloat(m_ui.getText("trrn.size"),     &terrainBrushSize,     10.0f, 800.0f);
+                ImGui::SliderFloat(m_ui.getText("trrn.strenght"),       &terrainBrushStrength,  0.1f,  400.0f);
+                ImGui::SliderFloat(m_ui.getText("trrn.falloff"),        &terrainBrushFalloff,   0.5f,   4.0f);
 
                 ImGui::Spacing();
-                if (m_ui.button("Reset Mesh")) {
+                if (m_ui.button(m_ui.getText("trrn.clear"))) {
                     ResetTerrain();
                 }
 

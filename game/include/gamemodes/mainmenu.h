@@ -243,24 +243,24 @@ public:
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.5f, 0.9f, 0.9f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.4f, 1.0f, 0.75f));
         ImGui::BeginDisabled();
-        if (m_ui.button("Campaign Mode")) {}
-        if (m_ui.button("Explore the Solar System")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
+        if (m_ui.button(m_ui.getText("mm.campaign"))) {}
+        if (m_ui.button(m_ui.getText("mm.explore"))) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
         ImGui::EndDisabled();
 
         
-        if (m_ui.button("Sandbox Mode")) { showSandbox = !showSandbox; }
+        if (m_ui.button(m_ui.getText("mm.sandbox"))) { showSandbox = !showSandbox; }
         if (showSandbox) {
             ImGui::Indent();
-            if (m_ui.button("Planet Editor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
-            if (m_ui.button("Spacecraft Editor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
-            if (m_ui.button("Gravity Sandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game), false, false);
+            if (m_ui.button(m_ui.getText("mm.planeteditor"))) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
+            if (m_ui.button(m_ui.getText("mm.sceditor"))) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
+            if (m_ui.button(m_ui.getText("mm.gravitysandbox"))) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game), false, false);
             ImGui::Unindent();
         }
         
-        if (m_ui.button("Settings")) { m_game.showSettings = !m_game.showSettings; }
-        if (m_ui.button("Extras")) { showExtras = !showExtras; }
+        if (m_ui.button(m_ui.getText("mm.settings"))) { m_game.showSettings = !m_game.showSettings; }
+        if (m_ui.button(m_ui.getText("mm.extras"))) { showExtras = !showExtras; }
         
-        if (m_ui.button("Quit")) m_engine.stop();
+        if (m_ui.button(m_ui.getText("mm.quit"))) m_engine.stop();
         ImGui::PopStyleColor(2);
         m_ui.resetFont();
         ImGui::End();
@@ -285,15 +285,15 @@ public:
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
         
-        ImGui::Begin("Extras", &showExtras, flags);
+        ImGui::Begin(m_ui.getText("mm.extras"), &showExtras, flags);
 
         m_ui.setFont(1);
-        CenterText("Credits");
+        CenterText(m_ui.getText("mm.credits"));
         m_ui.resetFont();
         
-        CenterText("Developer: 4loyak! (@aloyak)");
-        CenterText("This project is open source!");
-        CenterText("Built with Origin Engine");
+        CenterText(m_ui.getText("crdt.author"));
+        CenterText(m_ui.getText("crdt.src"));
+        CenterText(m_ui.getText("crdt.eng"));
                 
         auto createLink = [&CenterText](const char* url) {
             CenterText(url, ImVec4(0.4f, 0.6f, 1.0f, 1.0f));
@@ -317,11 +317,11 @@ public:
         ImGui::Spacing();
 
         m_ui.setFont(1);
-        CenterText("Special thanks to:");
+        CenterText(m_ui.getText("crdt.thank"));
         m_ui.resetFont();
                 
-        CenterText("NASA & ESA for free quality assets");
-        CenterText("Hack Club for being awesome!");
+        CenterText(m_ui.getText("crdt.1"));
+        CenterText(m_ui.getText("crdt.2"));
 
         ImGui::Spacing();
         ImGui::Separator();

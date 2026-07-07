@@ -15,6 +15,7 @@
 #include <fstream>
 #include <filesystem>
 #include <cstring>
+#include <string>
 
 class Game;
 
@@ -1093,16 +1094,12 @@ public:
         if (file.is_open()) {
             file << j.dump(4);
             file.close();
-            Logger::info("Saved sandbox to " + savePath);
-        } else {
-            Logger::error("Failed to save sandbox to " + savePath);
         }
     }
 
     void LoadSandbox(const std::string& filepath) {
         std::ifstream file(filepath);
         if (!file.is_open()) {
-            Logger::error("Failed to open sandbox file: " + filepath);
             return;
         }
 
@@ -1110,7 +1107,6 @@ public:
         try {
             file >> j;
         } catch (const nlohmann::json::parse_error& e) {
-            Logger::error("Failed to parse sandbox file: " + std::string(e.what()));
             return;
         }
 
@@ -1195,10 +1191,11 @@ public:
                    m_game.GetEngine().getWindow().getSize().y * 0.5f - 75.0f),
             ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(320, 150), ImGuiCond_Always);
-        ImGui::Begin("Save Sandbox", &m_showSaveDialog,
+        std::string title = std::string(m_ui.getText("sbox.save")) + "###SaveSandbox";
+        ImGui::Begin(title.c_str(), &m_showSaveDialog,
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove);
 
-        ImGui::Text("Sandbox name:");
+        ImGui::Text("%s", m_ui.getText("sbox.name"));
         ImGui::SetNextItemWidth(-1.0f);
         bool hitEnter = ImGui::InputText("##SaveName", m_saveNameBuf, sizeof(m_saveNameBuf),
                                          ImGuiInputTextFlags_EnterReturnsTrue);
@@ -1206,14 +1203,14 @@ public:
 
         bool canSave = m_saveNameBuf[0] != '\0';
         if (!canSave) ImGui::BeginDisabled();
-        if (m_ui.button("Save", ImVec2(148, 0)) || (hitEnter && canSave)) {
+        if (m_ui.button(m_ui.getText("diag.save"), ImVec2(148, 0)) || (hitEnter && canSave)) {
             SaveSandbox(m_saveNameBuf);
             m_showSaveDialog = false;
             std::memset(m_saveNameBuf, 0, sizeof(m_saveNameBuf));
         }
         if (!canSave) ImGui::EndDisabled();
         ImGui::SameLine();
-        if (m_ui.button("Cancel", ImVec2(148, 0))) {
+        if (m_ui.button(m_ui.getText("diag.close"), ImVec2(148, 0))) {
             m_showSaveDialog = false;
             std::memset(m_saveNameBuf, 0, sizeof(m_saveNameBuf));
         }
@@ -1324,7 +1321,9 @@ public:
 
 
         if (!m_showSandbox) { m_sandboxWindowActive = false; return; }
-        ImGui::Begin("Sandbox", nullptr, flags);
+        
+        std::string sandboxTitle = std::string(m_ui.getText("mm.sandbox")) + "###Sandbox";
+        ImGui::Begin(sandboxTitle.c_str(), nullptr, flags);
 
         m_sandboxWindowActive = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) ||
                                  ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
@@ -1332,7 +1331,7 @@ public:
         if (!ImGui::IsWindowCollapsed()) {
             if (ImGui::BeginTabBar("SandboxTabBar")) {
 
-                if (m_ui.beginTabItem("Tools")) {
+                if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.tools"))) {
                     float childH = ImGui::GetContentRegionAvail().y;
                     ImGui::BeginChild("ToolScrollList", ImVec2(0, childH));
 
@@ -1362,7 +1361,7 @@ public:
                     ImGui::EndTabItem();
                 }
 
-                if (m_ui.beginTabItem("Planets")) {
+                if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.planets"))) {
                     float childH = ImGui::GetContentRegionAvail().y;
                     float totalW = ImGui::GetContentRegionAvail().x;
                     float rightSideW = 150.0f; 
@@ -1376,7 +1375,7 @@ public:
                     static int selectedType = 0; 
 
                     if (selectedType == 2) {
-                        if (m_ui.button("Load Custom Planet...", ImVec2(0, 30))) {
+                        if (m_ui.button(m_ui.getText("sbox.planets.load"), ImVec2(0, 30))) {
                             m_selector.toggleOpen();
                         }
                         ImGui::Separator();
@@ -1404,18 +1403,15 @@ public:
 
                     ImGui::BeginChild("PlanetTypeSelection", ImVec2(rightSideW, childH));
                     
-                    ImGui::RadioButton("Solar System", &selectedType, 0);
-                    ImGui::RadioButton("Campaign", &selectedType, 1);
-                    ImGui::RadioButton("Custom", &selectedType, 2);
+                    ImGui::RadioButton(m_ui.getText("sbox.planets.ss"), &selectedType, 0);
+                    ImGui::RadioButton(m_ui.getText("sbox.planets.campaign"), &selectedType, 1);
+                    ImGui::RadioButton(m_ui.getText("sbox.planets.custom"), &selectedType, 2);
 
                     ImGui::EndChild();
 
                     ImGui::EndTabItem();
                 }
-                //if (ImGui::BeginTabItem("Central Body")) {
-                //    ImGui::EndTabItem();
-                //}
-                if (m_ui.beginTabItem("Properties")) {
+                if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.properties"))) {
                     if (selectedEntity && selectedEntity->getComponent<PlanetComponent>()) {
                         auto* pc = selectedEntity->getComponent<PlanetComponent>();
 
@@ -1437,26 +1433,29 @@ public:
 
                         ImGui::SameLine();  
                         bool locked = pc->getPlanetParams().locked;
-                        if (m_ui.checkbox("Locked", &locked)) {
+                        if (m_ui.checkbox(m_ui.getText("sbox.prpts.locked"), &locked)) {
                             pc->getPlanetParams().locked = locked;
                         }
 
                         float halfWidth = (totalWidth - spacing) * 0.5f;
 
+                        std::string massFmt = std::string(m_ui.getText("mass")) + ": %.3e";
                         ImGui::SetNextItemWidth(halfWidth);
-                        if (ImGui::SliderFloat("##MassField", &mass, 1.0f, 1.0e10f, "Mass: %.3e", ImGuiSliderFlags_Logarithmic)) {
+                        if (ImGui::SliderFloat("##MassField", &mass, 1.0f, 1.0e10f, massFmt.c_str(), ImGuiSliderFlags_Logarithmic)) {
                             pc->getPlanetParams().mass = mass;
                         }
                         
                         ImGui::SameLine();
+                        std::string radiusFmt = std::string(m_ui.getText("radius")) + ": %.1f";
                         ImGui::SetNextItemWidth(halfWidth);
-                        if (ImGui::SliderFloat("##RadiusField", &radius, 1.0f, 100000.0f, "Radius: %.1f", ImGuiSliderFlags_Logarithmic)) {
+                        if (ImGui::SliderFloat("##RadiusField", &radius, 1.0f, 100000.0f, radiusFmt.c_str(), ImGuiSliderFlags_Logarithmic)) {
                             pc->getPlanetParams().radius = radius;
                             pc->applyScale();
                         }
 
+                        std::string periodFmt = std::string(m_ui.getText("period")) + ": %.3f";
                         ImGui::SetNextItemWidth(halfWidth);
-                        if (ImGui::SliderFloat("##PeriodField", &period, 0.0f, 1000.0f, "Period: %.3f")) {
+                        if (ImGui::SliderFloat("##PeriodField", &period, 0.0f, 1000.0f, periodFmt.c_str())) {
                             pc->getPlanetParams().period = period;
                         }
                         ImGui::SameLine();
@@ -1481,7 +1480,7 @@ public:
                             ImVec4(0.95f, 0.30f, 0.30f, 1.00f));
 
                         if (selectedEntity != m_centralBody) {
-                            if (m_ui.button("DESTROY", ImVec2(totalWidth, 0))) {
+                            if (m_ui.button(m_ui.getText("sbox.prpts.destroy"), ImVec2(totalWidth, 0))) {
                                 Entity* toDestroy = selectedEntity;
                                 DestroyPlanet(toDestroy);
                             }
@@ -1491,39 +1490,43 @@ public:
                     } else {
                         float halfWidth = ImGui::GetContentRegionAvail().x * 0.5f;
                         m_ui.setFont(1);
-                        float titleWidth = ImGui::CalcTextSize("No planet selected!").x;
+                        float titleWidth = ImGui::CalcTextSize(m_ui.getText("sbox.prpts.nps1")).x;
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() * 0.5f + 60.0f);
                         ImGui::SetCursorPosX(halfWidth - titleWidth * 0.5f);
-                        ImGui::TextDisabled("No planet selected!");
+                        ImGui::TextDisabled("%s", m_ui.getText("sbox.prpts.nps1"));
                         m_ui.resetFont();
-                        float subtitleWidth = ImGui::CalcTextSize("Use the Selection tool and with an object.").x;
+                        float subtitleWidth = ImGui::CalcTextSize(m_ui.getText("sbox.prpts.nps2")).x;
                         ImGui::SetCursorPosX(halfWidth - subtitleWidth * 0.5f);
-                        ImGui::TextDisabled("Use the Selection tool and with an object.");
+                        ImGui::TextDisabled("%s", m_ui.getText("sbox.prpts.nps2"));
                     }
 
                     ImGui::EndTabItem();
                 }
 
-                if (m_ui.beginTabItem("Settings")) {
-                    if (m_ui.button("Grid [G]")) drawGrid = !drawGrid;
+                if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.sttngs"))) {
+                    std::string gridBtn = std::string(m_ui.getText("sbox.grid")) + " [G]";
+                    if (m_ui.button(gridBtn.c_str())) drawGrid = !drawGrid;
                     ImGui::SameLine();
-                    if (m_ui.button("Orbit Trails [T]")) drawTrails = !drawTrails;
+                    std::string trailsBtn = std::string(m_ui.getText("sbox.trails")) + " [T]";
+                    if (m_ui.button(trailsBtn.c_str())) drawTrails = !drawTrails;
                     ImGui::SameLine();
-                    if (m_ui.button("Reset Y")) m_target->transform.position.y = 0.0f;
+                    if (m_ui.button(m_ui.getText("sbox.resetY"))) m_target->transform.position.y = 0.0f;
                     float totalWidth = ImGui::GetContentRegionAvail().x;
 
                     ImGui::SetNextItemWidth(totalWidth);
+                    std::string tsFmt = std::string(m_ui.getText("sbox.timescale")) + ": %.2f";
                     ImGui::SliderFloat("##TimeScale", &m_game.timeScale,
-                                       1.0f, 100000.0f, "Time Scale: %.2f",
+                                       1.0f, 100000.0f, tsFmt.c_str(),
                                        ImGuiSliderFlags_Logarithmic);
                     ImGui::SetNextItemWidth(totalWidth);
+                    std::string msFmt = std::string(m_ui.getText("sbox.massscale")) + ": %.3fx";
                     ImGui::SliderFloat("##MassScale", &m_massScale,
-                                       0.01f, 100.0f, "Mass Scale: %.3fx",
+                                       0.01f, 100.0f, msFmt.c_str(),
                                        ImGuiSliderFlags_Logarithmic);
                     ImGui::EndTabItem();
                 }
 
-                if (m_ui.beginTabItem("Simulation")) {
+                if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.sim"))) {
                     float spacing = ImGui::GetStyle().ItemSpacing.x;
                     float buttonW = (ImGui::GetContentRegionAvail().x - (spacing * 2.0f)) / 3.0f;
 
@@ -1570,50 +1573,50 @@ public:
             m_topBarActive = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) ||
                               ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 
-            if (m_ui.beginMenu("Game")) {
-                if (m_ui.menuItem("Main Menu")) m_ui.loadMainMenu();
-                if (m_ui.menuItem("Settings"))  m_game.showSettings = !m_game.showSettings;
-                if (m_ui.menuItem("Help"))      { m_game.showHelp = !m_game.showHelp; }
-                if (m_ui.menuItem("Quit"))      m_game.GetEngine().stop();
+            if (m_ui.beginMenu(m_ui.getText("tm.game"))) {
+                if (m_ui.menuItem(m_ui.getText("tm.mm"))) m_ui.loadMainMenu();
+                if (m_ui.menuItem(m_ui.getText("tm.settings")))  m_game.showSettings = !m_game.showSettings;
+                if (m_ui.menuItem(m_ui.getText("tm.help")))      { m_game.showHelp = !m_game.showHelp; }
+                if (m_ui.menuItem(m_ui.getText("tm.quit")))      m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Sandbox")) {
-                if (m_ui.menuItem("New Sandbox")) { ResetSandbox(); }
-                if (m_ui.menuItem("Load Sandbox")) { m_loadSelector.toggleOpen(); }
-                if (m_ui.menuItem("Save Sandbox")) { m_showSaveDialog = true; }
+            if (m_ui.beginMenu(m_ui.getText("mm.sandbox"))) {
+                if (m_ui.menuItem(m_ui.getText("tm.sbox.new"))) { ResetSandbox(); }
+                if (m_ui.menuItem(m_ui.getText("tm.sbox.load"))) { m_loadSelector.toggleOpen(); }
+                if (m_ui.menuItem(m_ui.getText("tm.sbox.save"))) { m_showSaveDialog = true; }
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("View")) {
-                if (m_ui.menuItem("Sandbox Panel")) m_showSandbox = !m_showSandbox;
-                if (m_ui.menuItem("Active Planets")) showPlanetsWindow = !showPlanetsWindow;
-                if (m_ui.menuItem("Grid", "G")) drawGrid = !drawGrid;
-                if (m_ui.menuItem("Orbit Trails", "T")) drawTrails = !drawTrails;
+            if (m_ui.beginMenu(m_ui.getText("tm.view"))) {
+                if (m_ui.menuItem(m_ui.getText("sbox.show"))) m_showSandbox = !m_showSandbox;
+                if (m_ui.menuItem(m_ui.getText("sbox.planetsstars"))) showPlanetsWindow = !showPlanetsWindow;
+                if (m_ui.menuItem(m_ui.getText("sbox.grid"), "G")) drawGrid = !drawGrid;
+                if (m_ui.menuItem(m_ui.getText("sbox.trails"), "T")) drawTrails = !drawTrails;
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Tools")) {
-                if (m_ui.menuItem("Selection",    "1")) m_toolMode = ToolMode::Selection;
+            if (m_ui.beginMenu(m_ui.getText("tm.tools"))) {
+                if (m_ui.menuItem(m_ui.getText("sbox.tool.select"),    "1")) m_toolMode = ToolMode::Selection;
                 if (simulationRunning) ImGui::BeginDisabled();
-                if (m_ui.menuItem("Reallocation", "2")) m_toolMode = ToolMode::Reallocation;
+                if (m_ui.menuItem(m_ui.getText("sbox.tool.move"), "2")) m_toolMode = ToolMode::Reallocation;
                 if (simulationRunning) ImGui::EndDisabled();
-                if (m_ui.menuItem("Velocity",     "3")) m_toolMode = ToolMode::Velocity;
+                if (m_ui.menuItem(m_ui.getText("sbox.tool.velocity"),     "3")) m_toolMode = ToolMode::Velocity;
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Simulation")) {
+            if (m_ui.beginMenu(m_ui.getText("sbox.tabs.sim"))) {
                 bool isPlaying = simulationRunning && !physicsPaused;
 
-                if (m_ui.menuItem("Play", "P", false, !isPlaying)) {
+                if (m_ui.menuItem(m_ui.getText("sbox.sim.play"), "P", false, !isPlaying)) {
                     if (!simulationRunning) StartSimulation();
                     else                    ResumeSimulation();
                 }
-                if (m_ui.menuItem("Pause", "Space", false, simulationRunning)) PauseSimulation();
-                if (m_ui.menuItem("Reset", "R", false, m_hasSnapshot)) ResetSimulation();
+                if (m_ui.menuItem(m_ui.getText("sbox.sim.pause"), "Space", false, simulationRunning)) PauseSimulation();
+                if (m_ui.menuItem(m_ui.getText("sbox.sim.reset"), "R", false, m_hasSnapshot)) ResetSimulation();
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Planets")) {
-                if (m_ui.menuItem("Show in Window")) showPlanetsWindow = !showPlanetsWindow;
+            if (m_ui.beginMenu(m_ui.getText("sbox.tabs.planets"))) {
+                if (m_ui.menuItem(m_ui.getText("sbox.viw"))) showPlanetsWindow = !showPlanetsWindow;
                 ImGui::Separator();
                 if (planetList.empty()) {
-                    ImGui::TextDisabled("No planets placed.");
+                    ImGui::TextDisabled("%s", m_ui.getText("sbox.npp"));
                 } else {
                     for (Entity* planet : planetList) {
                         if (!planet) continue;
@@ -1626,18 +1629,18 @@ public:
                 ImGui::EndMenu();
             }
 
-            const char* statusText = simulationRunning ? (physicsPaused ? "Simulation Paused" : "Simulation Running") : "";
+            const char* statusText = simulationRunning ? (physicsPaused ? m_ui.getText("sbox.sim.paused") : m_ui.getText("sbox.sim.running")) : "";
             float statusWidth = ImGui::CalcTextSize(statusText).x;
             ImGui::SetCursorPosX((ImGui::GetWindowWidth() - statusWidth) * 0.5f);
             ImGui::TextColored(ImVec4(0.75f, 1.0f, 0.75f, 1.0f), "%s", statusText);
 
             const char* toolName;
             if (simulationRunning && m_toolMode == ToolMode::Reallocation) {
-                toolName = physicsPaused ? "Simulation Paused" : "Simulation Running";
+                toolName = physicsPaused ? m_ui.getText("sbox.sim.paused") : m_ui.getText("sbox.sim.running");
             } else {
-                toolName = (m_toolMode == ToolMode::Selection)    ? "Selection"
-                          : (m_toolMode == ToolMode::Reallocation) ? "Reallocation"
-                                                                     : "Velocity";
+                toolName = (m_toolMode == ToolMode::Selection)    ? m_ui.getText("sbox.tool.select")
+                          : (m_toolMode == ToolMode::Reallocation) ? m_ui.getText("sbox.tool.move")
+                                                                     : m_ui.getText("sbox.tool.velocity");
             }
             float textWidth = ImGui::CalcTextSize(toolName).x + 8.0f;
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth);
@@ -1651,9 +1654,10 @@ public:
     
     void DrawPlanetsWindow() {
         ImGui::SetNextWindowSize(ImVec2(300, 400), ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Planets & Stars", &showPlanetsWindow, ImGuiWindowFlags_NoCollapse)) {
+        std::string psTitle = std::string(m_ui.getText("sbox.planetsstars")) + "###PlanetsStars";
+        if (ImGui::Begin(psTitle.c_str(), &showPlanetsWindow, ImGuiWindowFlags_NoCollapse)) {
             if (planetList.empty()) {
-                ImGui::TextDisabled("No planets placed.");
+                ImGui::TextDisabled("%s", m_ui.getText("sbox.npp"));
             } else {
                 for (Entity* planet : planetList) {
                     if (!planet) continue;

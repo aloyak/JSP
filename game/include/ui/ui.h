@@ -7,6 +7,7 @@
 #include "engine/render/texture.h"
 
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -32,6 +33,8 @@ public:
         fonts.push_back(io.Fonts->Fonts.back());
         fonts.push_back(io.Fonts->Fonts[io.Fonts->Fonts.size() - 2]);
         fonts.push_back(io.Fonts->Fonts[io.Fonts->Fonts.size() - 3]);
+
+        loadLanguageFile();
     }
 
     void setFont(float index) {
@@ -137,6 +140,11 @@ public:
     void drawTransitionScreen(float alpha);
     void drawSettingsWindow();
     void drawHelpWindow();
+
+
+    void setLang(int lang) { m_language = lang; }
+    int getLang() const { return m_language; }
+    const char* getText(std::string key);
 private:
     Game& m_game;
 
@@ -147,6 +155,78 @@ private:
     std::unordered_set<ImGuiID> m_hoveredLastFrame;
 
     void updateButtonSfx(ImGuiID id); // defined in game.cpp, needs Game::GetAudioManager
+
+    int m_language = 0;
+
+    std::unordered_map<std::string, std::vector<std::string>> m_translations;
+
+    std::vector<std::string> parseCsvLine(const std::string& line) {
+        std::vector<std::string> fields;
+        std::string field;
+        bool inQuotes = false;
+
+        for (size_t i = 0; i < line.size(); ++i) {
+            char c = line[i];
+
+            if (inQuotes) {
+                if (c == '"') {
+                    if (i + 1 < line.size() && line[i + 1] == '"') {
+                        field += '"';
+                        ++i;
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    field += c;
+                }
+            } else {
+                if (c == '"') {
+                    inQuotes = true;
+                } else if (c == ',') {
+                    fields.push_back(field);
+                    field.clear();
+                } else {
+                    field += c;
+                }
+            }
+        }
+        fields.push_back(field);
+        return fields;
+    }
+
+    void loadLanguageFile() {
+        m_translations.clear();
+
+        const std::string path = Path::resolve("assets/lang.csv");
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            return;
+        }
+
+        std::string line;
+        bool isHeader = true;
+        while (std::getline(file, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (line.empty()) {
+                continue;
+            }
+
+            std::vector<std::string> fields = parseCsvLine(line);
+            if (isHeader) {
+                isHeader = false;
+                continue;
+            }
+            if (fields.empty()) {
+                continue;
+            }
+
+            const std::string key = fields[0];
+            std::vector<std::string> translations(fields.begin() + 1, fields.end());
+            m_translations[key] = std::move(translations);
+        }
+    }
 
     void setStyle() {
         ImGuiStyle& style = ImGui::GetStyle();

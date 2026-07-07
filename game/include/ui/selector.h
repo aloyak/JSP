@@ -18,12 +18,12 @@ public:
         Vec2 windowSize = m_game.GetEngine().getWindow().getSize();
         ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.5f - 150, windowSize.y * 0.5f - 100), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_Once);
-        ImGui::Begin("Open File", &m_isOpen, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin(m_game.GetUI().getText("selector.open"), &m_isOpen, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
         std::filesystem::path resolvedPath = Path::resolve(m_searchPath);
 
         if (!std::filesystem::exists(resolvedPath)) {
-            ImGui::Text("No files found in path:");
+            ImGui::Text(m_game.GetUI().getText("selector.nsfod"));
             ImGui::Text("%s", m_searchPath.c_str());
             ImGui::End();
             return;

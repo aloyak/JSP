@@ -211,8 +211,12 @@ public:
             m_targetPosBeforeBlueprint = m_target->transform.position;
             m_target->transform.position = m_spaceship.geometryCenter;
 
+            ImGuiIO& blueprintIO = ImGui::GetIO();
+            float blueprintAspect = (blueprintIO.DisplaySize.y > 0.0f)
+                ? (blueprintIO.DisplaySize.x / blueprintIO.DisplaySize.y) : 1.0f;
+
             float blueprintDistance = Blueprint::ComputeCameraDistance(
-                m_spaceship, m_target->transform.position.y, m_orbitFov,
+                m_spaceship, m_target->transform.position.y, m_orbitFov, blueprintAspect,
                 Blueprint::kTopClearance, Blueprint::kBottomClearance);
 
             int presetIndex = Blueprint::nearestPresetIndex(m_target->transform.position, m_transitionFromPos);
@@ -255,6 +259,10 @@ public:
                 m_camera->transform.rotation = m_transitionFromRot + (m_transitionToRot - m_transitionFromRot) * s;
             } else {
                 m_camera->getComponent<CameraComponent>()->lookAt(*m_target);
+
+                float fromRoll = (m_moveMode == MoveMode::Blueprint) ? Blueprint::kSideRollDegrees : 0.0f;
+                float toRoll = (m_transitionTarget == MoveMode::Blueprint) ? Blueprint::kSideRollDegrees : 0.0f;
+                m_camera->transform.rotation.z = fromRoll + (toRoll - fromRoll) * s;
             }
 
             if (t >= 1.0f) {
@@ -749,43 +757,43 @@ public:
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         if (ImGui::BeginMainMenuBar()) {
-            if (m_ui.beginMenu("Game")) {
-                if (m_ui.menuItem("Main Menu")) m_ui.loadMainMenu();
-                if (m_ui.menuItem("Settings"))  m_game.showSettings = !m_game.showSettings;
-                if (m_ui.menuItem("Help"))      { m_game.showHelp = !m_game.showHelp; }
-                if (m_ui.menuItem("Quit")) m_game.GetEngine().stop();
+            if (m_ui.beginMenu(m_ui.getText("tm.game"))) {
+                if (m_ui.menuItem(m_ui.getText("tm.mm"))) m_ui.loadMainMenu();
+                if (m_ui.menuItem(m_ui.getText("tm.settings")))  m_game.showSettings = !m_game.showSettings;
+                if (m_ui.menuItem(m_ui.getText("tm.help")))      { m_game.showHelp = !m_game.showHelp; }
+                if (m_ui.menuItem(m_ui.getText("tm.quit"))) m_game.GetEngine().stop();
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Spacecraft")) {
-                if (m_ui.menuItem("New Spacecraft")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game), true, true);
-                if (m_ui.menuItem("Save Spacecraft")) {}
-                if (m_ui.menuItem("Load Spacecraft")) {}
+            if (m_ui.beginMenu(m_ui.getText("scb"))) {
+                if (m_ui.menuItem(m_ui.getText("tm.scb.new"))) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game), true, true);
+                if (m_ui.menuItem(m_ui.getText("tm.scb.save"))) {}
+                if (m_ui.menuItem(m_ui.getText("tm.scb.load"))) {}
                 ImGui::EndMenu();
             }
             bool wasTransitioning = m_isTransitioning;
             if (wasTransitioning) ImGui::BeginDisabled();
-            if (m_ui.beginMenu("Operation Mode")) {
-                if (m_ui.menuItem("Assembly View")) StartTransitionTo(MoveMode::CameraOrbit);
+            if (m_ui.beginMenu(m_ui.getText("scb.om"))) {
+                if (m_ui.menuItem(m_ui.getText("scb.asmbview"))) StartTransitionTo(MoveMode::CameraOrbit);
                 
                 bool isBlueprintDisabled = m_spaceship.parts.empty();
                 
                 if (isBlueprintDisabled) ImGui::BeginDisabled();
-                if (m_ui.menuItem("Blueprint View")) StartTransitionTo(MoveMode::Blueprint);
+                if (m_ui.menuItem(m_ui.getText("scb.blueprintview"))) StartTransitionTo(MoveMode::Blueprint);
                 if (isBlueprintDisabled) ImGui::EndDisabled();
 
-                if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("Add at least 1 part");
+                if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(m_ui.getText("scb.addpart"));
                 ImGui::EndMenu();
             }
-            if (m_ui.beginMenu("Movement Mode")) {
-                if (m_ui.menuItem("Orbit Camera View", "1")) StartTransitionTo(MoveMode::CameraOrbit);
-                if (m_ui.menuItem("First Person View", "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
+            if (m_ui.beginMenu(m_ui.getText("scb.mm"))) {
+                if (m_ui.menuItem(m_ui.getText("scb.ocv"), "1")) StartTransitionTo(MoveMode::CameraOrbit);
+                if (m_ui.menuItem(m_ui.getText("scb.fpv"), "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
                 ImGui::EndMenu();
             }
             if (wasTransitioning) ImGui::EndDisabled();
             ImGui::BeginDisabled();
-            if (m_ui.beginMenu("Launch!")) {}
+            if (m_ui.beginMenu(m_ui.getText("scb.launch"))) {}
             ImGui::EndDisabled();
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("Not implemented yet");
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(m_ui.getText("notimplemented"));
             
         }
         ImGui::EndMainMenuBar();
@@ -972,7 +980,7 @@ public:
                 }
 
                 if (visibleParts.empty()) {
-                    ImGui::TextDisabled("No parts in this category yet.");
+                    ImGui::TextDisabled(m_ui.getText("scb.noparts"));
                 }
             }
         }
@@ -1017,32 +1025,32 @@ public:
         //categorybarwidht = 56.0f
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 56.0f);
         m_ui.setFont(1);
-        ImGui::TextUnformatted("Spaceship Information");
+        ImGui::TextUnformatted(m_ui.getText("scb.info"));
         m_ui.resetFont();
         ImGui::Separator();
 
         char nameBuffer[128];
         std::strncpy(nameBuffer, m_spaceship.name.c_str(), sizeof(nameBuffer));
-        if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
+        if (ImGui::InputText(m_ui.getText("scb.info.name"), nameBuffer, sizeof(nameBuffer))) {
             m_spaceship.name = std::string(nameBuffer);
         }
 
         char versionBuffer[32];
         std::strncpy(versionBuffer, m_spaceship.version.c_str(), sizeof(versionBuffer));
-        if (ImGui::InputText("Version", versionBuffer, sizeof(versionBuffer))) {
+        if (ImGui::InputText(m_ui.getText("scb.info.version"), versionBuffer, sizeof(versionBuffer))) {
             m_spaceship.version = std::string(versionBuffer);
         }
 
         char descBuffer[512];
         std::strncpy(descBuffer, m_spaceship.description.c_str(), sizeof(descBuffer));
-        if (ImGui::InputTextMultiline("Description", descBuffer, sizeof(descBuffer), ImVec2(-1.0f, 150.0f))) {
+        if (ImGui::InputTextMultiline(m_ui.getText("scb.info.desc"), descBuffer, sizeof(descBuffer), ImVec2(-1.0f, 150.0f))) {
             m_spaceship.description = std::string(descBuffer);
         }
 
         ImGui::BeginDisabled();
-        if (ImGui::DragFloat("Mass (kg)", &m_spaceship.mass, 0.1f, 1.0f)) {}
-        if (ImGui::DragFloat("Thrust (N)", &m_spaceship.thrust, 0.1f, 1.0f)) {} 
-        if (ImGui::DragFloat("Fuel Capacity (L)", &m_spaceship.fuelCapacity, 0.1f, 1.0f)) {}
+        if (ImGui::DragFloat(m_ui.getText("mass"), &m_spaceship.mass, 0.1f, 1.0f)) {}
+        if (ImGui::DragFloat(m_ui.getText("thrust"), &m_spaceship.thrust, 0.1f, 1.0f)) {} 
+        if (ImGui::DragFloat(m_ui.getText("fuel"), &m_spaceship.fuelCapacity, 0.1f, 1.0f)) {}
         ImGui::EndDisabled();
     }
 

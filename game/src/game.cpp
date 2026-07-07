@@ -1,5 +1,6 @@
 #include "game.h"
 #include "engine/utils/logger.h"
+#include "engine/utils/path.h"
 #include "gamemodes/mainmenu.h"
 
 Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(nullptr), settingsManager("user/settings.json") {
@@ -27,6 +28,7 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
     //Logger::setVerbose(1); // TODO: SET ON RELEASE
 
     m_ui.initialize(); 
+    m_ui.setLang(settings.language);
 }
 
 void Game::Update() {
@@ -193,14 +195,11 @@ void UI::updateButtonSfx(ImGuiID id) {
     }
 }
 
-// TODO: user settings (change on engine, not game)
 void UI::drawSettingsWindow() {
     Engine& m_engine = m_game.GetEngine();
     AudioManager& m_audio = m_game.GetAudioManager();
     auto& settings = m_game.settingsManager.Get();
     bool settingsChanged = false;
-
-    
 
     int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
     ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
@@ -208,27 +207,26 @@ void UI::drawSettingsWindow() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
 
-    ImGui::Begin("Settings", &m_game.showSettings, flags);
+    ImGui::Begin(getText("sttngs"), &m_game.showSettings, flags);
 
     this->setFont(1);
-    centerText("Settings");
+    centerText(getText("sttngs"));
     this->resetFont();
         
-    ImGui::SeparatorText("Language");
-    const char* languages[] = { "English", "SOON" };
+    ImGui::SeparatorText(getText("sttngs.lang"));
+    const char* languages[] = { "English", "Spanish", "SOON..." };
     ImGui::SetNextItemWidth(-1.0f);
     if (ImGui::Combo("##Language", &settings.language, languages, IM_ARRAYSIZE(languages))) {
+        setLang(settings.language);
         settingsChanged = true;
     }
 
-    ImGui::SeparatorText("Graphics");
+    ImGui::SeparatorText(getText("sttngs.graphics"));
         
-    if (checkbox("Fullscreen", &settings.isFullscreen)) {
+    if (checkbox(getText("sttngs.fullscreen"), &settings.isFullscreen)) {
         m_engine.getWindow().setFullscreen(settings.isFullscreen);
         settingsChanged = true;
     }
-
-    ImGui::SameLine(150.0f);
 
     if (checkbox("VSync", &settings.vsyncEnabled)) {
         m_engine.getWindow().enableVSync(settings.vsyncEnabled);
@@ -236,7 +234,8 @@ void UI::drawSettingsWindow() {
     }
 
     ImGui::SetNextItemWidth(-1.0f);
-    if (ImGui::SliderInt("##TargetFPS", &settings.targetFPS, 30, 1000, (settings.targetFPS == 1000) || (settings.targetFPS == -1) ? "Target FPS: Unlimited" : "Target FPS: %d")) {
+    std::string targetFpsFormat = (settings.targetFPS == 1000 || settings.targetFPS == -1) ? getText("sttngs.target.unlimited") : std::string(getText("sttngs.target")) + " %d";
+    if (ImGui::SliderInt("##TargetFPS", &settings.targetFPS, 30, 1000, targetFpsFormat.c_str())) {
         if (settings.targetFPS >= 1000) {
             settings.targetFPS = -1;
         }
@@ -244,33 +243,38 @@ void UI::drawSettingsWindow() {
         settingsChanged = true;
     }
 
-    ImGui::SeparatorText("Gameplay");
-    if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.1f, 100.0f, "Mouse Sensitivity: %.2f")) {
+    ImGui::SeparatorText(getText("sttngs.gameplay"));
+    std::string mouseSensFormat = std::string(getText("sttngs.sens")) + " %.1f";
+    if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.1f, 100.0f, mouseSensFormat.c_str())) {
         settingsChanged = true;
     }
 
-    if (ImGui::SliderFloat("##HeadBobIntensity", &settings.headbobIntensity, 0.0f, 1.0f, "Head Bob Intensity: %.2f")) {
+    std::string headBobFormat = std::string(getText("sttngs.headBob")) + " %.2f";
+    if (ImGui::SliderFloat("##HeadBobIntensity", &settings.headbobIntensity, 0.0f, 1.0f, headBobFormat.c_str())) {
         settingsChanged = true;
     }
 
-    ImGui::SeparatorText("Audio");
+    ImGui::SeparatorText(getText("sttngs.audio"));
 
     float masterVol = settings.masterVolume * 100.0f;
-    if (ImGui::SliderFloat("##MasterVolume", &masterVol, 0.0f, 100.0f, "Master Volume: %.2f%%")) {
+    std::string masterVolFormat = std::string(getText("sttngs.vol.master")) + " %.0f%%";
+    if (ImGui::SliderFloat("##MasterVolume", &masterVol, 0.0f, 100.0f, masterVolFormat.c_str())) {
         settings.masterVolume = masterVol * 0.01f;
         m_audio.setVolume(settings.masterVolume, Master);
         settingsChanged = true;
     }
 
     float musicVol = settings.musicVolume * 100.0f;
-    if (ImGui::SliderFloat("##MusicVolume", &musicVol, 0.0f, 100.0f, "Music Volume: %.2f%%")) {
+    std::string musicVolFormat = std::string(getText("sttngs.vol.music")) + " %.0f%%";
+    if (ImGui::SliderFloat("##MusicVolume", &musicVol, 0.0f, 100.0f, musicVolFormat.c_str())) {
         settings.musicVolume = musicVol * 0.01f;
         m_audio.setVolume(settings.musicVolume, Music);
         settingsChanged = true;
     }
 
     float sfxVol = settings.sfxVolume * 100.0f;
-    if (ImGui::SliderFloat("##SFXVolume", &sfxVol, 0.0f, 100.0f, "SFX Volume: %.2f%%")) {
+    std::string sfxVolFormat = std::string(getText("sttngs.vol.sfx")) + " %.0f%%";
+    if (ImGui::SliderFloat("##SFXVolume", &sfxVol, 0.0f, 100.0f, sfxVolFormat.c_str())) {
         settings.sfxVolume = sfxVol * 0.01f;
         m_audio.setVolume(settings.sfxVolume, SFX);
         settingsChanged = true;
@@ -287,45 +291,133 @@ void UI::drawSettingsWindow() {
 void UI::drawHelpWindow() {
     int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
     ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
-    ImGui::Begin("Help", &m_game.showHelp, flags);
+    ImGui::Begin(getText("help"), &m_game.showHelp, flags);
 
     this->setFont(1);
-    centerText("Help");
+    centerText(getText("help"));
     this->resetFont();
     
     std::string gamemode = m_game.GetCurrentGameMode()->modeName;
 
-    ImGui::SeparatorText(gamemode.c_str());
+    struct HelpSection {
+        const char* title;
+        const char* subtitle;
+        std::vector<std::pair<const char*, const char*>> entries;
+    };
+
+    std::vector<HelpSection> sections;
 
     if (gamemode == "Sandbox") {
-        ImGui::Text("WASD - Move");
-        ImGui::Text("Shift - Y+");
-        ImGui::Text("Ctrl - Y-");
-        ImGui::Text("Scroll - Zoom In/Out");
-        ImGui::Text("Left Click - Move Camera");
-        ImGui::Text("Right Click - Apply Tool");
-        ImGui::Text("1,2,3 - Tools");
+        sections.push_back({nullptr, nullptr, {
+            {"WASD", "Move"}, 
+            {"Shift", "Y+"}, {"Ctrl", "Y-"}, 
+            {getText("help.key.scroll"), getText("help.action.zoom")}, 
+            {getText("help.key.lclick"), getText("help.action.movecam")}, 
+            {getText("help.key.rclick"), getText("help.action.applytool")}, 
+            {"1-2-3", getText("help.action.tools")}
+        }});
     } else if (gamemode == "PlanetBuilder") {
-        ImGui::Text("Right Click - Apply Tool");
-        ImGui::Text("Left Click - Move Camera");
-        ImGui::Text("Scroll - Zoom In/Out");
-        ImGui::Text("1,2,3 - Tools");
+        sections.push_back({nullptr, nullptr, {
+            {getText("help.key.rclick"), getText("help.action.applytool")},
+            {getText("help.key.lclick"), getText("help.action.movecam")}, 
+            {getText("help.key.scroll"), getText("help.action.zoom")}, 
+            {"1-2-3", getText("help.action.tools")}
+        }});
     } else if (gamemode == "SpacecraftBuilder") {
-        ImGui::SeparatorText("Orbit Camera");
-        ImGui::Text("Left Click - Move Camera");
-        ImGui::Text("Scroll - Zoom In/Out");
-        ImGui::Text("Shift - Y+");
-        ImGui::Text("Ctrl - Y-");
-        ImGui::SeparatorText("First Person Camera");
-        ImGui::Text("WASD - Move");
-        ImGui::Text("Left Alt - Show Cursor");
-        ImGui::SeparatorText("Blueprint Controls");
-        ImGui::TextDisabled("Operation Mode > Blueprint");
-        ImGui::Text("A - Rotate Left");
-        ImGui::Text("D - Rotate Right");
-    } else {
-        ImGui::Text("No help available for this game mode.");
+        sections.push_back({getText("help.movemode.oc"), nullptr, {
+            {getText("help.key.lclick"), getText("help.action.movecam")}, 
+            {getText("help.key.scroll"), getText("help.action.zoom")}, 
+            {"Shift", "Y+"}, {"Ctrl", "Y-"}
+        }});
+        sections.push_back({getText("help.movemode.fpv"), nullptr, {
+            {"WASD", getText("help.action.move")}, 
+            {getText("help.key.lalt"), getText("help.action.cursor")},
+        }});
+        sections.push_back({getText("help.movemode.bp"), getText("help.hint.bp"), {
+            {"W", getText("help.action.rot.up")}, 
+            {"S", getText("help.action.rot.dn")}
+        }});
+    }
+
+    if (sections.empty()) {
+        ImGui::Text(getText("help.nohelp"));
+        ImGui::End();
+        return;
+    }
+
+    float maxActionWidth = 0.0f;
+    float maxKeyWidth = 0.0f;
+    
+    for (const auto& section : sections) {
+        for (const auto& entry : section.entries) {
+            float actionW = ImGui::CalcTextSize(entry.second).x;
+            float keyW = ImGui::CalcTextSize(entry.first).x;
+            if (actionW > maxActionWidth) maxActionWidth = actionW;
+            if (keyW > maxKeyWidth) maxKeyWidth = keyW;
+        }
+    }
+    
+    maxActionWidth += 40.0f; 
+    maxKeyWidth += 20.0f;
+
+    int tableFlags = ImGuiTableFlags_BordersInnerV;
+    int tableId = 0;
+
+    for (const auto& section : sections) {
+        if (section.title) {
+            ImGui::Spacing();
+            ImGui::SeparatorText(section.title);
+        }
+        if (section.subtitle) {
+            ImGui::TextDisabled("%s", section.subtitle);
+            ImGui::Spacing();
+        }
+
+        ImGui::PushID(tableId++);
+        if (ImGui::BeginTable("HelpTable", 2, tableFlags)) {
+            ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed, maxKeyWidth);
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, maxActionWidth);
+
+            for (const auto& entry : section.entries) {
+                ImGui::TableNextRow();
+                
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(40, 45, 55, 255));
+                ImGui::TextColored(ImVec4(0.5f, 0.7f, 0.8f, 1.0f), " %s ", entry.first);
+                
+                ImGui::TableSetColumnIndex(1);
+                
+                float textWidth = ImGui::CalcTextSize(entry.second).x;
+                float columnWidth = ImGui::GetColumnWidth();
+                float cursorX = ImGui::GetCursorPosX() + (columnWidth - textWidth) * 0.5f;
+                ImGui::SetCursorPosX(cursorX);
+                
+                ImGui::Text("%s", entry.second);
+            }
+            ImGui::EndTable();
+        }
+        ImGui::PopID();
     }
 
     ImGui::End();
-};
+}
+
+const char* UI::getText(std::string key) {
+    auto it = m_translations.find(key);
+    if (it == m_translations.end()) {
+        return key.c_str();
+    }
+
+    const std::vector<std::string>& translations = it->second;
+    size_t langIndex = static_cast<size_t>(m_language);
+
+    if (langIndex < translations.size() && !translations[langIndex].empty()) {
+        return translations[langIndex].c_str();
+    }
+
+    if (!translations.empty() && !translations[0].empty()) {
+        return translations[0].c_str();
+    }
+
+    return key.c_str();
+}
