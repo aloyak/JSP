@@ -28,7 +28,7 @@ private:
 
     bool m_isTurning = false;
     float m_transitionElapsed = 0.0f;
-    float m_transitionDuration = 0.35f;
+    float m_transitionDuration = 0.4f;
     Vec3 m_fromPos{0.0f};
     Vec3 m_toPos{0.0f};
 
@@ -37,9 +37,15 @@ private:
     void startTurn(int direction) {
         m_presetIndex = ((m_presetIndex + direction) % 4 + 4) % 4;
         m_fromPos = m_camera->transform.position;
-        m_toPos = presetPosition(m_target->transform.position, m_presetIndex);
+        m_toPos = presetPosition(m_target->transform.position, m_presetIndex, computeDistance());
         m_transitionElapsed = 0.0f;
         m_isTurning = true;
+    }
+
+    float computeDistance() const {
+        float fov = m_camera->getComponent<CameraComponent>()->getFOV();
+        float cameraY = m_target->transform.position.y; // camera is kept level with the target
+        return ComputeCameraDistance(m_ship, cameraY, fov, kTopClearance, kBottomClearance);
     }
 
     void drawInfo() {
@@ -52,20 +58,37 @@ private:
         m_game->GetUI().setFont(0);
         ImGui::Text(&m_ship.name.c_str()[0]);
         m_game->GetUI().resetFont();    
+        ImGui::TextColored(ImVec4(1, 1, 1, 0.7f), &m_ship.version.c_str()[0]);
         ImGui::TextWrapped(&m_ship.description.c_str()[0]);
 
         ImGui::End();
         ImGui::PopStyleColor();
     }
 public:
-    static constexpr float kFixedDistance = 20.0f;
+    static constexpr float kTopClearance = 8.0f;
+    static constexpr float kBottomClearance = 6.0f;
 
-    static Vec3 presetPosition(const Vec3& center, int index) {
+    static constexpr float kMinDistance = 8.0f;
+
+    static float ComputeCameraDistance(const Spaceship& ship, float cameraY, float verticalFovDegrees,
+                                        float topClearance, float bottomClearance) {
+        float halfFovRad = (verticalFovDegrees * 0.5f) * (3.1415926535f / 180.0f);
+        float tanHalfFov = std::tan(halfFovRad);
+        if (tanHalfFov <= 0.0001f) return kMinDistance;
+
+        float topExtent = std::max(0.0f, (ship.highestPartY - cameraY) + topClearance);
+        float bottomExtent = std::max(0.0f, (cameraY - ship.lowestPartY) + bottomClearance);
+
+        float requiredDistance = std::max(topExtent, bottomExtent) / tanHalfFov;
+        return std::max(requiredDistance, kMinDistance);
+    }
+
+    static Vec3 presetPosition(const Vec3& center, int index, float distance) {
         float angleDegrees = 90.0f - 90.0f * static_cast<float>(index);
         float angle = angleDegrees * (3.1415926535f / 180.0f);
-        return Vec3(center.x + kFixedDistance * std::cos(angle),
+        return Vec3(center.x + distance * std::cos(angle),
                     center.y,
-                    center.z + kFixedDistance * std::sin(angle));
+                    center.z + distance * std::sin(angle));
     }
 
     static int nearestPresetIndex(const Vec3& center, const Vec3& cameraPos) {

@@ -113,6 +113,8 @@ private:
     static constexpr float k_gizmoArmLength = 0.35f;
     static constexpr float k_gizmoLineWidth = 2.0f;
 
+    float m_bottomClearance = 6.0f;
+
     PostProcessor* m_barrier = nullptr;
     bool m_barrierEnabled = true;
 public:
@@ -206,15 +208,15 @@ public:
             }
             m_transitionToFov = m_firstPersonCamera->getFov();
         } else if (mode == MoveMode::Blueprint) {
-            // Remember where the target was so we can put it back once we
-            // leave blueprint mode, then lock it onto the ship's actual
-            // center of mass (not just its height) so the transition and
-            // subsequent blueprint view are centered on it correctly.
             m_targetPosBeforeBlueprint = m_target->transform.position;
             m_target->transform.position = m_spaceship.geometryCenter;
 
+            float blueprintDistance = Blueprint::ComputeCameraDistance(
+                m_spaceship, m_target->transform.position.y, m_orbitFov,
+                Blueprint::kTopClearance, Blueprint::kBottomClearance);
+
             int presetIndex = Blueprint::nearestPresetIndex(m_target->transform.position, m_transitionFromPos);
-            m_transitionToPos = Blueprint::presetPosition(m_target->transform.position, presetIndex);
+            m_transitionToPos = Blueprint::presetPosition(m_target->transform.position, presetIndex, blueprintDistance);
             m_transitionToRot = m_camera->transform.rotation; // blueprint drives via lookAt, not rotation
             m_transitionToFov = m_orbitFov;
             m_barrierEnabled = false;
@@ -309,7 +311,7 @@ public:
         }
 
         m_target->transform.position.y = std::clamp(m_target->transform.position.y, 0.0f, 60.0f);
-        m_camera->transform.position.y = std::clamp(m_camera->transform.position.y, 2.0f, 300.0f);
+        m_camera->transform.position.y = std::clamp(m_camera->transform.position.y, 2.0f, 260.0f);
 
         if (targetHeightChanged && !m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) {
             m_orbitCamera->ApplyPosition();
@@ -322,6 +324,33 @@ public:
         }
 
         if (!m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) HandlePartPlacement();
+
+        if (!m_placedParts.empty()) {
+            float lowestY = 1e9f;
+            float highestY = -1e9f;
+            for (const auto& placed : m_placedParts) {
+                if (!placed.entity) continue;
+                float y = placed.entity->transform.position.y;
+                lowestY = std::min(lowestY, y);
+                highestY = std::max(highestY, y);
+            }
+            if (lowestY < m_bottomClearance) {
+                float diff = m_bottomClearance - lowestY;
+                for (auto& placed : m_placedParts) {
+                    if (placed.entity) {
+                        placed.entity->transform.position.y += diff;
+                    }
+                }
+                lowestY += diff;
+                highestY += diff;
+                if (!m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) {
+                    m_orbitCamera->ApplyPosition();
+                }
+            }
+
+            m_spaceship.lowestPartY = lowestY;
+            m_spaceship.highestPartY = highestY;
+        }
 
         showAssemblyWindow();
         drawBarrier();
@@ -372,19 +401,78 @@ public:
         return r;
     }
 
-    float YawToFaceHorizontal(const Vec3& from, const Vec3& to, float fallbackYawDegrees) const {
-        float fx = from.x, fz = from.z;
-        float tx = to.x, tz = to.z;
+    Vec3 RotationToAlignNormals(const Vec3& from, const Vec3& to, float fallbackYawDegrees) const {
+        const float epsilon = 1e-6f;
 
-        if ((fx * fx + fz * fz) < 1e-6f || (tx * tx + tz * tz) < 1e-6f) {
-            return fallbackYawDegrees;
+        bool toIsVertical = (to.x * to.x + to.z * to.z) < epsilon;
+        if (toIsVertical) {
+            return Vec3(0.0f, fallbackYawDegrees, 0.0f);
         }
 
-        float angleFrom = std::atan2(fz, fx);
-        float angleTo = std::atan2(tz, tx);
-        float theta = angleFrom - angleTo;
+        bool fromIsVertical = (from.x * from.x + from.z * from.z) < epsilon;
+        if (!fromIsVertical) {
+            float angleFrom = std::atan2(from.z, from.x);
+            float angleTo = std::atan2(to.z, to.x);
+            float yaw = (angleFrom - angleTo) * (180.0f / 3.1415926535f);
+            return Vec3(0.0f, yaw, 0.0f);
+        }
 
-        return theta * (180.0f / 3.1415926535f);
+        Vec3 f = from.normalize();
+        Vec3 t = to.normalize();
+        float cosAngle = std::max(-1.0f, std::min(1.0f, dot(f, t)));
+
+        float m00, m01, m02;
+        float m10, m11, m12;
+        float m20, m21, m22;
+
+        if (cosAngle > 1.0f - epsilon) {
+            m00 = 1.0f; m01 = 0.0f; m02 = 0.0f;
+            m10 = 0.0f; m11 = 1.0f; m12 = 0.0f;
+            m20 = 0.0f; m21 = 0.0f; m22 = 1.0f;
+        } else if (cosAngle < -1.0f + epsilon) {
+            Vec3 axis = cross(f, Vec3(0.0f, 1.0f, 0.0f));
+            if (axis.length() < epsilon) axis = cross(f, Vec3(1.0f, 0.0f, 0.0f));
+            axis = axis.normalize();
+
+            float kx = axis.x, ky = axis.y, kz = axis.z;
+            m00 = 2.0f * kx * kx - 1.0f; m01 = 2.0f * kx * ky;        m02 = 2.0f * kx * kz;
+            m10 = 2.0f * kx * ky;        m11 = 2.0f * ky * ky - 1.0f; m12 = 2.0f * ky * kz;
+            m20 = 2.0f * kx * kz;        m21 = 2.0f * ky * kz;        m22 = 2.0f * kz * kz - 1.0f;
+        } else {
+            Vec3 axis = cross(f, t).normalize();
+            float angle = std::acos(cosAngle);
+            float s = std::sin(angle);
+            float c = cosAngle;
+            float kx = axis.x, ky = axis.y, kz = axis.z;
+
+            m00 = c + kx * kx * (1.0f - c);
+            m01 = kx * ky * (1.0f - c) - kz * s;
+            m02 = kx * kz * (1.0f - c) + ky * s;
+
+            m10 = ky * kx * (1.0f - c) + kz * s;
+            m11 = c + ky * ky * (1.0f - c);
+            m12 = ky * kz * (1.0f - c) - kx * s;
+
+            m20 = kz * kx * (1.0f - c) - ky * s;
+            m21 = kz * ky * (1.0f - c) + kx * s;
+            m22 = c + kz * kz * (1.0f - c);
+        }
+
+        float sinPitch = std::max(-1.0f, std::min(1.0f, m21));
+        float pitch = std::asin(sinPitch);
+        float cosPitch = std::cos(pitch);
+
+        float yaw, roll;
+        if (std::abs(cosPitch) > epsilon) {
+            yaw  = std::atan2(-m20, m22);
+            roll = std::atan2(-m01, m11);
+        } else {
+            roll = 0.0f;
+            yaw  = std::atan2(m02, m00);
+        }
+
+        const float toDegrees = 180.0f / 3.1415926535f;
+        return Vec3(pitch * toDegrees, yaw * toDegrees, roll * toDegrees);
     }
 
     void StartGhostPlacement(Part& part) {
@@ -457,7 +545,7 @@ public:
                 ImVec2 screenPos;
                 if (!WorldToScreen(worldPos, screenPos)) continue;
 
-                bool allowed = !m_ghostPartDef || attach.AllowsCategory(m_ghostPartDef->category);
+                bool allowed = !m_ghostPartDef || attach.AllowsCategory(m_ghostPartDef->GetPlacementCategory());
                 ImU32 fillColor = allowed ? IM_COL32(100, 255, 200, 230) : IM_COL32(255, 90, 90, 200);
                 ImU32 ringColor = allowed ? IM_COL32(100, 255, 200, 120) : IM_COL32(255, 90, 90, 100);
 
@@ -487,10 +575,10 @@ public:
             if (!placed.entity || !placed.partDef) continue;
 
             for (size_t idx = 0; idx < placed.partDef->attachmentPoints.size(); ++idx) {
-                if (idx < placed.usedAttachments.size() && placed.usedAttachments[idx]) continue; // already mated
+                if (idx < placed.usedAttachments.size() && placed.usedAttachments[idx]) continue; 
 
                 auto& attach = placed.partDef->attachmentPoints[idx];
-                if (m_ghostPartDef && !attach.AllowsCategory(m_ghostPartDef->category)) continue;
+                if (m_ghostPartDef && !attach.AllowsCategory(m_ghostPartDef->GetPlacementCategory())) continue;
 
                 Vec3 worldPos = placed.entity->transform.position +
                     RotateEuler(attach.position, placed.entity->transform.rotation);
@@ -518,7 +606,7 @@ public:
                         float bestDot = -1e9f;
                         for (size_t g = 0; g < m_ghostPartDef->attachmentPoints.size(); ++g) {
                             auto& ghostAttach = m_ghostPartDef->attachmentPoints[g];
-                            if (!ghostAttach.AllowsCategory(placed.partDef->category)) continue;
+                            if (!ghostAttach.AllowsCategory(placed.partDef->GetPlacementCategory())) continue;
 
                             float d = dot(ghostAttach.normal, desiredDir);
                             if (d > bestDot) { bestDot = d; matedGhostIdx = static_cast<int>(g); }
@@ -528,9 +616,8 @@ public:
 
                         auto& ghostAttach = m_ghostPartDef->attachmentPoints[matedGhostIdx];
 
-                        float yaw = YawToFaceHorizontal(
+                        snapRotation = RotationToAlignNormals(
                             ghostAttach.normal, desiredDir, placed.entity->transform.rotation.y);
-                        snapRotation = Vec3(0.0f, yaw, 0.0f);
 
                         Vec3 ghostOffset = RotateEuler(ghostAttach.position, snapRotation);
                         snapPosition = worldPos - ghostOffset;
@@ -686,10 +773,7 @@ public:
                 if (m_ui.menuItem("Blueprint View")) StartTransitionTo(MoveMode::Blueprint);
                 if (isBlueprintDisabled) ImGui::EndDisabled();
 
-                if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                    ImGui::SetTooltip("Add at least 1 part");
-                }
-
+                if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("Add at least 1 part");
                 ImGui::EndMenu();
             }
             if (m_ui.beginMenu("Movement Mode")) {
@@ -698,6 +782,11 @@ public:
                 ImGui::EndMenu();
             }
             if (wasTransitioning) ImGui::EndDisabled();
+            ImGui::BeginDisabled();
+            if (m_ui.beginMenu("Launch!")) {}
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("Not implemented yet");
+            
         }
         ImGui::EndMainMenuBar();
         ImGui::PopStyleColor(2);
@@ -732,17 +821,25 @@ public:
     void updateGeometryCenter() {
         if (m_placedParts.empty()) return;
 
-        Vec3 geomCenter(0.0f);
+        Vec3 minPos(1e9f, 1e9f, 1e9f);
+        Vec3 maxPos(-1e9f, -1e9f, -1e9f);
         int count = 0;
 
         for (auto& placed : m_placedParts) {
             if (!placed.entity || !placed.partDef) continue;
-            geomCenter += placed.entity->transform.position;
+            const Vec3& pos = placed.entity->transform.position;
+            minPos.x = std::min(minPos.x, pos.x);
+            minPos.y = std::min(minPos.y, pos.y);
+            minPos.z = std::min(minPos.z, pos.z);
+            maxPos.x = std::max(maxPos.x, pos.x);
+            maxPos.y = std::max(maxPos.y, pos.y);
+            maxPos.z = std::max(maxPos.z, pos.z);
             count++;
         }
 
+        Vec3 geomCenter = (minPos + maxPos) * 0.5f;
+
         if (count > 0) {
-            geomCenter = geomCenter / static_cast<float>(count);
             m_spaceship.geometryCenter = geomCenter;
         }
 
@@ -928,6 +1025,12 @@ public:
         std::strncpy(nameBuffer, m_spaceship.name.c_str(), sizeof(nameBuffer));
         if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
             m_spaceship.name = std::string(nameBuffer);
+        }
+
+        char versionBuffer[32];
+        std::strncpy(versionBuffer, m_spaceship.version.c_str(), sizeof(versionBuffer));
+        if (ImGui::InputText("Version", versionBuffer, sizeof(versionBuffer))) {
+            m_spaceship.version = std::string(versionBuffer);
         }
 
         char descBuffer[512];
