@@ -142,16 +142,16 @@ public:
     void DrawAttachmentPointGizmos();
     
     bool FindSnapPoint(const Ray& ray, Vec3& outPos, Vec3& outRot,
-        PlacedPart*& outTargetPart, int& outTargetIdx, int& outGhostIdx);
+    PlacedPart*& outTargetPart, int& outTargetIdx, int& outGhostIdx);
         
-        void ConfirmGhostPlacement(PlacedPart* targetPart, int targetAttachIdx, int ghostAttachIdx);
-        void CancelGhostPlacement();
-        void HandlePartPlacement();
+    void ConfirmGhostPlacement(PlacedPart* targetPart, int targetAttachIdx, int ghostAttachIdx);
+    void CancelGhostPlacement();
+    void HandlePartPlacement();
         
-        void LateUpdate() override;
+    void LateUpdate() override;
         
-        void updateCenterOfMass();
-        void updateGeometryCenter();
+    void updateCenterOfMass();
+    void updateGeometryCenter();
         
     void Update() override;
     void showAssemblyWindow();
