@@ -788,7 +788,9 @@ public:
             }
             if (wasTransitioning) ImGui::EndDisabled();
             ImGui::BeginDisabled();
-            if (m_ui.beginMenu(m_ui.getText("scb.launch"))) {}
+            if (m_ui.beginMenu(m_ui.getText("scb.launch"))) {
+                ImGui::EndMenu();
+            }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(m_ui.getText("notimplemented"));
             

@@ -61,7 +61,9 @@ private:
             { "Milky Way Skybox · ESA", false },
             { "Jersey10 Font · Google Fonts", false },
             { "Planet 3D Models · NASA", false },
-
+            { "", false },
+            { m_ui.getText("crdt.ai"), true },
+            { m_ui.getText("crdt.aifull"), false },
         },
         {
             { m_ui.getText("crdt.tech"), true },
@@ -70,6 +72,10 @@ private:
             { "SDL3", false },
             { "Dear ImGui", false },
             { "SoLoud", false },
+        },
+        {
+            { "PLAYTESTERS", true },
+            { "Send good feedback to appear here!", false },
         },
         {
             { m_ui.getText("crdt.specialthanks"), true },
@@ -83,6 +89,8 @@ public:
         , m_game(game) {}
 
     void OnEnter() override {
+        m_game.GetEngine().getInput().setCursorMode(true);
+
         m_camera = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Camera").get();
 
         m_lookUpElapsed = 0.0f;
@@ -101,7 +109,9 @@ public:
         }
     }
 
-    void OnExit() override {}
+    void OnExit() override {
+        m_game.GetEngine().getInput().setCursorMode(false);
+    }
 
     void Update() override {
         Input& input = m_game.GetEngine().getInput();

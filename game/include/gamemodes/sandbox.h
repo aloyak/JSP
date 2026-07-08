@@ -1329,7 +1329,7 @@ public:
                                  ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 
         if (!ImGui::IsWindowCollapsed()) {
-            if (ImGui::BeginTabBar("SandboxTabBar")) {
+            if (ImGui::BeginTabBar("SandboxTabBar", ImGuiTabBarFlags_NoTabListScrollingButtons)) {
 
                 if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.tools"))) {
                     float childH = ImGui::GetContentRegionAvail().y;
@@ -1409,6 +1409,9 @@ public:
 
                     ImGui::EndChild();
 
+                    ImGui::EndTabItem();
+                }
+                if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.cb"))){
                     ImGui::EndTabItem();
                 }
                 if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.properties"))) {
