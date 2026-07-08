@@ -210,7 +210,7 @@ void UI::drawSettingsWindow() {
     ImGui::Begin(getText("sttngs"), &m_game.showSettings, flags);
 
     ImGui::SeparatorText(getText("sttngs.lang"));
-    const char* languages[] = { "English", "Spanish", "SOON..." };
+    const char* languages[] = { "English", "Español", "SOON..." };
     ImGui::SetNextItemWidth(-1.0f);
     if (ImGui::Combo("##Language", &settings.language, languages, IM_ARRAYSIZE(languages))) {
         setLang(settings.language);
