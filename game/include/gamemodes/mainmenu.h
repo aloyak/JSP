@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.10.0"
+#define VERSION "0.10.1"
 
 #include "gamemode.h"
 #include "components/planetComponent.h"
@@ -11,6 +11,7 @@
 #include "gamemodes/sandbox.h"
 #include "gamemodes/planetbuilder.h"
 #include "gamemodes/spacecraftbuilder.h"
+#include "gamemodes/credits.h"
 
 #include "engine/render/texture.h"
 
@@ -314,6 +315,14 @@ public:
         createLink("https://github.com/aloyak/JSP");
         createLink("https://github.com/aloyak/origin");
 
+        ImGui::Spacing();
+        const char* label = m_ui.getText("crdt.full");
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(label).x - ImGui::GetStyle().FramePadding.x * 2.0f) * 0.5f);
+        if (m_ui.button(label)) { 
+            m_game.showSettings = false;
+            m_game.showHelp = false;
+            m_game.SetGameMode(std::make_unique<CreditsMode>(m_game), false, false);
+        }
         ImGui::Spacing();
 
         m_ui.setFont(1);

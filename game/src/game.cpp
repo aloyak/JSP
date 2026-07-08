@@ -209,10 +209,6 @@ void UI::drawSettingsWindow() {
 
     ImGui::Begin(getText("sttngs"), &m_game.showSettings, flags);
 
-    this->setFont(1);
-    centerText(getText("sttngs"));
-    this->resetFont();
-        
     ImGui::SeparatorText(getText("sttngs.lang"));
     const char* languages[] = { "English", "Spanish", "SOON..." };
     ImGui::SetNextItemWidth(-1.0f);
@@ -292,10 +288,6 @@ void UI::drawHelpWindow() {
     int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
     ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
     ImGui::Begin(getText("help"), &m_game.showHelp, flags);
-
-    this->setFont(1);
-    centerText(getText("help"));
-    this->resetFont();
     
     std::string gamemode = m_game.GetCurrentGameMode()->modeName;
 
@@ -312,25 +304,26 @@ void UI::drawHelpWindow() {
             {"WASD", "Move"}, 
             {"Shift", "Y+"}, {"Ctrl", "Y-"}, 
             {getText("help.key.scroll"), getText("help.action.zoom")}, 
-            {getText("help.key.lclick"), getText("help.action.movecam")}, 
-            {getText("help.key.rclick"), getText("help.action.applytool")}, 
+            {getText("help.key.rclick"), getText("help.action.movecam")}, 
+            {getText("help.key.lclick"), getText("help.action.applytool")}, 
             {"1-2-3", getText("help.action.tools")}
         }});
     } else if (gamemode == "PlanetBuilder") {
         sections.push_back({nullptr, nullptr, {
-            {getText("help.key.rclick"), getText("help.action.applytool")},
-            {getText("help.key.lclick"), getText("help.action.movecam")}, 
+            {getText("help.key.lclick"), getText("help.action.applytool")},
+            {getText("help.key.rclick"), getText("help.action.movecam")}, 
             {getText("help.key.scroll"), getText("help.action.zoom")}, 
             {"1-2-3", getText("help.action.tools")}
         }});
     } else if (gamemode == "SpacecraftBuilder") {
         sections.push_back({getText("help.movemode.oc"), nullptr, {
-            {getText("help.key.lclick"), getText("help.action.movecam")}, 
+            {getText("help.key.rclick"), getText("help.action.movecam")}, 
             {getText("help.key.scroll"), getText("help.action.zoom")}, 
             {"Shift", "Y+"}, {"Ctrl", "Y-"}
         }});
         sections.push_back({getText("help.movemode.fpv"), nullptr, {
             {"WASD", getText("help.action.move")}, 
+            {"Shift", getText("help.action.sprint")}, 
             {getText("help.key.lalt"), getText("help.action.cursor")},
         }});
         sections.push_back({getText("help.movemode.bp"), getText("help.hint.bp"), {

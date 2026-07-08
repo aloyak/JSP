@@ -16,6 +16,13 @@ crdt.eng,Built with Origin Engine,Creado con Origin Engine
 crdt.thank,Special thanks to:,Agradecimientos especiales a:
 crdt.1,NASA & ESA for free quality assets,NASA & ESA por recursos de calidad
 crdt.2,Hack Club for being awesome!,Hack Club por ser genial
+crdt.full,Show Full Credits,Mostrar Créditos Completos
+crdt.dev,DEVELOPER,DESARROLLADOR
+crdt.builtwith,BUILT WITH,CREADO CON
+crdt.music,MUSIC & SOUND LICENSES,LICENCIAS DE MÚSICA Y SONIDO
+crdt.licenses,3RD PARTY LICENSES,LICENCIAS DE TERCEROS
+crdt.tech,3RD PARTY TECHNOLOGY,TECNOLOGÍA DE TERCEROS
+crdt.specialthanks,SPECIAL THANKS,AGRADECIMIENTOS ESPECIALES
 sttngs,Settings,Configuración
 sttngs.lang,Language,Idioma
 sttngs.fullscreen,Fullscreen,Pantalla Completa
@@ -34,7 +41,7 @@ tm.mm,Main Menu,Menu Principal
 tm.settings,Settings,Configuración
 tm.help,Help,Ayuda
 tm.quit,Quit,Salir
-tm.view,View,Vista
+tm.view,View,Ver
 tm.tools,Tools,Herramientas
 tm.properties,Properties,Propiedades
 tm.pb.planet,Planet,Planeta
@@ -120,10 +127,7 @@ sbox.planetsstars,Planets & Stars,Planetas y Estrellas
 sbox.viw,View in Window,Ver en Ventana
 sbox.show,Sandbox,Sandbox
 scb,Spaceship,Nave
-scb.om,Operation Mode,Modo de Operación
-scb.asmbview,Assembly View,Ensamblaje
-scb.blueprintview,Blueprint View,Plano
-scb.mm,Movement Mode,Mode de Movimiento
+scb.blueprintview,Blueprint View,Vista de Plano
 scb.ocv,Orbit Camera View,Cámara Orbital
 scb.fpv,First Person View,Primera Persona
 scb.launch,Launch!,¡Lanzar!
@@ -146,10 +150,11 @@ help.action.movecam,Move Camera,Mover Cámara
 help.action.applytool,Apply Tool,Usar Herramienta
 help.action.tools,Tools,Herramientas
 help.action.move,Move,Movimiento
+help.action.sprint,Sprint,Esprintar
 help.action.cursor,Show Cursor,Mostrar Cursor
 help.action.rot.up,Rotate Up,Rotar Arriba
 help.action.rot.dn,Rotate Down,Rotar Abajo
-help.hint.bp,Operation Mode > Blueprint,Modo de Operación > Plano
+help.hint.bp,View > Blueprint,Ver > Vista de Plano
 help.movemode.oc,Orbit Camera,Cámara Orbital
 help.movemode.fpv,First Person Camera,Primera Persona
 help.movemode.bp,Blueprint Controls,Controles del Plano

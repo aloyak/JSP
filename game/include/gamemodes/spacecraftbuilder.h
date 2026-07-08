@@ -773,8 +773,9 @@ public:
             }
             bool wasTransitioning = m_isTransitioning;
             if (wasTransitioning) ImGui::BeginDisabled();
-            if (m_ui.beginMenu(m_ui.getText("scb.om"))) {
-                if (m_ui.menuItem(m_ui.getText("scb.asmbview"))) StartTransitionTo(MoveMode::CameraOrbit);
+            if (m_ui.beginMenu(m_ui.getText("tm.view"))) {
+                if (m_ui.menuItem(m_ui.getText("scb.ocv"), "1")) StartTransitionTo(MoveMode::CameraOrbit);
+                if (m_ui.menuItem(m_ui.getText("scb.fpv"), "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
                 
                 bool isBlueprintDisabled = m_spaceship.parts.empty();
                 
@@ -783,11 +784,6 @@ public:
                 if (isBlueprintDisabled) ImGui::EndDisabled();
 
                 if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(m_ui.getText("scb.addpart"));
-                ImGui::EndMenu();
-            }
-            if (m_ui.beginMenu(m_ui.getText("scb.mm"))) {
-                if (m_ui.menuItem(m_ui.getText("scb.ocv"), "1")) StartTransitionTo(MoveMode::CameraOrbit);
-                if (m_ui.menuItem(m_ui.getText("scb.fpv"), "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
                 ImGui::EndMenu();
             }
             if (wasTransitioning) ImGui::EndDisabled();
