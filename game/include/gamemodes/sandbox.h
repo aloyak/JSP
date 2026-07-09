@@ -5,6 +5,7 @@
 
 #include "engine/components/entity.h"
 #include "engine/components/rendererComponent.h"
+#include "engine/render/postprocess/postProcessor.h"
 #include "engine/utils/logger.h"
 
 #include "components/planetComponent.h"
@@ -137,6 +138,9 @@ private:
 
     PlanetRegistry m_registry;
     Entity* m_centralBody = nullptr;
+    // TODO: not hardcoding central bodies
+    PostProcessor* m_blackHole = nullptr;
+    bool m_blackHoleActive = false;
 
     bool showPlanetsWindow = false;
 public:
@@ -183,19 +187,21 @@ public:
     void ResumeSimulation();
     void ResetSimulation();
     void StepSimulation(float dt);
-    void ResetSandbox();
     
     void DrawTrails();
     void DrawGrid(Renderer& renderer, Entity* m_camera);
-
+    
     void Update() override;
     void LateUpdate() override;
-
+    
     // Save/Loading
     void SaveSandbox(const std::string& name);
     void LoadSandbox(const std::string& filepath);
     void DrawSaveDialog();
+    void ResetSandbox();
 
+    void SetCentralBodyType(bool useBlackHole);
+    
     void Transition(float dt);
 
     // UI

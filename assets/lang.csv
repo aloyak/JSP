@@ -114,9 +114,9 @@ sbox.prpts.locked,Locked,Bloquear
 sbox.prpts.destroy,DESTROY,DESTRUIR
 sbox.prpts.nps1,No planet selected!,¡No hay ningún planeta seleccionado!
 sbox.prpts.nps2,Use the Selection tool and with an object.,Usa la herramienta de Seleción con un objeto.
-sbox.trails,Orbital Trails,Trayectorias Orbitales
+sbox.trails,Orbital Trails,Trayectorias
 sbox.grid,Grid,Cuadrícula
-sbox.resetY,Reset Y Axis,Reestablecer Coordenada Y
+sbox.resetY,Reset Y Axis,Reestablecer Y
 sbox.timescale,Time Scale,Escala del Tiempo
 sbox.massscale,Mass Scale,Escala de la masa
 sbox.sim.play,Play,Ejecutar

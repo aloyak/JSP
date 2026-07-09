@@ -590,10 +590,8 @@ void SandboxMode::UpdateFocusTransition(float dt)
 
 void SandboxMode::DestroyPlanet(Entity *planet)
 {
-    if (!planet)
-        return;
-    if (planet == m_centralBody)
-        return;
+    if (!planet) return;
+    if (planet == m_centralBody) return;
 
     DestroyAnimation anim;
     anim.center = planet->transform.position;
@@ -1080,10 +1078,26 @@ void SandboxMode::Update()
     if (m_centralBody)
     {
         auto *sunComp = m_centralBody->getComponent<PlanetComponent>();
-        if (sunComp)
-        {
-            float distToSun = (m_camera->transform.position - m_centralBody->transform.position).length();
+        float distToSun = (m_camera->transform.position - m_centralBody->transform.position).length();
+        if (sunComp) {
             sunComp->getAtmosphere().thickness = std::max(550.0f, distToSun * 0.1f);
+        }
+        if (m_blackHoleActive) {
+            auto* camComp = m_camera->getComponent<CameraComponent>();
+            m_blackHole->setMat4("u_invView", camComp->getCamera().getInvViewMatrix(m_camera->transform));
+            m_blackHole->setMat4("u_invProj", camComp->getCamera().getInvProjMatrix());
+            m_blackHole->setFloat("u_near", camComp->getNear());
+            m_blackHole->setFloat("u_far", camComp->getFar());
+
+            m_blackHole->setFloat("u_time", m_game.GetEngine().getTime());
+            m_blackHole->setFloat("u_swirlStrength", 1.0f);
+            
+            m_blackHole->setVec3("u_center", m_centralBody->transform.position);
+            m_blackHole->setFloat("u_radius", std::max(1.0f, m_centralBody->transform.scale.x * 0.75f));
+            m_blackHole->setFloat("u_lightWrapRadius", std::max(250.0f, distToSun * 0.1f));
+            m_blackHole->setFloat("u_lightWrapIntensity", 0.5f);
+            m_blackHole->setFloat("u_distortionStrength", 0.3f);
+            m_blackHole->setVec3("u_glowColor", Vec3(1.0f, 5.0f, 5.0f));
         }
     }
 }
@@ -1125,6 +1139,34 @@ void SandboxMode::LateUpdate()
     m_inputEnabled = !(m_topBarActive || m_sandboxWindowActive || m_saveDialogActive);
 }
 
+void SandboxMode::SetCentralBodyType(bool useBlackHole)
+{
+    if (!m_centralBody) return;
+
+    auto *cbComp = m_centralBody->getComponent<PlanetComponent>();
+    auto *rc = m_centralBody->getComponent<RenderComponent>();
+
+    if (useBlackHole) {
+        if (rc) rc->isEnabled = false;
+        if (cbComp) cbComp->setHasAtmosphere(false);
+        if (!m_blackHole) {
+            m_blackHole = &m_game.GetEngine().getRenderer().addPostProcessor(
+                "assets/shaders/default_vert.glsl", "assets/shaders/blackhole_frag.glsl");
+        }
+        m_blackHoleActive = true;
+    }
+    else {
+        if (rc) rc->isEnabled = true;
+        if (cbComp) cbComp->setHasAtmosphere(true);
+        if (m_blackHole)
+        {
+            m_game.GetEngine().getRenderer().removePostProcessor(m_blackHole);
+            m_blackHole = nullptr;
+        }
+        m_blackHoleActive = false;
+    }
+}
+
 void SandboxMode::SaveSandbox(const std::string &name)
 {
     std::string dir = Path::resolve("user/sandbox/");
@@ -1132,6 +1174,8 @@ void SandboxMode::SaveSandbox(const std::string &name)
 
     nlohmann::json j;
     j["planets"] = nlohmann::json::array();
+
+    if (m_centralBody) j["centralBody"]["type"] = m_blackHoleActive ? "blackhole" : "sun";
 
     for (Entity *planet : planetList)
     {
@@ -1162,11 +1206,8 @@ void SandboxMode::SaveSandbox(const std::string &name)
             entry["isReal"] = true;
             entry["registryName"] = def->name;
         }
-        else
-        {
-            continue;
-        }
-
+        else continue;
+        
         j["planets"].push_back(entry);
     }
 
@@ -1182,25 +1223,18 @@ void SandboxMode::SaveSandbox(const std::string &name)
 void SandboxMode::LoadSandbox(const std::string &filepath)
 {
     std::ifstream file(filepath);
-    if (!file.is_open())
-    {
-        return;
-    }
+    if (!file.is_open()) return;
 
     nlohmann::json j;
     try
     {
         file >> j;
     }
-    catch (const nlohmann::json::parse_error &e)
-    {
-        return;
-    }
+    catch (const nlohmann::json::parse_error &e) { return; }
 
     ResetSandbox();
 
-    if (!j.contains("planets"))
-        return;
+    if (!j.contains("planets")) return;
 
     for (const auto &entry : j["planets"])
     {
@@ -1225,15 +1259,30 @@ void SandboxMode::LoadSandbox(const std::string &filepath)
 
             if (regName == "Earth")
             {
+                Entity *earthEntity = nullptr;
                 for (Entity *planet : planetList)
                 {
                     if (planet && planet->name == "Earth")
                     {
-                        planet->transform.position = position;
-                        planet->getComponent<PlanetComponent>()->getPlanetParams().velocity = velocity;
+                        earthEntity = planet;
                         break;
                     }
                 }
+
+                if (!earthEntity)
+                {
+                    earthEntity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity(def->name);
+                    earthEntity->addComponent<RenderComponent>(def->modelPath);
+                    auto *earthPc = earthEntity->addComponent<PlanetComponent>(m_game);
+                    def->apply(*earthPc);
+                    earthPc->initialize();
+                    planetList.push_back(earthEntity);
+                }
+
+                earthEntity->transform.position = position;
+                if (auto *earthPc = earthEntity->getComponent<PlanetComponent>())
+                    earthPc->getPlanetParams().velocity = velocity;
+
                 continue;
             }
 
@@ -1284,6 +1333,13 @@ void SandboxMode::LoadSandbox(const std::string &filepath)
             planetList.push_back(e);
         }
     }
+
+    bool useBlackHole = false;
+    if (j.contains("centralBody") && j["centralBody"].contains("type"))
+    {
+        useBlackHole = (j["centralBody"]["type"].get<std::string>() == "blackhole");
+    }
+    SetCentralBodyType(useBlackHole);
 }
 
 void SandboxMode::DrawSaveDialog()
@@ -1350,6 +1406,8 @@ void SandboxMode::ResetSandbox()
     planetList.clear();
     if (m_centralBody)
         planetList.push_back(m_centralBody);
+
+    SetCentralBodyType(false); // default back to sun
 
     selectedEntity = nullptr;
     m_followingPlanet = false;
@@ -1541,8 +1599,7 @@ void SandboxMode::DrawUI()
                     }
                 }
 
-                if (simulationRunning)
-                    ImGui::EndDisabled();
+                if (simulationRunning) ImGui::EndDisabled();
 
                 ImGui::EndChild();
 
@@ -1560,6 +1617,21 @@ void SandboxMode::DrawUI()
             }
             if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.cb")))
             {
+                // TODO: better system for central bodies, not hardcoding stuff here
+                float childH = ImGui::GetContentRegionAvail().y;
+                ImGui::BeginChild("CentralBodyScrollList", ImVec2(0, childH), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+                
+                float buttonW = ImGui::GetContentRegionAvail().x * 0.5f - ImGui::GetStyle().ItemSpacing.x * 0.5f;
+                float buttonH = ImGui::GetContentRegionAvail().y - 30.0f;
+                if (m_ui.button("Sun",ImVec2(buttonW, buttonH))) {
+                    SetCentralBodyType(false);
+                }
+                ImGui::SameLine();
+                if (m_ui.button("Black Hole", ImVec2(buttonW, buttonH))) {
+                    SetCentralBodyType(true);
+                }
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.35f), "NOTE: More will be added in the future, this is just a test!");
+                ImGui::EndChild();
                 ImGui::EndTabItem();
             }
             if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.properties")))
@@ -1670,15 +1742,18 @@ void SandboxMode::DrawUI()
 
             if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.sttngs")))
             {
+                float buttonW = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.327f;
+                float buttonH = 80.0f;
+
                 std::string gridBtn = std::string(m_ui.getText("sbox.grid")) + " [G]";
-                if (m_ui.button(gridBtn.c_str()))
+                if (m_ui.button(gridBtn.c_str(), ImVec2(buttonW, buttonH)))
                     drawGrid = !drawGrid;
                 ImGui::SameLine();
                 std::string trailsBtn = std::string(m_ui.getText("sbox.trails")) + " [T]";
-                if (m_ui.button(trailsBtn.c_str()))
+                if (m_ui.button(trailsBtn.c_str(), ImVec2(buttonW, buttonH)))
                     drawTrails = !drawTrails;
                 ImGui::SameLine();
-                if (m_ui.button(m_ui.getText("sbox.resetY")))
+                if (m_ui.button(m_ui.getText("sbox.resetY"), ImVec2(buttonW, buttonH)))
                     m_target->transform.position.y = 0.0f;
                 float totalWidth = ImGui::GetContentRegionAvail().x;
 
@@ -1776,16 +1851,13 @@ void SandboxMode::DrawMainMenuBar()
         }
         if (m_ui.beginMenu(m_ui.getText("mm.sandbox")))
         {
-            if (m_ui.menuItem(m_ui.getText("tm.sbox.new")))
-            {
+            if (m_ui.menuItem(m_ui.getText("tm.sbox.new"))) {
                 ResetSandbox();
             }
-            if (m_ui.menuItem(m_ui.getText("tm.sbox.load")))
-            {
+            if (m_ui.menuItem(m_ui.getText("tm.sbox.load"))) {
                 m_loadSelector.toggleOpen();
             }
-            if (m_ui.menuItem(m_ui.getText("tm.sbox.save")))
-            {
+            if (m_ui.menuItem(m_ui.getText("tm.sbox.save"))) {
                 m_showSaveDialog = true;
             }
             ImGui::EndMenu();
