@@ -78,9 +78,9 @@ private:
         ImGui::PopStyleColor();
     }
 
-    static constexpr float kMaxMass = 50000.0f;
-    static constexpr float kMaxThrust = 200000.0f;
-    static constexpr float kMaxFuel = 10000.0f;
+    static constexpr float kMaxMass = 5000.0f;
+    static constexpr float kMaxThrust = 20000.0f;
+    static constexpr float kMaxFuel = 1000.0f;
 
     static constexpr float kStatLabelColumnWidth = 130.0f;
     static constexpr float kStatBarWidth = 160.0f;

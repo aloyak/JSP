@@ -5,6 +5,7 @@
 
 #include "engine/components/entity.h"
 #include "engine/components/rendererComponent.h"
+#include "engine/components/skyboxComponent.h"
 #include "engine/render/postprocess/postProcessor.h"
 #include "engine/utils/logger.h"
 

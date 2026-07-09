@@ -32,7 +32,6 @@ inline const char* CategoryToString(Category cat) {
         case Category::FuelTank:      return "Fuel Tank";
         case Category::Cockpit:       return "Cockpit";
         case Category::Structural:    return "Structural";
-        case Category::RocketBooster: return "Rocket Booster";
         case Category::Electrical:    return "Electrical";
         case Category::Utility:       return "Utility";
         default:                      return "Unknown";
@@ -47,7 +46,6 @@ inline const char* CategoryAbbrev(Category cat) {
         case Category::FuelTank:      return "Fuel";
         case Category::Cockpit:       return "Ckpt";
         case Category::Structural:    return "Strct";
-        case Category::RocketBooster: return "Bstr";
         case Category::Electrical:    return "Elec";
         case Category::Utility:       return "Util";
         default:                      return "???";
@@ -127,11 +125,11 @@ inline std::vector<Part> CreateDefaultParts() {
                 {Vec3(0.0f, 0.0f, -2.3f), Vec3(0.0f, 0.0f, -1.0f), {Category::RocketBooster}}
             }, 325.0f, 0.0f, 275.0f},
 
-        Part{"Rocket Booster", "A basic rocket booster.", "assets/models/spaceship/booster.fbx", Category::RocketBooster,
+        Part{"Rocket Booster", "A basic rocket booster.", "assets/models/spaceship/booster.fbx", Category::Engine,
             std::vector<Attachment>{
                 {Vec3(1.0f, 0.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f), {Category::FuelTank}},
                 {Vec3(-1.0f, 0.0f, 0.0f), Vec3(-1.0f, 0.0f, 0.0f), {Category::Engine}}
-            }, 20.0f, 100.0f, 0.0f},
+            }, 20.0f, 100.0f, 0.0f, Category::RocketBooster},
 
         Part{"Engine", "A basic engine.", "assets/models/spaceship/engine.fbx", Category::Engine,
             std::vector<Attachment>{

@@ -51,6 +51,10 @@ void SandboxMode::OnEnter()
 
 void SandboxMode::OnExit()
 {
+    if (m_blackHole) {
+        m_game.GetEngine().getRenderer().removePostProcessor(m_blackHole);
+        m_blackHole = nullptr;
+    }
     delete m_orbitCamera;
 }
 
@@ -1872,6 +1876,16 @@ void SandboxMode::DrawMainMenuBar()
                 drawGrid = !drawGrid;
             if (m_ui.menuItem(m_ui.getText("sbox.trails"), "T"))
                 drawTrails = !drawTrails;
+
+            if (m_ui.beginMenu(m_ui.getText("sbox.extras"))) {
+                auto* skybox = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Skybox")->getComponent<SkyboxComponent>();
+                Vec3 tint = skybox ? skybox->getColorTint() : Vec3(.16f, 0.16f, 0.16f);
+                ImGui::ColorEdit3(m_ui.getText("sbox.extras.skyboxtint"), (float*)&tint, ImGuiColorEditFlags_Float);
+                if (skybox) skybox->setColorTint(tint);
+                
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenu();
         }
         if (m_ui.beginMenu(m_ui.getText("tm.tools")))

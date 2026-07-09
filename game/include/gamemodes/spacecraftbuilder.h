@@ -86,7 +86,6 @@ private:
         Category::FuelTank,
         Category::Cockpit,
         Category::Structural,
-        Category::RocketBooster,
         Category::Electrical,
         Category::Utility,
     };

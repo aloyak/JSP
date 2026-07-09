@@ -750,7 +750,7 @@ void SpacecraftBuilderMode::showAssemblyWindow() {
     float screenW = io.DisplaySize.x;
     float screenH = io.DisplaySize.y;
 
-    float panelHeight = screenH * 0.5f;
+    float panelHeight = screenH * 0.4f;
     float panelWidth = std::max(300.0f, screenW * 0.2f);
     float panelY = (screenH - panelHeight) * 0.5f;
     float panelX = screenW - panelWidth;
