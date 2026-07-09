@@ -86,30 +86,30 @@ void PlanetBuilderMode::LateUpdate() {
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
     if (ImGui::BeginMainMenuBar()) {
-        if (m_ui.beginMenu(m_ui.getText("tm.game"))) {
-            if (m_ui.menuItem(m_ui.getText("tm.mm"))) { m_ui.loadMainMenu(); }
-            if (m_ui.menuItem(m_ui.getText("tm.settings")))  { m_game.showSettings = !m_game.showSettings; }
-            if (m_ui.menuItem(m_ui.getText("tm.help")))      { m_game.showHelp = !m_game.showHelp; }
-            if (m_ui.menuItem(m_ui.getText("tm.quit")))      { m_game.GetEngine().stop(); }
+        if (m_ui.beginMenu("tm.game")) {
+            if (m_ui.menuItem("tm.mm")) { m_ui.loadMainMenu(); }
+            if (m_ui.menuItem("tm.settings"))  { m_game.showSettings = !m_game.showSettings; }
+            if (m_ui.menuItem("tm.help"))      { m_game.showHelp = !m_game.showHelp; }
+            if (m_ui.menuItem("tm.quit"))      { m_game.GetEngine().stop(); }
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("tm.pb.planet"))) {
-            if (m_ui.menuItem(m_ui.getText("tm.pb.new"))) { 
+        if (m_ui.beginMenu("tm.pb.planet")) {
+            if (m_ui.menuItem("tm.pb.new")) { 
                 m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game), true);
             }
-            if (m_ui.menuItem(m_ui.getText("tm.pb.save"))) { Save(); }
-            if (m_ui.menuItem(m_ui.getText("tm.pb.load"))) { m_selector.toggleOpen(); }
+            if (m_ui.menuItem("tm.pb.save")) { Save(); }
+            if (m_ui.menuItem("tm.pb.load")) { m_selector.toggleOpen(); }
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("tm.view"))) {
-            if (m_ui.menuItem(m_ui.getText("tm.properties"))) { showProperties = !showProperties; }
-            if (m_ui.menuItem(m_ui.getText("tm.tools")))      { showTools      = !showTools; }
+        if (m_ui.beginMenu("tm.view")) {
+            if (m_ui.menuItem("tm.properties")) { showProperties = !showProperties; }
+            if (m_ui.menuItem("tm.tools"))      { showTools      = !showTools; }
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("tm.tools"))) {
-            if (m_ui.menuItem(m_ui.getText("pb.paint"), "1")) { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
-            if (m_ui.menuItem(m_ui.getText("pb.colhis"), "2")) { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
-            if (m_ui.menuItem(m_ui.getText("pb.terrain"), "3")) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
+        if (m_ui.beginMenu("tm.tools")) {
+            if (m_ui.menuItem("pb.paint"), "1") { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
+            if (m_ui.menuItem("pb.colhis"), "2") { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
+            if (m_ui.menuItem("pb.terrain"), "3") { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
             ImGui::EndMenu();
         }
 
@@ -185,7 +185,7 @@ void PlanetBuilderMode::DrawPropertiesWindow() {
 
         ImGui::SeparatorText("Atmosphere");
         bool hasAtmosphere = planetComponent->hasAtmosphere();
-        if (m_ui.checkbox(m_ui.getText("atms.has"), &hasAtmosphere)) {
+        if (m_ui.checkbox("atms.has", &hasAtmosphere)) {
             planetComponent->setHasAtmosphere(hasAtmosphere);
         }
         if (hasAtmosphere) {
@@ -226,7 +226,7 @@ void PlanetBuilderMode::DrawPropertiesWindow() {
 
         ImGui::SeparatorText(m_ui.getText("wtr"));
         bool hasWater = planetComponent->hasWater();
-        if (m_ui.checkbox(m_ui.getText("wtr.has"), &hasWater)) {
+        if (m_ui.checkbox("wtr.has", &hasWater)) {
             planetComponent->setHasWater(hasWater);
         }
         if (hasWater) {
@@ -276,7 +276,7 @@ void PlanetBuilderMode::DrawToolsWindow() {
     if (ImGui::BeginTabBar(m_ui.getText("tm.tools"))) {
         ImGuiTabItemFlags paintFlags = (consumeSync && currentTool == PlanetToolMode::Paint)
                                      ? ImGuiTabItemFlags_SetSelected : 0;
-        if (m_ui.beginTabItem(m_ui.getText("pb.paint"), nullptr, paintFlags)) {
+        if (m_ui.beginTabItem("pb.paint"), nullptr, paintFlags) {
             if (!consumeSync) currentTool = PlanetToolMode::Paint;
 
             ImGui::SliderFloat(m_ui.getText("paint.brush.size"), &brushSize, 1.0f, 150.0f);
@@ -287,21 +287,21 @@ void PlanetBuilderMode::DrawToolsWindow() {
             ImGui::SliderFloat(m_ui.getText("paint.brush.opacity"), &brushOpacity, 0.0f,  1.0f);
 
             ImGui::Spacing();
-            if (m_ui.button(m_ui.getText("paint.clear"))) {
+            if (m_ui.button("paint.clear")) {
                 if (m_paintTexture) {
                     m_paintTexture->fill(Vec4(1.0f, 1.0f, 1.0f, 1.0f));
                 }
             }
 
             ImGui::SameLine();
-            if (m_ui.checkbox(m_ui.getText("paint.brush.sound"), &m_brushSoundEnabled)) {}
+            if (m_ui.checkbox("paint.brush.sound", &m_brushSoundEnabled)) {}
 
             ImGui::EndTabItem();
         }
 
         ImGuiTabItemFlags colorHistoryFlags = (consumeSync && currentTool == PlanetToolMode::ColorHistory)
                                         ? ImGuiTabItemFlags_SetSelected : 0;
-        if (m_ui.beginTabItem(m_ui.getText("colhis.title"), nullptr, colorHistoryFlags)) {
+        if (m_ui.beginTabItem("colhis.title"), nullptr, colorHistoryFlags) {
             if (!consumeSync) currentTool = PlanetToolMode::ColorHistory;
 
             ImGui::ColorEdit3(m_ui.getText("paint.brush.col"), brushColor);
@@ -330,7 +330,7 @@ void PlanetBuilderMode::DrawToolsWindow() {
 
         ImGuiTabItemFlags terrainFlags = (consumeSync && currentTool == PlanetToolMode::Terrain)
                                         ? ImGuiTabItemFlags_SetSelected : 0;
-        if (m_ui.beginTabItem(m_ui.getText("trrn"), nullptr, terrainFlags)) {
+        if (m_ui.beginTabItem("trrn"), nullptr, terrainFlags) {
             if (!consumeSync) currentTool = PlanetToolMode::Terrain;
 
             ImGui::SliderFloat(m_ui.getText("trrn.size"),     &terrainBrushSize,     10.0f, 800.0f);
@@ -338,7 +338,7 @@ void PlanetBuilderMode::DrawToolsWindow() {
             ImGui::SliderFloat(m_ui.getText("trrn.falloff"),        &terrainBrushFalloff,   0.5f,   4.0f);
 
             ImGui::Spacing();
-            if (m_ui.button(m_ui.getText("trrn.clear"))) {
+            if (m_ui.button("trrn.clear")) {
                 ResetTerrain();
             }
 

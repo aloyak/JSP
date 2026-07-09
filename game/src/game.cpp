@@ -395,22 +395,18 @@ void UI::drawHelpWindow() {
     ImGui::End();
 }
 
-const char* UI::getText(std::string key) {
+const char* UI::getText(const char* key) {
     auto it = m_translations.find(key);
-    if (it == m_translations.end()) {
-        return key.c_str();
-    }
+    if (it == m_translations.end()) return key;
 
     const std::vector<std::string>& translations = it->second;
     size_t langIndex = static_cast<size_t>(m_language);
 
-    if (langIndex < translations.size() && !translations[langIndex].empty()) {
+    if (langIndex < translations.size() && !translations[langIndex].empty())
         return translations[langIndex].c_str();
-    }
 
-    if (!translations.empty() && !translations[0].empty()) {
+    if (!translations.empty() && !translations[0].empty())
         return translations[0].c_str();
-    }
 
-    return key.c_str();
+    return key;
 }

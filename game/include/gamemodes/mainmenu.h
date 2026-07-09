@@ -244,24 +244,24 @@ public:
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.5f, 0.9f, 0.9f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.4f, 1.0f, 0.75f));
         ImGui::BeginDisabled();
-        if (m_ui.button(m_ui.getText("mm.campaign"))) {}
-        if (m_ui.button(m_ui.getText("mm.explore"))) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
+        if (m_ui.button("mm.campaign")) {}
+        if (m_ui.button("mm.explore")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
         ImGui::EndDisabled();
 
         
-        if (m_ui.button(m_ui.getText("mm.sandbox"))) { showSandbox = !showSandbox; }
+        if (m_ui.button("mm.sandbox")) { showSandbox = !showSandbox; }
         if (showSandbox) {
             ImGui::Indent();
-            if (m_ui.button(m_ui.getText("mm.planeteditor"))) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
-            if (m_ui.button(m_ui.getText("mm.sceditor"))) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
-            if (m_ui.button(m_ui.getText("mm.gravitysandbox"))) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game), false, false);
+            if (m_ui.button("mm.planeteditor")) m_game.SetGameMode(std::make_unique<PlanetBuilderMode>(m_game));
+            if (m_ui.button("mm.sceditor")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game));
+            if (m_ui.button("mm.gravitysandbox")) m_game.SetGameMode(std::make_unique<SandboxMode>(m_game), false, false);
             ImGui::Unindent();
         }
         
-        if (m_ui.button(m_ui.getText("mm.settings"))) { m_game.showSettings = !m_game.showSettings; }
-        if (m_ui.button(m_ui.getText("mm.extras"))) { showExtras = !showExtras; }
+        if (m_ui.button("mm.settings")) { m_game.showSettings = !m_game.showSettings; }
+        if (m_ui.button("mm.extras")) { showExtras = !showExtras; }
         
-        if (m_ui.button(m_ui.getText("mm.quit"))) m_engine.stop();
+        if (m_ui.button("mm.quit")) m_engine.stop();
         ImGui::PopStyleColor(2);
         m_ui.resetFont();
         ImGui::End();

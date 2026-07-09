@@ -642,29 +642,29 @@ void SpacecraftBuilderMode::drawMenuBar() {
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
     if (ImGui::BeginMainMenuBar()) {
-        if (m_ui.beginMenu(m_ui.getText("tm.game"))) {
-            if (m_ui.menuItem(m_ui.getText("tm.mm"))) m_ui.loadMainMenu();
-            if (m_ui.menuItem(m_ui.getText("tm.settings")))  m_game.showSettings = !m_game.showSettings;
-            if (m_ui.menuItem(m_ui.getText("tm.help"))) { m_game.showHelp = !m_game.showHelp; }
-            if (m_ui.menuItem(m_ui.getText("tm.quit"))) m_game.GetEngine().stop();
+        if (m_ui.beginMenu("tm.game")) {
+            if (m_ui.menuItem("tm.mm")) m_ui.loadMainMenu();
+            if (m_ui.menuItem("tm.settings"))  m_game.showSettings = !m_game.showSettings;
+            if (m_ui.menuItem("tm.help")) { m_game.showHelp = !m_game.showHelp; }
+            if (m_ui.menuItem("tm.quit")) m_game.GetEngine().stop();
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("scb"))) {
-            if (m_ui.menuItem(m_ui.getText("tm.scb.new"))) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game), true, true);
-            if (m_ui.menuItem(m_ui.getText("tm.scb.save"))) {}
-            if (m_ui.menuItem(m_ui.getText("tm.scb.load"))) {}
+        if (m_ui.beginMenu("scb")) {
+            if (m_ui.menuItem("tm.scb.new")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game), true, true);
+            if (m_ui.menuItem("tm.scb.save")) {}
+            if (m_ui.menuItem("tm.scb.load")) {}
             ImGui::EndMenu();
         }
         bool wasTransitioning = m_isTransitioning;
         if (wasTransitioning) ImGui::BeginDisabled();
-        if (m_ui.beginMenu(m_ui.getText("tm.view"))) {
-            if (m_ui.menuItem(m_ui.getText("scb.ocv"), "1")) StartTransitionTo(MoveMode::CameraOrbit);
-            if (m_ui.menuItem(m_ui.getText("scb.fpv"), "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
+        if (m_ui.beginMenu("tm.view")) {
+            if (m_ui.menuItem("scb.ocv"), "1") StartTransitionTo(MoveMode::CameraOrbit);
+            if (m_ui.menuItem("scb.fpv"), "2") StartTransitionTo(MoveMode::CameraFirstPerson);
             
             bool isBlueprintDisabled = m_spaceship.parts.empty();
             
             if (isBlueprintDisabled) ImGui::BeginDisabled();
-            if (m_ui.menuItem(m_ui.getText("scb.blueprintview"))) StartTransitionTo(MoveMode::Blueprint);
+            if (m_ui.menuItem("scb.blueprintview")) StartTransitionTo(MoveMode::Blueprint);
             if (isBlueprintDisabled) ImGui::EndDisabled();
 
             if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(m_ui.getText("scb.addpart"));
@@ -672,7 +672,7 @@ void SpacecraftBuilderMode::drawMenuBar() {
         }
         if (wasTransitioning) ImGui::EndDisabled();
         ImGui::BeginDisabled();
-        if (m_ui.beginMenu(m_ui.getText("scb.launch"))) {
+        if (m_ui.beginMenu("scb.launch")) {
             ImGui::EndMenu();
         }
         ImGui::EndDisabled();

@@ -50,13 +50,15 @@ public:
     }
 
     bool button(const char* label, const ImVec2& size = ImVec2(0, 0)) {
-        const bool clicked = ImGui::Button(label, size);
-        updateButtonSfx(ImGui::GetID(label));
+        const char* translation = getText(label);
+        const bool clicked = ImGui::Button(translation, size);
+        updateButtonSfx(ImGui::GetID(translation));
         return clicked;
     }
 
     bool buttonWithId(const char* label, ImGuiID soundId, const ImVec2& size = ImVec2(0, 0)) {
-        const bool clicked = ImGui::Button(label, size);
+        const char* translation = getText(label);
+        const bool clicked = ImGui::Button(translation, size);
         updateButtonSfx(soundId);
         return clicked;
     }
@@ -108,26 +110,30 @@ public:
     }
 
     bool checkbox(const char* label, bool* v) {
-        const bool clicked = ImGui::Checkbox(label, v);
-        updateButtonSfx(ImGui::GetID(label));
+        const char* translation = getText(label);
+        const bool clicked = ImGui::Checkbox(translation, v);
+        updateButtonSfx(ImGui::GetID(translation));
         return clicked;
     }
 
     bool beginTabItem(const char* label, bool* p_open = nullptr, ImGuiTabItemFlags flags = 0) {
-        const bool opened = ImGui::BeginTabItem(label, p_open, flags);
-        updateButtonSfx(ImGui::GetID(label));
+        const char* translation = getText(label);
+        const bool opened = ImGui::BeginTabItem(translation, p_open, flags);
+        updateButtonSfx(ImGui::GetID(translation));
         return opened;
     }
 
     bool beginMenu(const char* label, bool enabled = true) {
-        const bool opened = ImGui::BeginMenu(label, enabled);
-        updateButtonSfx(ImGui::GetID(label));
+        const char* translation = getText(label);
+        const bool opened = ImGui::BeginMenu(translation, enabled);
+        updateButtonSfx(ImGui::GetID(translation));
         return opened;
     }
 
     bool menuItem(const char* label, const char* shortcut = nullptr, bool selected = false, bool enabled = true) {
-        const bool clicked = ImGui::MenuItem(label, shortcut, selected, enabled);
-        updateButtonSfx(ImGui::GetID(label));
+        const char* translation = getText(label);
+        const bool clicked = ImGui::MenuItem(translation, shortcut, selected, enabled);
+        updateButtonSfx(ImGui::GetID(translation));
         return clicked;
     }
 
@@ -141,10 +147,9 @@ public:
     void drawSettingsWindow();
     void drawHelpWindow();
 
-
     void setLang(int lang) { m_language = lang; }
     int getLang() const { return m_language; }
-    const char* getText(std::string key);
+    const char* getText(const char* key);
 private:
     Game& m_game;
 

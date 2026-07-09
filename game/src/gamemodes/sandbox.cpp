@@ -1374,7 +1374,7 @@ void SandboxMode::DrawSaveDialog()
     bool canSave = m_saveNameBuf[0] != '\0';
     if (!canSave)
         ImGui::BeginDisabled();
-    if (m_ui.button(m_ui.getText("diag.save"), ImVec2(148, 0)) || (hitEnter && canSave))
+    if (m_ui.button("diag.save", ImVec2(148, 0)) || (hitEnter && canSave))
     {
         SaveSandbox(m_saveNameBuf);
         m_showSaveDialog = false;
@@ -1383,7 +1383,7 @@ void SandboxMode::DrawSaveDialog()
     if (!canSave)
         ImGui::EndDisabled();
     ImGui::SameLine();
-    if (m_ui.button(m_ui.getText("diag.close"), ImVec2(148, 0)))
+    if (m_ui.button("diag.close", ImVec2(148, 0)))
     {
         m_showSaveDialog = false;
         std::memset(m_saveNameBuf, 0, sizeof(m_saveNameBuf));
@@ -1524,7 +1524,7 @@ void SandboxMode::DrawUI()
         if (ImGui::BeginTabBar("SandboxTabBar", ImGuiTabBarFlags_NoTabListScrollingButtons))
         {
 
-            if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.tools")))
+            if (m_ui.beginTabItem("sbox.tabs.tools"))
             {
                 float childH = ImGui::GetContentRegionAvail().y;
                 ImGui::BeginChild("ToolScrollList", ImVec2(0, childH));
@@ -1560,7 +1560,7 @@ void SandboxMode::DrawUI()
                 ImGui::EndTabItem();
             }
 
-            if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.planets")))
+            if (m_ui.beginTabItem("sbox.tabs.planets"))
             {
                 float childH = ImGui::GetContentRegionAvail().y;
                 float totalW = ImGui::GetContentRegionAvail().x;
@@ -1577,7 +1577,7 @@ void SandboxMode::DrawUI()
 
                 if (selectedType == 2)
                 {
-                    if (m_ui.button(m_ui.getText("sbox.planets.load"), ImVec2(0, 30)))
+                    if (m_ui.button("sbox.planets.load", ImVec2(0, 30)))
                     {
                         m_selector.toggleOpen();
                     }
@@ -1619,7 +1619,7 @@ void SandboxMode::DrawUI()
 
                 ImGui::EndTabItem();
             }
-            if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.cb")))
+            if (m_ui.beginTabItem("sbox.tabs.cb"))
             {
                 // TODO: better system for central bodies, not hardcoding stuff here
                 float childH = ImGui::GetContentRegionAvail().y;
@@ -1638,7 +1638,7 @@ void SandboxMode::DrawUI()
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
-            if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.properties")))
+            if (m_ui.beginTabItem("sbox.tabs.properties"))
             {
                 if (selectedEntity && selectedEntity->getComponent<PlanetComponent>())
                 {
@@ -1663,7 +1663,7 @@ void SandboxMode::DrawUI()
 
                     ImGui::SameLine();
                     bool locked = pc->getPlanetParams().locked;
-                    if (m_ui.checkbox(m_ui.getText("sbox.prpts.locked"), &locked))
+                    if (m_ui.checkbox("sbox.prpts.locked", &locked))
                     {
                         pc->getPlanetParams().locked = locked;
                     }
@@ -1718,7 +1718,7 @@ void SandboxMode::DrawUI()
 
                     if (selectedEntity != m_centralBody)
                     {
-                        if (m_ui.button(m_ui.getText("sbox.prpts.destroy"), ImVec2(totalWidth, 0)))
+                        if (m_ui.button("sbox.prpts.destroy", ImVec2(totalWidth, 0)))
                         {
                             Entity *toDestroy = selectedEntity;
                             DestroyPlanet(toDestroy);
@@ -1744,7 +1744,7 @@ void SandboxMode::DrawUI()
                 ImGui::EndTabItem();
             }
 
-            if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.sttngs")))
+            if (m_ui.beginTabItem("sbox.tabs.sttngs"))
             {
                 float buttonW = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.327f;
                 float buttonH = 80.0f;
@@ -1757,7 +1757,7 @@ void SandboxMode::DrawUI()
                 if (m_ui.button(trailsBtn.c_str(), ImVec2(buttonW, buttonH)))
                     drawTrails = !drawTrails;
                 ImGui::SameLine();
-                if (m_ui.button(m_ui.getText("sbox.resetY"), ImVec2(buttonW, buttonH)))
+                if (m_ui.button("sbox.resetY", ImVec2(buttonW, buttonH)))
                     m_target->transform.position.y = 0.0f;
                 float totalWidth = ImGui::GetContentRegionAvail().x;
 
@@ -1774,7 +1774,7 @@ void SandboxMode::DrawUI()
                 ImGui::EndTabItem();
             }
 
-            if (m_ui.beginTabItem(m_ui.getText("sbox.tabs.sim")))
+            if (m_ui.beginTabItem("sbox.tabs.sim"))
             {
                 float spacing = ImGui::GetStyle().ItemSpacing.x;
                 float buttonW = (ImGui::GetContentRegionAvail().x - (spacing * 2.0f)) / 3.0f;
@@ -1839,45 +1839,45 @@ void SandboxMode::DrawMainMenuBar()
         m_topBarActive = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) ||
                          ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 
-        if (m_ui.beginMenu(m_ui.getText("tm.game")))
+        if (m_ui.beginMenu("tm.game"))
         {
-            if (m_ui.menuItem(m_ui.getText("tm.mm")))
+            if (m_ui.menuItem("tm.mm"))
                 m_ui.loadMainMenu();
-            if (m_ui.menuItem(m_ui.getText("tm.settings")))
+            if (m_ui.menuItem("tm.settings"))
                 m_game.showSettings = !m_game.showSettings;
-            if (m_ui.menuItem(m_ui.getText("tm.help")))
+            if (m_ui.menuItem("tm.help"))
             {
                 m_game.showHelp = !m_game.showHelp;
             }
-            if (m_ui.menuItem(m_ui.getText("tm.quit")))
+            if (m_ui.menuItem("tm.quit"))
                 m_game.GetEngine().stop();
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("mm.sandbox")))
+        if (m_ui.beginMenu("mm.sandbox"))
         {
-            if (m_ui.menuItem(m_ui.getText("tm.sbox.new"))) {
+            if (m_ui.menuItem("tm.sbox.new")) {
                 ResetSandbox();
             }
-            if (m_ui.menuItem(m_ui.getText("tm.sbox.load"))) {
+            if (m_ui.menuItem("tm.sbox.load")) {
                 m_loadSelector.toggleOpen();
             }
-            if (m_ui.menuItem(m_ui.getText("tm.sbox.save"))) {
+            if (m_ui.menuItem("tm.sbox.save")) {
                 m_showSaveDialog = true;
             }
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("tm.view")))
+        if (m_ui.beginMenu("tm.view"))
         {
-            if (m_ui.menuItem(m_ui.getText("sbox.show")))
+            if (m_ui.menuItem("sbox.show"))
                 m_showSandbox = !m_showSandbox;
-            if (m_ui.menuItem(m_ui.getText("sbox.planetsstars")))
+            if (m_ui.menuItem("sbox.planetsstars"))
                 showPlanetsWindow = !showPlanetsWindow;
-            if (m_ui.menuItem(m_ui.getText("sbox.grid"), "G"))
+            if (m_ui.menuItem("sbox.grid"), "G")
                 drawGrid = !drawGrid;
-            if (m_ui.menuItem(m_ui.getText("sbox.trails"), "T"))
+            if (m_ui.menuItem("sbox.trails"), "T")
                 drawTrails = !drawTrails;
 
-            if (m_ui.beginMenu(m_ui.getText("sbox.extras"))) {
+            if (m_ui.beginMenu("sbox.extras")) {
                 auto* skybox = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Skybox")->getComponent<SkyboxComponent>();
                 Vec3 tint = skybox ? skybox->getColorTint() : Vec3(.16f, 0.16f, 0.16f);
                 ImGui::ColorEdit3(m_ui.getText("sbox.extras.skyboxtint"), (float*)&tint, ImGuiColorEditFlags_Float);
@@ -1888,40 +1888,40 @@ void SandboxMode::DrawMainMenuBar()
 
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("tm.tools")))
+        if (m_ui.beginMenu("tm.tools"))
         {
-            if (m_ui.menuItem(m_ui.getText("sbox.tool.select"), "1"))
+            if (m_ui.menuItem("sbox.tool.select"), "1")
                 m_toolMode = ToolMode::Selection;
             if (simulationRunning)
                 ImGui::BeginDisabled();
-            if (m_ui.menuItem(m_ui.getText("sbox.tool.move"), "2"))
+            if (m_ui.menuItem("sbox.tool.move"), "2")
                 m_toolMode = ToolMode::Reallocation;
             if (simulationRunning)
                 ImGui::EndDisabled();
-            if (m_ui.menuItem(m_ui.getText("sbox.tool.velocity"), "3"))
+            if (m_ui.menuItem("sbox.tool.velocity"), "3")
                 m_toolMode = ToolMode::Velocity;
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("sbox.tabs.sim")))
+        if (m_ui.beginMenu("sbox.tabs.sim"))
         {
             bool isPlaying = simulationRunning && !physicsPaused;
 
-            if (m_ui.menuItem(m_ui.getText("sbox.sim.play"), "P", false, !isPlaying))
+            if (m_ui.menuItem("sbox.sim.play"), "P", false, !isPlaying)
             {
                 if (!simulationRunning)
                     StartSimulation();
                 else
                     ResumeSimulation();
             }
-            if (m_ui.menuItem(m_ui.getText("sbox.sim.pause"), "Space", false, simulationRunning))
+            if (m_ui.menuItem("sbox.sim.pause"), "Space", false, simulationRunning)
                 PauseSimulation();
-            if (m_ui.menuItem(m_ui.getText("sbox.sim.reset"), "R", false, m_hasSnapshot))
+            if (m_ui.menuItem("sbox.sim.reset"), "R", false, m_hasSnapshot)
                 ResetSimulation();
             ImGui::EndMenu();
         }
-        if (m_ui.beginMenu(m_ui.getText("sbox.tabs.planets")))
+        if (m_ui.beginMenu("sbox.tabs.planets"))
         {
-            if (m_ui.menuItem(m_ui.getText("sbox.viw")))
+            if (m_ui.menuItem("sbox.viw"))
                 showPlanetsWindow = !showPlanetsWindow;
             ImGui::Separator();
             if (planetList.empty())
@@ -1964,10 +1964,8 @@ void SandboxMode::DrawMainMenuBar()
         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth);
         ImGui::TextDisabled("%s", toolName);
     }
-    else
-    {
-        m_topBarActive = false;
-    }
+    else { m_topBarActive = false; }
+    
     ImGui::EndMainMenuBar();
     ImGui::PopStyleColor(2);
 }
