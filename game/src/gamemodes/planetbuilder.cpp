@@ -71,7 +71,7 @@ void PlanetBuilderMode::Update() {
     }
     m_orbitCamera->ApplyScroll(&m_input);
 
-    if (m_input.isKeyPressed(KEY_1)) { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
+    if (m_input.isKeyPressed(KEY_1)) { currentTool = PlanetToolMode::Paint; syncToolTab = true; }
     if (m_input.isKeyPressed(KEY_2)) { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
     if (m_input.isKeyPressed(KEY_3)) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
 
@@ -107,9 +107,9 @@ void PlanetBuilderMode::LateUpdate() {
             ImGui::EndMenu();
         }
         if (m_ui.beginMenu("tm.tools")) {
-            if (m_ui.menuItem("pb.paint"), "1") { currentTool = PlanetToolMode::Paint;   syncToolTab = true; }
-            if (m_ui.menuItem("pb.colhis"), "2") { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
-            if (m_ui.menuItem("pb.terrain"), "3") { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
+            if (m_ui.menuItem("pb.paint", "1")) { currentTool = PlanetToolMode::Paint; syncToolTab = true; }
+            if (m_ui.menuItem("pb.colhis", "2")) { currentTool = PlanetToolMode::ColorHistory; syncToolTab = true; }
+            if (m_ui.menuItem("pb.terrain", "3")) { currentTool = PlanetToolMode::Terrain; syncToolTab = true; }
             ImGui::EndMenu();
         }
 
@@ -125,7 +125,7 @@ void PlanetBuilderMode::LateUpdate() {
     ImGui::PopStyleColor(2);
 
     if (showProperties) DrawPropertiesWindow();
-    if (showTools)      DrawToolsWindow();
+    if (showTools) DrawToolsWindow();
     if (m_selector.isOpen()) {
         m_selector.Draw();
     }
@@ -276,7 +276,7 @@ void PlanetBuilderMode::DrawToolsWindow() {
     if (ImGui::BeginTabBar(m_ui.getText("tm.tools"))) {
         ImGuiTabItemFlags paintFlags = (consumeSync && currentTool == PlanetToolMode::Paint)
                                      ? ImGuiTabItemFlags_SetSelected : 0;
-        if (m_ui.beginTabItem("pb.paint"), nullptr, paintFlags) {
+        if (m_ui.beginTabItem("pb.paint", nullptr, paintFlags)) {
             if (!consumeSync) currentTool = PlanetToolMode::Paint;
 
             ImGui::SliderFloat(m_ui.getText("paint.brush.size"), &brushSize, 1.0f, 150.0f);
@@ -301,7 +301,7 @@ void PlanetBuilderMode::DrawToolsWindow() {
 
         ImGuiTabItemFlags colorHistoryFlags = (consumeSync && currentTool == PlanetToolMode::ColorHistory)
                                         ? ImGuiTabItemFlags_SetSelected : 0;
-        if (m_ui.beginTabItem("colhis.title"), nullptr, colorHistoryFlags) {
+        if (m_ui.beginTabItem("colhis.title", nullptr, colorHistoryFlags)) {
             if (!consumeSync) currentTool = PlanetToolMode::ColorHistory;
 
             ImGui::ColorEdit3(m_ui.getText("paint.brush.col"), brushColor);
@@ -330,7 +330,7 @@ void PlanetBuilderMode::DrawToolsWindow() {
 
         ImGuiTabItemFlags terrainFlags = (consumeSync && currentTool == PlanetToolMode::Terrain)
                                         ? ImGuiTabItemFlags_SetSelected : 0;
-        if (m_ui.beginTabItem("trrn"), nullptr, terrainFlags) {
+        if (m_ui.beginTabItem("trrn", nullptr, terrainFlags)) {
             if (!consumeSync) currentTool = PlanetToolMode::Terrain;
 
             ImGui::SliderFloat(m_ui.getText("trrn.size"),     &terrainBrushSize,     10.0f, 800.0f);
