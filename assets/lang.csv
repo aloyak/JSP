@@ -141,8 +141,11 @@ scb.info,Spaceship Information,Información de la Nave
 scb.info.name,Name,Nombre
 scb.info.version,Version,Versión
 scb.info.desc,Description,Descripción
+scb.view.com,Center of Mass,Centro de Masa
+scb.view.cog,Center of Geometry,Centro de Geometría
 scb.addpart,Add at least 1 part,Añade al menos 1 parte
 scb.parts,Parts,Partes
+scb.firstpart,This part cannot be placed first,¡Esta parte no puede colocarse primero!
 scb.deleteall,Delete All,Eliminar Todas
 scb.bp.info,Show Information,Mostrar Información
 scb.bp.stats,Show Statistics,Mostrar Estadisticas

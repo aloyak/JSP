@@ -240,16 +240,14 @@ void UI::drawSettingsWindow() {
     }
 
     ImGui::SeparatorText(getText("sttngs.gameplay"));
-    std::string mouseSensFormat = std::string(getText("sttngs.sens")) + " %.1f";
-    if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.1f, 100.0f, mouseSensFormat.c_str())) {
+    std::string mouseSensFormat = std::string(getText("sttngs.sens")) + " %.3f";
+    if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.0f, 1.0f, mouseSensFormat.c_str()))
         settingsChanged = true;
-    }
 
     std::string headBobFormat = std::string(getText("sttngs.headBob")) + " %.2f";
-    if (ImGui::SliderFloat("##HeadBobIntensity", &settings.headbobIntensity, 0.0f, 1.0f, headBobFormat.c_str())) {
+    if (ImGui::SliderFloat("##HeadBobIntensity", &settings.headbobIntensity, 0.0f, 1.0f, headBobFormat.c_str()))
         settingsChanged = true;
-    }
-
+        
     ImGui::SeparatorText(getText("sttngs.audio"));
 
     float masterVol = settings.masterVolume * 100.0f;

@@ -36,9 +36,9 @@ public:
 
     void Update(Input* input, float deltaTime, float time) {
         Vec2 mouseDelta = input->getMouseDelta();
-        m_camera->transform.rotation.x -= mouseDelta.y * m_sensitivity * deltaTime;
+        m_camera->transform.rotation.x -= mouseDelta.y * m_sensitivity;
         m_camera->transform.rotation.x = std::clamp(m_camera->transform.rotation.x, -89.0f, 89.0f);
-        m_camera->transform.rotation.y += mouseDelta.x * m_sensitivity * deltaTime;
+        m_camera->transform.rotation.y += mouseDelta.x * m_sensitivity;
 
         Vec3 forward = m_camera->transform.forward();
         Vec3 right = m_camera->transform.right();
