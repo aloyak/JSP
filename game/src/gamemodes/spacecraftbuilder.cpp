@@ -388,7 +388,12 @@ void SpacecraftBuilderMode::PlacePartInstant(Part& part, Vec3 position, Vec3 rot
     entity->transform.position = position;
     entity->transform.rotation = rotation;
 
-    m_placedParts.push_back({entity, &part, std::vector<bool>(part.attachmentPoints.size(), false)});
+    PlacedPart placed;
+    placed.entity = entity;
+    placed.partDef = &part;
+    placed.usedAttachments = std::vector<bool>(part.attachmentPoints.size(), false);
+    placed.id = m_nextPlacedPartId++;
+    m_placedParts.push_back(placed);
     m_spaceship.parts.push_back(part);
 
     m_spaceship.mass += part.mass;
@@ -556,7 +561,17 @@ void SpacecraftBuilderMode::ConfirmGhostPlacement(PlacedPart* targetPart, int ta
         ghostUsed[ghostAttachIdx] = true;
     }
 
-    m_placedParts.push_back({m_ghostEntity, m_ghostPartDef, ghostUsed});
+    int newId = m_nextPlacedPartId++;
+    if (targetPart) targetPart->childIds.push_back(newId);
+
+    PlacedPart placed;
+    placed.entity = m_ghostEntity;
+    placed.partDef = m_ghostPartDef;
+    placed.usedAttachments = ghostUsed;
+    placed.id = newId;
+    placed.parentId = targetPart ? targetPart->id : -1;
+    placed.parentAttachIdx = targetAttachIdx;
+    m_placedParts.push_back(placed);
     m_spaceship.parts.push_back(*m_ghostPartDef);
 
     m_spaceship.mass += m_ghostPartDef->mass;
@@ -575,6 +590,80 @@ void SpacecraftBuilderMode::CancelGhostPlacement() {
     }
     m_ghostPartDef = nullptr;
     m_ghostSnapped = false;
+}
+
+void SpacecraftBuilderMode::CollectDescendants(int partId, std::vector<int>& outIds) const {
+    // Gather this part plus every descendant (parts mated onto it, transitively).
+    std::vector<int> pending{partId};
+    while (!pending.empty()) {
+        int id = pending.back();
+        pending.pop_back();
+        outIds.push_back(id);
+
+        for (auto& p : m_placedParts) {
+            if (p.id == id) {
+                for (int childId : p.childIds) pending.push_back(childId);
+                break;
+            }
+        }
+    }
+}
+
+void SpacecraftBuilderMode::DeletePart(int partId) {
+    if (partId < 0) return;
+
+    std::vector<int> toDelete;
+    CollectDescendants(partId, toDelete);
+
+    for (auto& p : m_placedParts) {
+        if (p.id != partId || p.parentId < 0) continue;
+
+        for (auto& parentCandidate : m_placedParts) {
+            if (parentCandidate.id != p.parentId) continue;
+
+            if (p.parentAttachIdx >= 0 &&
+                p.parentAttachIdx < static_cast<int>(parentCandidate.usedAttachments.size())) {
+                parentCandidate.usedAttachments[p.parentAttachIdx] = false;
+            }
+
+            auto& siblings = parentCandidate.childIds;
+            siblings.erase(std::remove(siblings.begin(), siblings.end(), partId), siblings.end());
+            break;
+        }
+        break;
+    }
+
+    for (size_t i = 0; i < m_placedParts.size();) {
+        bool remove = std::find(toDelete.begin(), toDelete.end(), m_placedParts[i].id) != toDelete.end();
+        if (!remove) { ++i; continue; }
+
+        PlacedPart& p = m_placedParts[i];
+        if (p.partDef) {
+            m_spaceship.mass -= p.partDef->mass;
+            m_spaceship.thrust -= p.partDef->thrust;
+            m_spaceship.fuelCapacity -= p.partDef->fuelCapacity;
+        }
+        if (p.entity) {
+            m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(p.entity);
+        }
+
+        m_placedParts.erase(m_placedParts.begin() + i);
+        if (i < m_spaceship.parts.size()) m_spaceship.parts.erase(m_spaceship.parts.begin() + i);
+    }
+}
+
+void SpacecraftBuilderMode::DeleteAllParts() {
+    CancelGhostPlacement();
+
+    for (auto& p : m_placedParts) {
+        if (p.entity) m_game.GetEngine().getSceneManager().getActiveScene()->destroyEntity(p.entity);
+    }
+
+    m_placedParts.clear();
+    m_spaceship.parts.clear();
+    m_spaceship.mass = 0.0f;
+    m_spaceship.thrust = 0.0f;
+    m_spaceship.fuelCapacity = 0.0f;
 }
 
 void SpacecraftBuilderMode::HandlePartPlacement() {
@@ -632,6 +721,7 @@ void SpacecraftBuilderMode::LateUpdate() {
     }
 
     drawMenuBar();
+    ApplyPartHighlight();
 
     // shortcuts
     if (!m_isTransitioning && m_input.isKeyPressed(KEY_1)) StartTransitionTo(MoveMode::CameraOrbit);
@@ -658,8 +748,8 @@ void SpacecraftBuilderMode::drawMenuBar() {
         bool wasTransitioning = m_isTransitioning;
         if (wasTransitioning) ImGui::BeginDisabled();
         if (m_ui.beginMenu("tm.view")) {
-            if (m_ui.menuItem("scb.ocv"), "1") StartTransitionTo(MoveMode::CameraOrbit);
-            if (m_ui.menuItem("scb.fpv"), "2") StartTransitionTo(MoveMode::CameraFirstPerson);
+            if (m_ui.menuItem("scb.ocv", "1")) StartTransitionTo(MoveMode::CameraOrbit);
+            if (m_ui.menuItem("scb.fpv", "2")) StartTransitionTo(MoveMode::CameraFirstPerson);
             
             bool isBlueprintDisabled = m_spaceship.parts.empty();
             
@@ -671,6 +761,75 @@ void SpacecraftBuilderMode::drawMenuBar() {
             ImGui::EndMenu();
         }
         if (wasTransitioning) ImGui::EndDisabled();
+        if (m_moveMode != MoveMode::CameraOrbit) ImGui::BeginDisabled();
+        m_hoveredMenuPartIds.clear();
+        if (m_ui.beginMenu("scb.parts")) {
+            if (m_ui.menuItem("scb.deleteall")) DeleteAllParts();
+            ImGui::Separator();
+
+            std::vector<PlacedPart*> sortedParts;
+            sortedParts.reserve(m_placedParts.size());
+            for (auto& p : m_placedParts) sortedParts.push_back(&p);
+            std::sort(sortedParts.begin(), sortedParts.end(), [](PlacedPart* a, PlacedPart* b) {
+                return static_cast<int>(a->partDef->category) < static_cast<int>(b->partDef->category);
+            });
+
+            int deleteRequestId = -1;
+
+            for (PlacedPart* p : sortedParts) {
+                if (!p->partDef) continue;
+
+                ImGui::PushID(p->id);
+
+                const float rowHeight = ImGui::GetFrameHeight();
+                const char* name = p->partDef->name.c_str();
+                const char* category = CategoryToString(p->partDef->category);
+
+                const float leftPad = 4.0f;
+                const float nameCatGap = 10.0f;
+                const float rightPad = 6.0f;
+
+                ImVec2 nameSize = ImGui::CalcTextSize(name);
+                ImVec2 catSize = ImGui::CalcTextSize(category);
+
+                const float labelWidth = leftPad + nameSize.x + nameCatGap + catSize.x + rightPad;
+
+                ImVec2 rowStart = ImGui::GetCursorScreenPos();
+
+                ImGui::InvisibleButton("##partrow", ImVec2(labelWidth, rowHeight));
+                bool rowHovered = ImGui::IsItemHovered();
+                if (rowHovered) m_hoveredMenuPartIds = {p->id};
+                ShowPartTooltip(*p->partDef);
+
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                if (rowHovered) {
+                    dl->AddRectFilled(rowStart, ImVec2(rowStart.x + labelWidth, rowStart.y + rowHeight),
+                        ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+                }
+
+                float textY = rowStart.y + (rowHeight - ImGui::GetTextLineHeight()) * 0.5f;
+
+                ImVec2 namePos(rowStart.x + leftPad, textY);
+                dl->AddText(nullptr, 0.0f, namePos, ImGui::GetColorU32(ImGuiCol_Text), name);
+
+                ImVec2 catPos(namePos.x + nameSize.x + nameCatGap, textY);
+                dl->AddText(nullptr, 0.0f, catPos, ImGui::GetColorU32(ImGuiCol_TextDisabled), category);
+
+                ImGui::SameLine();
+                bool xClicked = m_ui.button("X");
+                if (ImGui::IsItemHovered()) {
+                    m_hoveredMenuPartIds.clear();
+                    CollectDescendants(p->id, m_hoveredMenuPartIds);
+                }
+                if (xClicked) deleteRequestId = p->id;
+                ImGui::PopID();
+            }
+            if (sortedParts.empty()) ImGui::TextDisabled(m_ui.getText("scb.npp"));
+            if (deleteRequestId >= 0) DeletePart(deleteRequestId);
+
+            ImGui::EndMenu();
+        }
+        if (m_moveMode != MoveMode::CameraOrbit) ImGui::EndDisabled();
         ImGui::BeginDisabled();
         if (m_ui.beginMenu("scb.launch")) {
             ImGui::EndMenu();
@@ -681,6 +840,39 @@ void SpacecraftBuilderMode::drawMenuBar() {
     }
     ImGui::EndMainMenuBar();
     ImGui::PopStyleColor(2);
+}
+
+void SpacecraftBuilderMode::ShowPartTooltip(const Part& part) const {
+    if (!ImGui::IsItemHovered()) return;
+
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 20.0f);
+    ImGui::TextUnformatted(part.name.c_str());
+    ImGui::Separator();
+    ImGui::TextUnformatted(part.description.c_str());
+
+    if (part.mass > 0.0f) ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.6f, 1.0f), "+%.2f kg mass", part.mass);
+    if (part.thrust > 0.0f) ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "+%.2f N thrust", part.thrust);
+    if (part.fuelCapacity > 0.0f) ImGui::TextColored(ImVec4(0.6f, 0.6f, 1.0f, 1.0f), "+%.2f L fuel", part.fuelCapacity);
+
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+}
+
+void SpacecraftBuilderMode::ApplyPartHighlight() {
+    for (auto& p : m_placedParts) {
+        if (!p.entity) continue;
+        auto* rc = p.entity->getComponent<RenderComponent>();
+        if (!rc) continue;
+
+        bool highlighted = std::find(m_hoveredMenuPartIds.begin(), m_hoveredMenuPartIds.end(), p.id) != m_hoveredMenuPartIds.end();
+        if (highlighted) {
+            float pulse = std::sin(m_game.GetEngine().getTime() * 6.0f) * 0.2f + 0.8f;
+            rc->setBaseColor(Vec3(1.0f, 0.85f, 0.25f) * pulse);
+        } else {
+            rc->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));
+        }
+    }
 }
 
 void SpacecraftBuilderMode::updateCenterOfMass() {
@@ -827,21 +1019,7 @@ void SpacecraftBuilderMode::showAssemblyWindow() {
                 }
                 ImGui::PopID();
 
-                if (ImGui::IsItemHovered()) {
-                    ImGui::BeginTooltip();
-                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 20.0f);
-                    ImGui::TextUnformatted(part->name.c_str());
-                    ImGui::Separator();
-                    ImGui::TextUnformatted(part->description.c_str());
-
-                    if (part->mass > 0.0f) ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.6f, 1.0f), "+%.2f kg mass", part->mass);
-                    if (part->thrust > 0.0f) ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "+%.2f N thrust", part->thrust);
-                    if (part->fuelCapacity > 0.0f) ImGui::TextColored(ImVec4(0.6f, 0.6f, 1.0f, 1.0f), "+%.2f L fuel", part->fuelCapacity);
-
-                    ImGui::PopTextWrapPos();
-                    ImGui::EndTooltip();
-                }
-
+                ShowPartTooltip(*part);
                 float wrapWidth = cellSize.x - textPadding * 2.0f;
                 ImVec2 titlePos(cellStartScreen.x + textPadding, cellStartScreen.y + textPadding);
                 drawList->AddText(nullptr, 0.0f, titlePos, ImGui::GetColorU32(ImGuiCol_Text),

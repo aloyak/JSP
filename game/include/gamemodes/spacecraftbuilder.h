@@ -95,8 +95,15 @@ private:
         Entity* entity = nullptr;
         Part* partDef = nullptr;
         std::vector<bool> usedAttachments; // true = already mated to another part
+
+        int id = -1;
+        int parentId = -1;
+        int parentAttachIdx = -1;
+        std::vector<int> childIds;
     };
     std::vector<PlacedPart> m_placedParts;
+    int m_nextPlacedPartId = 0;
+    std::vector<int> m_hoveredMenuPartIds;
 
     Entity* m_ghostEntity = nullptr;
     Part* m_ghostPartDef = nullptr;
@@ -146,6 +153,13 @@ public:
     void ConfirmGhostPlacement(PlacedPart* targetPart, int targetAttachIdx, int ghostAttachIdx);
     void CancelGhostPlacement();
     void HandlePartPlacement();
+
+    void CollectDescendants(int partId, std::vector<int>& outIds) const;
+    void DeletePart(int partId);
+    void DeleteAllParts();
+    void ApplyPartHighlight();
+    
+    void ShowPartTooltip(const Part& part) const;
         
     void LateUpdate() override;
         

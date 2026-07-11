@@ -131,6 +131,7 @@ sbox.show,Sandbox,Sandbox
 sbox.extras,Extras,Extras
 sbox.extras.skyboxtint,Skybox Tint,Color del Skybox
 scb,Spaceship,Nave
+scb.npp,No Parts Placed,No Hay Partes Colocadas
 scb.blueprintview,Blueprint View,Vista de Plano
 scb.ocv,Orbit Camera View,Cámara Orbital
 scb.fpv,First Person View,Primera Persona
@@ -141,6 +142,8 @@ scb.info.name,Name,Nombre
 scb.info.version,Version,Versión
 scb.info.desc,Description,Descripción
 scb.addpart,Add at least 1 part,Añade al menos 1 parte
+scb.parts,Parts,Partes
+scb.deleteall,Delete All,Eliminar Todas
 scb.bp.info,Show Information,Mostrar Información
 scb.bp.stats,Show Statistics,Mostrar Estadisticas
 help,Help,Ayuda
