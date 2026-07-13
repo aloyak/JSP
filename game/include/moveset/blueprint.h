@@ -59,6 +59,7 @@ private:
 
     bool showStats = true;
     bool showInfo = true;
+    bool showStages = true;
 
     void drawInfo() {
         if (!showInfo) return;
@@ -133,6 +134,24 @@ private:
         m_game->GetUI().checkbox(m_game->GetUI().getText("scb.bp.info"), &showInfo);
         ImGui::SameLine();
         m_game->GetUI().checkbox(m_game->GetUI().getText("scb.bp.stats"), &showStats);
+        ImGui::SameLine();
+        m_game->GetUI().checkbox(m_game->GetUI().getText("scb.bp.stages"), &showStages);
+
+        ImGui::End();
+        ImGui::PopStyleColor();
+    }
+
+    void drawStages() {
+        if (!showStages) return;
+        Vec2 windowSize = m_game->GetEngine().getWindow().getSize();
+        // center bottom of the screen
+        ImGui::SetNextWindowSize(ImVec2(600, 300));
+        ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.5f - 300, windowSize.y * 0.5f + 300), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0.0f));
+        ImGui::Begin("Stages", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | 
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
+
+        ImGui::TextColored(ImVec4(1, 1, 1, 0.85f), "Spaceship's stages:");
 
         ImGui::End();
         ImGui::PopStyleColor();
@@ -237,6 +256,7 @@ public:
         drawSettings();
         drawInfo();
         drawStats();
+        drawStages();
     }
 
     void drawBlueprintShader() {

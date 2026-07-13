@@ -75,6 +75,7 @@ struct Part {
     float thrust = 0.0f; 
     float fuelCapacity = 0.0f;
 
+    bool canBePlacedFirst = false;
     std::optional<Category> placementCategory;
 
     Category GetPlacementCategory() const {
@@ -103,7 +104,7 @@ inline std::vector<Part> CreateDefaultParts() {
             std::vector<Attachment>{
                 {Vec3(0.0f, 2.5f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::FuelTank, Category::Structural}},
                 {Vec3(0.0f, -2.5f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), {Category::FuelTank, Category::Engine}}
-            }, 100.0f, 0.0f, 100.0f},
+            }, 300.0f, 0.0f, 100.0f, true},
 
         Part{"Fuel Tank 2", "A larger fuel tank.", "assets/models/spaceship/fuel_2.fbx", Category::FuelTank,
             std::vector<Attachment>{
@@ -112,7 +113,7 @@ inline std::vector<Part> CreateDefaultParts() {
 
                 {Vec3(0.0f, 0.0f, 2.0f), Vec3(0.0f, 0.0f, 1.0f), {Category::RocketBooster}},
                 {Vec3(0.0f, 0.0f, -2.0f), Vec3(0.0f, 0.0f, -1.0f), {Category::RocketBooster}}
-            }, 250.0f, 0.0f, 200.0f},
+            }, 500.0f, 0.0f, 200.0f, true},
 
         Part{"Fuel Tank 3", "A huge fuel tank.", "assets/models/spaceship/fuel_3.fbx", Category::FuelTank,
             std::vector<Attachment>{
@@ -123,60 +124,76 @@ inline std::vector<Part> CreateDefaultParts() {
                 {Vec3(-2.3f, 0.0f, 0.0f), Vec3(-1.0f, 0.0f, 0.0f), {Category::RocketBooster}},
                 {Vec3(0.0f, 0.0f, 2.3f), Vec3(0.0f, 0.0f, 1.0f), {Category::RocketBooster}},
                 {Vec3(0.0f, 0.0f, -2.3f), Vec3(0.0f, 0.0f, -1.0f), {Category::RocketBooster}}
-            }, 325.0f, 0.0f, 275.0f},
+            }, 600.0f, 0.0f, 275.0f, true},
 
         Part{"Rocket Booster", "A basic rocket booster.", "assets/models/spaceship/booster.fbx", Category::Engine,
             std::vector<Attachment>{
                 {Vec3(1.0f, 0.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f), {Category::FuelTank}},
                 {Vec3(-1.0f, 0.0f, 0.0f), Vec3(-1.0f, 0.0f, 0.0f), {Category::Engine}}
-            }, 20.0f, 100.0f, 0.0f, Category::RocketBooster},
+            }, 150.0f, 650.0f, 0.0f, false, Category::RocketBooster},
 
         Part{"Engine", "A basic engine.", "assets/models/spaceship/engine.fbx", Category::Engine,
             std::vector<Attachment>{
                 {Vec3(0.0f, 0.5f, 0.0f), Vec3(0.0f, 0.0f, 1.0f), {Category::FuelTank, Category::Structural}}
-            }, 10.0f, 100.0f, 0.0f},
+            }, 100.0f, 2000.0f, 0.0f},
         Part{"Engine 3x", "A more powerful engine.", "assets/models/spaceship/engine_2.fbx", Category::Engine,
             std::vector<Attachment>{
                 {Vec3(0.0f, 0.5f, 0.0f), Vec3(0.0f, 0.0f, 1.0f), {Category::FuelTank}}
-            }, 25.0f, 150.0f, 0.0f},
+            }, 125.0f, 2400.0f, 0.0f},
         Part{"Module Engine", "An engine for travel module", "assets/models/spaceship/mengine.fbx", Category::Engine,
             std::vector<Attachment>{
                 {Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Structural}},
                 {Vec3(0.0f, 0.5f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), {Category::LandingGear}}
-            }, 15.0f, 120.0f, 0.0f, Category::ModuleEngine}, // shows under Engine, but only mates with attach points that allow Category::ModuleEngine
+            }, 50.0f, 500.0f, 0.0f, false, Category::ModuleEngine}, // shows under Engine, but only mates with attach points that allow Category::ModuleEngine
 
         Part{"Structural-5", "A structural part with 5 attachment points.", "assets/models/spaceship/structural_5.fbx", Category::Structural,
             std::vector<Attachment>{
                 // 5 attachments, two on x, two on z, one on y
-                {Vec3(2.0f, 2.4f, 0.0f), Vec3(1.0f, 0.0f, 0.0f), {Category::ModuleEngine, Category::Structural}},
-                {Vec3(-2.0f, 2.4f, 0.0f), Vec3(-1.0f, 0.0f, 0.0f), {Category::ModuleEngine, Category::Structural}},
-                {Vec3(0.0f, 2.4f, 2.0f), Vec3(0.0f, 0.0f, 1.0f), {Category::ModuleEngine, Category::Structural}},
-                {Vec3(0.0f, 2.4f, -2.0f), Vec3(0.0f, 0.0f, -1.0f), {Category::ModuleEngine, Category::Structural}},
+                {Vec3(2.0f, 2.4f, 0.0f), Vec3(1.0f, 0.0f, 0.0f), {Category::ModuleEngine, Category::Structural, Category::Electrical}},
+                {Vec3(-2.0f, 2.4f, 0.0f), Vec3(-1.0f, 0.0f, 0.0f), {Category::ModuleEngine, Category::Structural, Category::Electrical}},
+                {Vec3(0.0f, 2.4f, 2.0f), Vec3(0.0f, 0.0f, 1.0f), {Category::ModuleEngine, Category::Structural, Category::Electrical}},
+                {Vec3(0.0f, 2.4f, -2.0f), Vec3(0.0f, 0.0f, -1.0f), {Category::ModuleEngine, Category::Structural, Category::Electrical}},
                 {Vec3(0.0f, 4.5f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Cockpit}},
+
+                // special ones only for solar panels:
+                {Vec3(2.0f, 2.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Electrical}},
+                {Vec3(-2.0f, 2.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Electrical}},
+                {Vec3(0.0f, 2.0f, 2.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Electrical}},
+                {Vec3(0.0f, 2.0f, -2.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Electrical}},
 
                 // connection in the bottom - accepts a continuing fuel tank, or landing gear
                 {Vec3(0.0f, -1.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), {Category::FuelTank, Category::Engine}}
-            }, 5.0f, 0.0f, 0.0f},
+            }, 75.0f, 0.0f, 0.0f},
 
-        Part{"Panel", "Debug panel", "assets/models/spaceship/panel.fbx", Category::Structural,
+        Part{"Panel", "Simple panel", "assets/models/spaceship/panel.fbx", Category::Structural,
             std::vector<Attachment>{
                 {Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Structural}}
-            }, 1.0f, 0.0f, 0.0f},
+            }, 10.0f, 0.0f, 0.0f},
 
         Part{"Landing Gear", "A basic landing gear.", "assets/models/spaceship/landinggear.fbx", Category::Structural,
             std::vector<Attachment>{
                 {Vec3(0.0f, 0.5f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::ModuleEngine}}
-            }, 5.0f, 0.0f, 0.0f, Category::LandingGear}, 
+            }, 25.0f, 0.0f, 0.0f, false, Category::LandingGear}, 
 
         Part{"Cockpit", "A basic cockpit.", "assets/models/spaceship/cockpit.fbx", Category::Cockpit,
             std::vector<Attachment>{
                 {Vec3(0.0f, -0.75f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Structural}}
-            }, 15.0f, 0.0f, 0.0f},
+            }, 50.0f, 0.0f, 0.0f},
 
         Part{"Cockpit 2", "", "assets/models/spaceship/cockpit_2.fbx", Category::Cockpit,
             std::vector<Attachment>{
                 {Vec3(0.0f, -0.75f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Structural}}
-            }, 20.0f, 0.0f, 0.0f}
+            }, 50.0f, 0.0f, 0.0f},
 
+        Part{"Small Battery", "A small battery for electrical power.", "assets/models/spaceship/battery.fbx", Category::Electrical,
+            std::vector<Attachment>{
+                {Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Structural}}
+            }, 100.0f, 0.0f, 0.0f},
+
+        Part{"Solar Panel", "A solar panel for generating electrical power.", "assets/models/spaceship/solarpanel.fbx", Category::Electrical,
+            std::vector<Attachment>{
+                {Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), {Category::Structural}}
+            }, 50.0f, 0.0f, 0.0f
+        }
     };
 }

@@ -22,7 +22,7 @@ struct GameSettings {
     bool isFullscreen = true;
     bool vsyncEnabled = false;
     int targetFPS = 240;
-    float mouseSens = 1.0f;
+    float mouseSens = 0.3f;
     float headbobIntensity = 0.2f;
     float masterVolume = 1.0f;
     float musicVolume = 1.0f;

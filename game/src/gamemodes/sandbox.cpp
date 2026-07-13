@@ -1872,9 +1872,9 @@ void SandboxMode::DrawMainMenuBar()
                 m_showSandbox = !m_showSandbox;
             if (m_ui.menuItem("sbox.planetsstars"))
                 showPlanetsWindow = !showPlanetsWindow;
-            if (m_ui.menuItem("sbox.grid"), "G")
+            if (m_ui.menuItem("sbox.grid", "G"))
                 drawGrid = !drawGrid;
-            if (m_ui.menuItem("sbox.trails"), "T")
+            if (m_ui.menuItem("sbox.trails", "T"))
                 drawTrails = !drawTrails;
 
             if (m_ui.beginMenu("sbox.extras")) {
@@ -1890,15 +1890,15 @@ void SandboxMode::DrawMainMenuBar()
         }
         if (m_ui.beginMenu("tm.tools"))
         {
-            if (m_ui.menuItem("sbox.tool.select"), "1")
+            if (m_ui.menuItem("sbox.tool.select", "1"))
                 m_toolMode = ToolMode::Selection;
             if (simulationRunning)
                 ImGui::BeginDisabled();
-            if (m_ui.menuItem("sbox.tool.move"), "2")
+            if (m_ui.menuItem("sbox.tool.move", "2"))
                 m_toolMode = ToolMode::Reallocation;
             if (simulationRunning)
                 ImGui::EndDisabled();
-            if (m_ui.menuItem("sbox.tool.velocity"), "3")
+            if (m_ui.menuItem("sbox.tool.velocity", "3"))
                 m_toolMode = ToolMode::Velocity;
             ImGui::EndMenu();
         }
@@ -1906,16 +1906,16 @@ void SandboxMode::DrawMainMenuBar()
         {
             bool isPlaying = simulationRunning && !physicsPaused;
 
-            if (m_ui.menuItem("sbox.sim.play"), "P", false, !isPlaying)
+            if (m_ui.menuItem("sbox.sim.play", "P", false, !isPlaying))
             {
                 if (!simulationRunning)
                     StartSimulation();
                 else
                     ResumeSimulation();
             }
-            if (m_ui.menuItem("sbox.sim.pause"), "Space", false, simulationRunning)
+            if (m_ui.menuItem("sbox.sim.pause", "Space", false, simulationRunning))
                 PauseSimulation();
-            if (m_ui.menuItem("sbox.sim.reset"), "R", false, m_hasSnapshot)
+            if (m_ui.menuItem("sbox.sim.reset", "R", false, m_hasSnapshot))
                 ResetSimulation();
             ImGui::EndMenu();
         }

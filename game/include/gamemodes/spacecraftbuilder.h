@@ -123,6 +123,9 @@ private:
 
     PostProcessor* m_barrier = nullptr;
     bool m_barrierEnabled = true;
+
+    bool m_showCenterOfMass = true;
+    bool m_showGeometryCenter = true;
 public:
     SpacecraftBuilderMode(Game& game);
 
@@ -132,7 +135,6 @@ public:
     Vec3 ComputeDefaultFirstPersonPos() const;
 
     void StartTransitionTo(MoveMode mode);
-
     
     void drawBarrier();
     

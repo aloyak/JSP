@@ -204,7 +204,7 @@ void SpacecraftBuilderMode::Update() {
     }
 
     m_target->transform.position.y = std::clamp(m_target->transform.position.y, 0.0f, 60.0f);
-    m_camera->transform.position.y = std::clamp(m_camera->transform.position.y, 2.0f, 260.0f);
+    m_camera->transform.position.y = std::clamp(m_camera->transform.position.y, 2.0f, 230.0f);
 
     if (targetHeightChanged && !m_isTransitioning && m_moveMode == MoveMode::CameraOrbit) {
         m_orbitCamera->ApplyPosition();
@@ -758,6 +758,9 @@ void SpacecraftBuilderMode::drawMenuBar() {
             if (isBlueprintDisabled) ImGui::EndDisabled();
 
             if (isBlueprintDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(m_ui.getText("scb.addpart"));
+            ImGui::Separator();
+            if (m_ui.menuItem("scb.view.com")) m_showCenterOfMass = !m_showCenterOfMass;
+            if (m_ui.menuItem("scb.view.cog")) m_showGeometryCenter = !m_showGeometryCenter;
             ImGui::EndMenu();
         }
         if (wasTransitioning) ImGui::EndDisabled();
@@ -876,10 +879,11 @@ void SpacecraftBuilderMode::ApplyPartHighlight() {
 }
 
 void SpacecraftBuilderMode::updateCenterOfMass() {
+    if (!m_showCenterOfMass) return;
     if (m_placedParts.empty()) return;
 
     Vec3 com(0.0f);
-    float totalMass = 0.0f;
+float totalMass = 0.0f;
 
     for (auto& placed : m_placedParts) {
         if (!placed.entity || !placed.partDef) continue;
@@ -902,6 +906,7 @@ void SpacecraftBuilderMode::updateCenterOfMass() {
 }
 
 void SpacecraftBuilderMode::updateGeometryCenter() {
+    if (!m_showGeometryCenter) return;
     if (m_placedParts.empty()) return;
 
     Vec3 minPos(1e9f, 1e9f, 1e9f);
@@ -1013,12 +1018,20 @@ void SpacecraftBuilderMode::showAssemblyWindow() {
                 ImVec2 cellSize(cellWidth - spacing, cellHeight);
                 ImVec2 cellStartScreen = ImGui::GetCursorScreenPos();
 
+                bool shouldDisable = m_placedParts.empty() && !part->canBePlacedFirst;
+                if (shouldDisable) ImGui::BeginDisabled();
                 ImGui::PushID(idInRow);
                 if (m_ui.button((std::string("##PartCell_") + part->name).c_str(), cellSize)) {
                     StartGhostPlacement(*part);
                 }
+                if (shouldDisable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::BeginTooltip();
+                    ImGui::TextUnformatted(m_ui.getText("scb.firstpart"));
+                    ImGui::EndTooltip();
+                }
                 ImGui::PopID();
-
+                if (shouldDisable) ImGui::EndDisabled();
+                
                 ShowPartTooltip(*part);
                 float wrapWidth = cellSize.x - textPadding * 2.0f;
                 ImVec2 titlePos(cellStartScreen.x + textPadding, cellStartScreen.y + textPadding);
