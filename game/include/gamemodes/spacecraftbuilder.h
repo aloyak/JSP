@@ -124,6 +124,8 @@ private:
     PostProcessor* m_barrier = nullptr;
     bool m_barrierEnabled = true;
 
+    PostProcessor* m_fog = nullptr;
+
     bool m_showCenterOfMass = true;
     bool m_showGeometryCenter = true;
 public:
@@ -149,7 +151,7 @@ public:
     
     void DrawAttachmentPointGizmos();
     
-    bool FindSnapPoint(const Ray& ray, Vec3& outPos, Vec3& outRot,
+    bool FindSnapPoint(const Vec2& mousePos, Vec3& outPos, Vec3& outRot,
     PlacedPart*& outTargetPart, int& outTargetIdx, int& outGhostIdx);
         
     void ConfirmGhostPlacement(PlacedPart* targetPart, int targetAttachIdx, int ghostAttachIdx);

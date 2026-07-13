@@ -6,6 +6,7 @@ in  vec2 TexCoords;
 uniform sampler2D screenTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D blueprintImageTexture;
+uniform sampler2D drawMaskTexture;
 
 uniform mat4 u_invView;
 uniform mat4 u_invProj;
@@ -32,9 +33,10 @@ vec3 getNormal(vec2 uv, vec2 ts) {
 
 void main() {
     float depth = texture(depthTexture, TexCoords).r;
+    float mask = texture(drawMaskTexture, TexCoords).r;
     const float EPSILON = 1e-6;
 
-    if (depth <= EPSILON) {
+    if (depth <= EPSILON || mask < 0.5) {
         FragColor = texture(blueprintImageTexture, TexCoords);
     }
     else {

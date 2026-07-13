@@ -38,6 +38,10 @@ void SpacecraftBuilderMode::OnEnter() {
 
     m_firstPersonCamera = new FirstPersonCamera(m_camera);
     m_baseMoveSpeed = m_firstPersonCamera->getMoveSpeed();
+    
+    m_fog = &m_game.GetEngine().getRenderer().addPostProcessor(
+        "assets/shaders/default_vert.glsl", "assets/shaders/fog_frag.glsl"
+    );
 
     m_barrier = &m_game.GetEngine().getRenderer().addPostProcessor(
         "assets/shaders/default_vert.glsl", "assets/shaders/barrier_frag.glsl"
@@ -46,6 +50,7 @@ void SpacecraftBuilderMode::OnEnter() {
 
 void SpacecraftBuilderMode::OnExit() {
     m_game.GetEngine().getRenderer().removePostProcessor(m_barrier);
+    m_game.GetEngine().getRenderer().removePostProcessor(m_fog);
     m_game.GetAudioManager().stopMusic(1.5f);
     CancelGhostPlacement();
     delete m_orbitCamera;
@@ -247,6 +252,18 @@ void SpacecraftBuilderMode::Update() {
 
     showAssemblyWindow();
     drawBarrier();
+
+    if (m_fog) {
+        m_fog->setVec3("u_cameraPos", m_camera->transform.position);
+        m_fog->setMat4("u_invView", m_camera->getComponent<CameraComponent>()->getCamera().getInvViewMatrix(m_camera->transform));
+        m_fog->setMat4("u_invProj", m_camera->getComponent<CameraComponent>()->getCamera().getInvProjMatrix());
+
+        m_fog->setFloat("u_distance", 100.0f);
+        m_fog->setFloat("u_density", 0.04f);
+        m_fog->setFloat("u_maxFog", 1.0f);
+        m_fog->setFloat("u_skyFalloff", 1.0f);
+        m_fog->setVec3("u_color", Vec3(0.5f, 0.7f, 0.8f));
+    }
 }
 
 void SpacecraftBuilderMode::drawBarrier() {
@@ -443,25 +460,25 @@ void SpacecraftBuilderMode::DrawAttachmentPointGizmos() {
             ImVec2 screenPos;
             if (!WorldToScreen(worldPos, screenPos)) continue;
 
-            bool allowed = !m_ghostPartDef || attach.AllowsCategory(m_ghostPartDef->GetPlacementCategory());
-            ImU32 fillColor = allowed ? IM_COL32(100, 255, 200, 230) : IM_COL32(255, 90, 90, 200);
-            ImU32 ringColor = allowed ? IM_COL32(100, 255, 200, 120) : IM_COL32(255, 90, 90, 100);
-
-            dl->AddCircleFilled(screenPos, 5.0f, fillColor);
-            dl->AddCircle(screenPos, 7.0f, ringColor, 16, 1.0f);
+            bool allowed = attach.Allows(m_ghostPartDef->attachTag);
+            if (allowed) {
+                // usable point: bright and prominent, this is what you're aiming for
+                dl->AddCircleFilled(screenPos, 5.0f, IM_COL32(100, 255, 200, 230));
+                dl->AddCircle(screenPos, 7.0f, IM_COL32(100, 255, 200, 120), 16, 1.0f);
+            } else {
+                // incompatible point: faint grey reference only, not a candidate to snap to
+                dl->AddCircleFilled(screenPos, 4.5f, IM_COL32(150, 150, 150, 50));
+                dl->AddCircle(screenPos, 6.0f, IM_COL32(150, 150, 150, 35), 12, 1.0f);
+            }
         }
     }
 }
 
-bool SpacecraftBuilderMode::FindSnapPoint(const Ray& ray, Vec3& outPos, Vec3& outRot,
+bool SpacecraftBuilderMode::FindSnapPoint(const Vec2& mousePos, Vec3& outPos, Vec3& outRot,
                     PlacedPart*& outTargetPart, int& outTargetIdx, int& outGhostIdx) {
-    auto* camComp = m_camera->getComponent<CameraComponent>();
-    if (!camComp) return false;
+    if (!m_ghostPartDef) return false;
 
-    Vec2 winSize = m_game.GetEngine().getWindow().getSize();
-    const Mat4& proj = *reinterpret_cast<const Mat4*>(camComp->getCamera().getProjectionMatrix());
-
-    float bestScore = 1e9f;
+    float bestPixelDist = k_snapPixelThreshold;
     bool found = false;
     Vec3 bestPos{0.0f};
     Vec3 bestRot{0.0f};
@@ -473,62 +490,57 @@ bool SpacecraftBuilderMode::FindSnapPoint(const Ray& ray, Vec3& outPos, Vec3& ou
         if (!placed.entity || !placed.partDef) continue;
 
         for (size_t idx = 0; idx < placed.partDef->attachmentPoints.size(); ++idx) {
-            if (idx < placed.usedAttachments.size() && placed.usedAttachments[idx]) continue; 
+            if (idx < placed.usedAttachments.size() && placed.usedAttachments[idx]) continue;
 
             auto& attach = placed.partDef->attachmentPoints[idx];
-            if (m_ghostPartDef && !attach.AllowsCategory(m_ghostPartDef->GetPlacementCategory())) continue;
+            if (!attach.Allows(m_ghostPartDef->attachTag)) continue; // incompatible: not a valid snap target
 
             Vec3 worldPos = placed.entity->transform.position +
                 RotateEuler(attach.position, placed.entity->transform.rotation);
             Vec3 worldNormal = RotateEuler(attach.normal, placed.entity->transform.rotation).normalize();
 
-            Vec3 toPoint = worldPos - ray.origin;
-            float t = dot(toPoint, ray.direction);
-            if (t < 0.0f) continue;
+            ImVec2 screenPos;
+            if (!WorldToScreen(worldPos, screenPos)) continue;
 
-            float worldDist = (ray.origin + ray.direction * t - worldPos).length();
-            float distToCam = toPoint.length();
+            float dx = screenPos.x - mousePos.x;
+            float dy = screenPos.y - mousePos.y;
+            float pixelDist = std::sqrt(dx * dx + dy * dy);
+            if (pixelDist >= bestPixelDist) continue;
 
-            float ndcRadius = (1.0f / std::max(distToCam, 0.01f)) * proj[0][0];
-            float pixelRadius = std::max(ndcRadius * winSize.x * 0.5f, k_snapPixelThreshold);
-            float pickThreshold = (pixelRadius / (winSize.x * 0.5f)) * distToCam / proj[0][0];
+            Vec3 snapRotation = placed.entity->transform.rotation; // fallback: ghost has no attachment points at all
+            Vec3 snapPosition = worldPos;
+            int matedGhostIdx = -1;
 
-            if (worldDist < pickThreshold && t < bestScore) {
-                Vec3 snapRotation = placed.entity->transform.rotation; // fallback: ghost has no attachment points at all
-                Vec3 snapPosition = worldPos;
-                int matedGhostIdx = -1;
+            if (!m_ghostPartDef->attachmentPoints.empty()) {
+                Vec3 desiredDir = worldNormal * -1.0f;
 
-                if (m_ghostPartDef && !m_ghostPartDef->attachmentPoints.empty()) {
-                    Vec3 desiredDir = worldNormal * -1.0f;
+                float bestDot = -1e9f;
+                for (size_t g = 0; g < m_ghostPartDef->attachmentPoints.size(); ++g) {
+                    auto& ghostAttach = m_ghostPartDef->attachmentPoints[g];
+                    if (!ghostAttach.Allows(placed.partDef->attachTag)) continue;
 
-                    float bestDot = -1e9f;
-                    for (size_t g = 0; g < m_ghostPartDef->attachmentPoints.size(); ++g) {
-                        auto& ghostAttach = m_ghostPartDef->attachmentPoints[g];
-                        if (!ghostAttach.AllowsCategory(placed.partDef->GetPlacementCategory())) continue;
-
-                        float d = dot(ghostAttach.normal, desiredDir);
-                        if (d > bestDot) { bestDot = d; matedGhostIdx = static_cast<int>(g); }
-                    }
-
-                    if (matedGhostIdx < 0) continue;
-
-                    auto& ghostAttach = m_ghostPartDef->attachmentPoints[matedGhostIdx];
-
-                    snapRotation = RotationToAlignNormals(
-                        ghostAttach.normal, desiredDir, placed.entity->transform.rotation.y);
-
-                    Vec3 ghostOffset = RotateEuler(ghostAttach.position, snapRotation);
-                    snapPosition = worldPos - ghostOffset;
+                    float d = dot(ghostAttach.normal, desiredDir);
+                    if (d > bestDot) { bestDot = d; matedGhostIdx = static_cast<int>(g); }
                 }
 
-                bestScore = t;
-                found = true;
-                bestPos = snapPosition;
-                bestRot = snapRotation;
-                bestTargetPart = &placed;
-                bestTargetIdx = static_cast<int>(idx);
-                bestGhostIdx = matedGhostIdx;
+                if (matedGhostIdx < 0) continue; // ghost has no point that could accept this parent
+
+                auto& ghostAttach = m_ghostPartDef->attachmentPoints[matedGhostIdx];
+
+                snapRotation = RotationToAlignNormals(
+                    ghostAttach.normal, desiredDir, placed.entity->transform.rotation.y);
+
+                Vec3 ghostOffset = RotateEuler(ghostAttach.position, snapRotation);
+                snapPosition = worldPos - ghostOffset;
             }
+
+            bestPixelDist = pixelDist;
+            found = true;
+            bestPos = snapPosition;
+            bestRot = snapRotation;
+            bestTargetPart = &placed;
+            bestTargetIdx = static_cast<int>(idx);
+            bestGhostIdx = matedGhostIdx;
         }
     }
 
@@ -688,7 +700,7 @@ void SpacecraftBuilderMode::HandlePartPlacement() {
     PlacedPart* targetPart = nullptr;
     int targetIdx = -1;
     int ghostIdx = -1;
-    bool found = FindSnapPoint(ray, snapPos, snapRot, targetPart, targetIdx, ghostIdx);
+    bool found = FindSnapPoint(mousePos, snapPos, snapRot, targetPart, targetIdx, ghostIdx);
 
     m_ghostSnapped = found;
     if (found) {
@@ -797,6 +809,14 @@ void SpacecraftBuilderMode::drawMenuBar() {
 
                 const float labelWidth = leftPad + nameSize.x + nameCatGap + catSize.x + rightPad;
 
+                float buttonWidth = ImGui::CalcTextSize("X").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+                float contentMaxX = ImGui::GetWindowContentRegionMax().x;
+                float buttonPosX = contentMaxX - buttonWidth;
+                
+                if (buttonPosX < labelWidth + ImGui::GetStyle().ItemSpacing.x) {
+                    buttonPosX = labelWidth + ImGui::GetStyle().ItemSpacing.x;
+                }
+
                 ImVec2 rowStart = ImGui::GetCursorScreenPos();
 
                 ImGui::InvisibleButton("##partrow", ImVec2(labelWidth, rowHeight));
@@ -818,7 +838,7 @@ void SpacecraftBuilderMode::drawMenuBar() {
                 ImVec2 catPos(namePos.x + nameSize.x + nameCatGap, textY);
                 dl->AddText(nullptr, 0.0f, catPos, ImGui::GetColorU32(ImGuiCol_TextDisabled), category);
 
-                ImGui::SameLine();
+                ImGui::SameLine(buttonPosX);
                 bool xClicked = m_ui.button("X");
                 if (ImGui::IsItemHovered()) {
                     m_hoveredMenuPartIds.clear();
@@ -1041,7 +1061,7 @@ void SpacecraftBuilderMode::showAssemblyWindow() {
                 ImVec2 titleSize = ImGui::CalcTextSize(part->name.c_str(), nullptr, false, wrapWidth);
                 ImVec2 subtitlePos(titlePos.x, titlePos.y + titleSize.y + 2.0f);
                 drawList->AddText(nullptr, 0.0f, subtitlePos, ImGui::GetColorU32(ImGuiCol_TextDisabled),
-                    CategoryToString(part->category), nullptr, wrapWidth);
+                    AttachTagToString(part->attachTag), nullptr, wrapWidth);
             };
 
             for (size_t i = 0; i < visibleParts.size(); i += 2) {

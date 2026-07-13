@@ -34,6 +34,7 @@ private:
     float m_transitionDistance = 0.0f;
 
     Texture m_blueprintTexture = Texture("assets/textures/blueprint.png");
+    Texture m_drawMaskTexture = Texture("assets/textures/blueprint_mask.png");
 
     void startTurn(int direction) {
         int previousIndex = m_presetIndex;
@@ -59,7 +60,7 @@ private:
 
     bool showStats = true;
     bool showInfo = true;
-    bool showStages = true;
+    bool showStages = false;
 
     void drawInfo() {
         if (!showInfo) return;
@@ -134,8 +135,8 @@ private:
         m_game->GetUI().checkbox(m_game->GetUI().getText("scb.bp.info"), &showInfo);
         ImGui::SameLine();
         m_game->GetUI().checkbox(m_game->GetUI().getText("scb.bp.stats"), &showStats);
-        ImGui::SameLine();
-        m_game->GetUI().checkbox(m_game->GetUI().getText("scb.bp.stages"), &showStages);
+        //ImGui::SameLine();
+        //m_game->GetUI().checkbox(m_game->GetUI().getText("scb.bp.stages"), &showStages);
 
         ImGui::End();
         ImGui::PopStyleColor();
@@ -269,6 +270,7 @@ public:
             m_blueprint->setFloat("u_far", m_camera->getComponent<CameraComponent>()->getFar());
 
             m_blueprint->setTexture("blueprintImageTexture", m_blueprintTexture, 3);
+            m_blueprint->setTexture("drawMaskTexture", m_drawMaskTexture, 4);
         }
     }
 };
