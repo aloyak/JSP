@@ -1,6 +1,10 @@
 #include "gamemodes/spacecraftbuilder.h"
 
 #include <cstring>
+#include <fstream>
+#include <nlohmann/json.hpp>
+
+#include "engine/utils/logger.h"
 
 SpacecraftBuilderMode::SpacecraftBuilderMode(Game& game)
     : GameMode("SpacecraftBuilder", "assets/scenes/assembly.scene")
@@ -735,6 +739,15 @@ void SpacecraftBuilderMode::LateUpdate() {
     drawMenuBar();
     ApplyPartHighlight();
 
+    if (m_selector.isOpen()) {
+        m_selector.Draw();
+    }
+
+    std::string selectedFile = m_selector.ConsumeSelection();
+    if (!selectedFile.empty()) {
+        Load(selectedFile);
+    }
+
     // shortcuts
     if (!m_isTransitioning && m_input.isKeyPressed(KEY_1)) StartTransitionTo(MoveMode::CameraOrbit);
     if (!m_isTransitioning && m_input.isKeyPressed(KEY_2)) StartTransitionTo(MoveMode::CameraFirstPerson);
@@ -753,8 +766,8 @@ void SpacecraftBuilderMode::drawMenuBar() {
         }
         if (m_ui.beginMenu("scb")) {
             if (m_ui.menuItem("tm.scb.new")) m_game.SetGameMode(std::make_unique<SpacecraftBuilderMode>(m_game), true, true);
-            if (m_ui.menuItem("tm.scb.save")) {}
-            if (m_ui.menuItem("tm.scb.load")) {}
+            if (m_ui.menuItem("tm.scb.save")) { Save(); }
+            if (m_ui.menuItem("tm.scb.load")) { m_selector.toggleOpen(); }
             ImGui::EndMenu();
         }
         bool wasTransitioning = m_isTransitioning;
@@ -1150,4 +1163,137 @@ void SpacecraftBuilderMode::drawInformation() {
 
 void SpacecraftBuilderMode::drawCustomization() {
     ImGui::TextUnformatted("Customization");
+}
+
+void SpacecraftBuilderMode::Save() {
+    std::string baseDir = Path::resolve("user/spacecrafts/");
+
+    nlohmann::json j;
+    j["name"]        = m_spaceship.name;
+    j["description"] = m_spaceship.description;
+    j["version"]     = m_spaceship.version;
+
+    nlohmann::json partsArray = nlohmann::json::array();
+    for (const auto& placed : m_placedParts) {
+        if (!placed.entity || !placed.partDef) continue;
+
+        nlohmann::json jp;
+        jp["id"]              = placed.id;
+        jp["parentId"]        = placed.parentId;
+        jp["parentAttachIdx"] = placed.parentAttachIdx;
+        jp["partName"]        = placed.partDef->name;
+        jp["position"]        = { placed.entity->transform.position.x,
+                                   placed.entity->transform.position.y,
+                                   placed.entity->transform.position.z };
+        jp["rotation"]        = { placed.entity->transform.rotation.x,
+                                   placed.entity->transform.rotation.y,
+                                   placed.entity->transform.rotation.z };
+        jp["usedAttachments"] = placed.usedAttachments;
+
+        partsArray.push_back(jp);
+    }
+    j["parts"] = partsArray;
+
+    std::string savePath = baseDir + m_spaceship.name + ".spacecraft";
+    std::ofstream file(savePath);
+    if (file.is_open()) {
+        file << j.dump(4);
+        file.close();
+        Logger::info("Saved spacecraft to " + savePath);
+    } else {
+        Logger::error("Failed to save spacecraft to " + savePath);
+    }
+}
+
+void SpacecraftBuilderMode::Load(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        Logger::error("SpacecraftBuilder: could not open '" + filepath + "'");
+        return;
+    }
+
+    nlohmann::json j;
+    try {
+        file >> j;
+    } catch (...) {
+        Logger::error("SpacecraftBuilder: failed to parse '" + filepath + "'");
+        return;
+    }
+
+    DeleteAllParts();
+
+    m_spaceship.name        = j.value("name", m_spaceship.name);
+    m_spaceship.description = j.value("description", m_spaceship.description);
+    m_spaceship.version     = j.value("version", m_spaceship.version);
+
+    int maxId = -1;
+    if (j.contains("parts")) {
+        for (const auto& jp : j["parts"]) {
+            std::string partName = jp.value("partName", "");
+
+            Part* partDef = nullptr;
+            for (auto& p : m_parts) {
+                if (p.name == partName) { partDef = &p; break; }
+            }
+            if (!partDef) {
+                Logger::error("SpacecraftBuilder: unknown part '" + partName + "' in '" + filepath + "'");
+                continue;
+            }
+
+            Vec3 position(0.0f), rotation(0.0f);
+            if (jp.contains("position") && jp["position"].size() == 3) {
+                position = Vec3(jp["position"][0].get<float>(),
+                                 jp["position"][1].get<float>(),
+                                 jp["position"][2].get<float>());
+            }
+            if (jp.contains("rotation") && jp["rotation"].size() == 3) {
+                rotation = Vec3(jp["rotation"][0].get<float>(),
+                                 jp["rotation"][1].get<float>(),
+                                 jp["rotation"][2].get<float>());
+            }
+
+            Entity* entity = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity(partDef->name);
+            entity->addComponent<RenderComponent>(partDef->modelPath);
+            entity->transform.position = position;
+            entity->transform.rotation = rotation;
+
+            PlacedPart placed;
+            placed.entity          = entity;
+            placed.partDef         = partDef;
+            placed.id              = jp.value("id", 0);
+            placed.parentId        = jp.value("parentId", -1);
+            placed.parentAttachIdx = jp.value("parentAttachIdx", -1);
+
+            placed.usedAttachments = std::vector<bool>(partDef->attachmentPoints.size(), false);
+            if (jp.contains("usedAttachments")) {
+                const auto& ua = jp["usedAttachments"];
+                for (size_t i = 0; i < ua.size() && i < placed.usedAttachments.size(); ++i) {
+                    placed.usedAttachments[i] = ua[i].get<bool>();
+                }
+            }
+
+            maxId = std::max(maxId, placed.id);
+
+            m_placedParts.push_back(placed);
+            m_spaceship.parts.push_back(*partDef);
+
+            m_spaceship.mass         += partDef->mass;
+            m_spaceship.thrust       += partDef->thrust;
+            m_spaceship.fuelCapacity += partDef->fuelCapacity;
+        }
+    }
+
+    for (auto& child : m_placedParts) {
+        if (child.parentId < 0) continue;
+        for (auto& parent : m_placedParts) {
+            if (parent.id == child.parentId) {
+                parent.childIds.push_back(child.id);
+                break;
+            }
+        }
+    }
+
+    m_nextPlacedPartId = maxId + 1;
+
+    Logger::info("Loaded spacecraft from " + filepath);
 }

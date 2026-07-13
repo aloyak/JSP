@@ -917,7 +917,7 @@ void SandboxMode::Update()
 
     if (!physicsPaused)
     {
-        Entity *sunEntity = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Sun").get();
+        Entity *sunEntity = m_centralBody;
 
         for (Entity *planet : planetList)
         {
@@ -1041,37 +1041,30 @@ void SandboxMode::Update()
             HandlePlacementLogic();
         }
 
-        // shortcuts
-        if (m_input.isKeyPressed(KEY_G))
-            drawGrid = !drawGrid;
-        if (m_input.isKeyPressed(KEY_T))
-            drawTrails = !drawTrails;
-        if (m_input.isKeyDown(KEY_LSHIFT) && m_inputEnabled)
-            m_target->transform.position.y += 10.0f;
-        if (m_input.isKeyDown(KEY_LCTRL) && m_inputEnabled)
-            m_target->transform.position.y -= 10.0f;
+        if (m_inputEnabled) {
+            if (m_input.isKeyPressed(KEY_G)) drawGrid = !drawGrid;
+            if (m_input.isKeyPressed(KEY_T)) drawTrails = !drawTrails;
+            if (m_input.isKeyDown(KEY_LSHIFT)) m_target->transform.position.y += 10.0f;
+            if (m_input.isKeyDown(KEY_LCTRL)) m_target->transform.position.y -= 10.0f;
 
-        if (m_input.isKeyPressed(KEY_1) && m_inputEnabled)
-            m_toolMode = ToolMode::Selection;
-        if (!simulationRunning)
-        {
-            if (m_input.isKeyPressed(KEY_2) && m_inputEnabled)
-                m_toolMode = ToolMode::Reallocation;
-        }
-        if (m_input.isKeyPressed(KEY_3) && m_inputEnabled)
-            m_toolMode = ToolMode::Velocity;
-
-        if (m_input.isKeyPressed(KEY_P) && m_inputEnabled)
-        {
+            if (m_input.isKeyPressed(KEY_1)) m_toolMode = ToolMode::Selection;
             if (!simulationRunning)
-                StartSimulation();
-            else
-                ResumeSimulation();
+            {
+                if (m_input.isKeyPressed(KEY_2))
+                    m_toolMode = ToolMode::Reallocation;
+            }
+            if (m_input.isKeyPressed(KEY_3)) m_toolMode = ToolMode::Velocity;
+
+            if (m_input.isKeyPressed(KEY_P))
+            {
+                if (!simulationRunning)
+                    StartSimulation();
+                else
+                    ResumeSimulation();
+            }
+            if (m_input.isKeyPressed(KEY_SPACE)) PauseSimulation();
+            if (m_input.isKeyPressed(KEY_R)) ResetSimulation();
         }
-        if (m_input.isKeyPressed(KEY_SPACE) && m_inputEnabled)
-            PauseSimulation();
-        if (m_input.isKeyPressed(KEY_R) && m_inputEnabled)
-            ResetSimulation();
     }
 
     m_prevLeftPressed = m_input.isMouseButtonPressed(MOUSE_LEFT);
@@ -1868,14 +1861,10 @@ void SandboxMode::DrawMainMenuBar()
         }
         if (m_ui.beginMenu("tm.view"))
         {
-            if (m_ui.menuItem("sbox.show"))
-                m_showSandbox = !m_showSandbox;
-            if (m_ui.menuItem("sbox.planetsstars"))
-                showPlanetsWindow = !showPlanetsWindow;
-            if (m_ui.menuItem("sbox.grid", "G"))
-                drawGrid = !drawGrid;
-            if (m_ui.menuItem("sbox.trails", "T"))
-                drawTrails = !drawTrails;
+            if (m_ui.menuItem("sbox.show")) m_showSandbox = !m_showSandbox;
+            if (m_ui.menuItem("sbox.planetsstars")) showPlanetsWindow = !showPlanetsWindow;
+            if (m_ui.menuItem("sbox.grid", "G")) drawGrid = !drawGrid;
+            if (m_ui.menuItem("sbox.trails", "T")) drawTrails = !drawTrails;
 
             if (m_ui.beginMenu("sbox.extras")) {
                 auto* skybox = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Skybox")->getComponent<SkyboxComponent>();

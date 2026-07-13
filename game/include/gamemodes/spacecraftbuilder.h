@@ -128,6 +128,11 @@ private:
 
     bool m_showCenterOfMass = true;
     bool m_showGeometryCenter = true;
+
+    Selector m_selector{m_game, "user/spacecrafts", ".spacecraft"};
+
+    void Save();
+    void Load(const std::string& filepath);
 public:
     SpacecraftBuilderMode(Game& game);
 
