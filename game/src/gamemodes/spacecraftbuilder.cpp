@@ -409,6 +409,8 @@ void SpacecraftBuilderMode::PlacePartInstant(Part& part, Vec3 position, Vec3 rot
     entity->transform.position = position;
     entity->transform.rotation = rotation;
 
+    m_game.GetAudioManager().playSound("assets/audio/drill.wav", AudioContext::SFX, false, -0.5f);
+
     PlacedPart placed;
     placed.entity = entity;
     placed.partDef = &part;
@@ -563,6 +565,8 @@ void SpacecraftBuilderMode::ConfirmGhostPlacement(PlacedPart* targetPart, int ta
 
     m_ghostEntity->transform.position = m_ghostSnapPosition;
     m_ghostEntity->transform.rotation = m_ghostSnapRotation;
+
+    m_game.GetAudioManager().playSound("assets/audio/drill.wav", AudioContext::SFX);
 
     auto* rc = m_ghostEntity->getComponent<RenderComponent>();
     if (rc) rc->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));
@@ -871,8 +875,30 @@ void SpacecraftBuilderMode::drawMenuBar() {
             ImGui::EndMenu();
         }
         ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(m_ui.getText("notimplemented"));
-        
+        std::string launchCheck = m_ui.getText("notimplemented");
+        launchCheck += "\n";
+
+        bool hasEngine = false;
+        bool hasCockpit = false;
+        for (auto& p : m_placedParts) {
+            if (!p.partDef) continue;
+            if (p.partDef->category == Category::Engine) hasEngine = true;
+            if (p.partDef->category == Category::Cockpit) hasCockpit = true;
+        }
+        if (!hasEngine || !hasCockpit) {
+            launchCheck += m_ui.getText("scb.launch.error");
+            launchCheck += "\n";
+        }
+        if (!hasEngine) {
+            launchCheck += m_ui.getText("scb.launch.noengine");
+            launchCheck += "\n";
+        }
+        if (!hasCockpit) {
+            launchCheck += m_ui.getText("scb.launch.nocockpit");
+            launchCheck += "\n";
+        }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip(launchCheck.c_str());
     }
     ImGui::EndMainMenuBar();
     ImGui::PopStyleColor(2);

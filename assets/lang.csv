@@ -150,6 +150,9 @@ scb.deleteall,Delete All,Eliminar Todas
 scb.bp.info,Show Information,Mostrar Información
 scb.bp.stats,Show Statistics,Mostrar Estadisticas
 scb.bp.stages,Show Stages,Mostrar Etapas
+scb.launch.error,ERROR:,ERROR:
+scb.launch.noengine,- No Engine Found,- No Hay Ningún Motor
+scb.launch.nocockpit,- No Cockpit Found,- No Hay Ninguna Cabina
 help,Help,Ayuda
 help.nohelp,No help available for this game mode.,No hay ayuda disponible en este modo de juego.
 help.key.lclick,Left Click,Click Izq.
