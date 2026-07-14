@@ -1,7 +1,11 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.11.0"
+#define VERSION "0.11.1"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "gamemode.h"
 #include "components/planetComponent.h"
