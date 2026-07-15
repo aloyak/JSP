@@ -1,10 +1,10 @@
-set(GAME_NAME "game")
+set(GAME_NAME "JSP")
 
 file(GLOB_RECURSE GAME_SOURCES 
     "src/*.cpp"
 )
 
-add_executable(game 
+add_executable(${GAME_NAME} 
     ${GAME_SOURCES}
 )
 

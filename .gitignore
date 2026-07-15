@@ -1,6 +1,8 @@
 .vscode
+.vs
 build
 build-web
+build-release
 TODO
 CMakeFiles/
 engine
