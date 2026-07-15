@@ -8,7 +8,7 @@ add_executable(${GAME_NAME}
     ${GAME_SOURCES}
 )
 
-file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR}/${GAME_NAME}/)
+file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR}/game/)
 
 target_include_directories(${GAME_NAME}
     PUBLIC  include

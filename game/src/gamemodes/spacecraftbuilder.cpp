@@ -135,7 +135,7 @@ void SpacecraftBuilderMode::Update() {
     if (m_musicDelay > 0.0f) {
         m_musicDelay -= m_game.GetEngine().getDeltaTime();
         if (m_musicDelay <= 0.0f) {
-            m_game.GetAudioManager().playMusic("assets/audio/terminal_pt2.wav", 10.0f, true, -0.5f);
+            m_game.GetAudioManager().playMusic("assets/audio/terminal_pt2.ogg", 10.0f, true, -0.5f);
         }
     }
 
@@ -409,7 +409,7 @@ void SpacecraftBuilderMode::PlacePartInstant(Part& part, Vec3 position, Vec3 rot
     entity->transform.position = position;
     entity->transform.rotation = rotation;
 
-    m_game.GetAudioManager().playSound("assets/audio/drill.wav", AudioContext::SFX, false, -0.5f);
+    m_game.GetAudioManager().playSound("assets/audio/drill.ogg", AudioContext::SFX, false, -0.5f);
 
     PlacedPart placed;
     placed.entity = entity;
@@ -566,7 +566,7 @@ void SpacecraftBuilderMode::ConfirmGhostPlacement(PlacedPart* targetPart, int ta
     m_ghostEntity->transform.position = m_ghostSnapPosition;
     m_ghostEntity->transform.rotation = m_ghostSnapRotation;
 
-    m_game.GetAudioManager().playSound("assets/audio/drill.wav", AudioContext::SFX);
+    m_game.GetAudioManager().playSound("assets/audio/drill.ogg", AudioContext::SFX);
 
     auto* rc = m_ghostEntity->getComponent<RenderComponent>();
     if (rc) rc->setBaseColor(Vec3(1.0f, 1.0f, 1.0f));

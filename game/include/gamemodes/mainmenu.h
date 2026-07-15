@@ -61,8 +61,8 @@ public:
         m_sceneSetupDone = false;
         m_menuPlanet = nullptr;
 
-        if (m_showSplash) m_audio.playSound("assets/audio/splash.wav", SFX);
-        else m_audio.playMusic("assets/audio/space_atmosphere.wav", true, 1.5f);
+        if (m_showSplash) m_audio.playSound("assets/audio/splash.ogg", SFX);
+        else m_audio.playMusic("assets/audio/space_atmosphere.ogg", true, 1.5f);
     }
 
     void OnExit() override {
@@ -103,7 +103,7 @@ public:
                 !m_game.settingsManager.Get().firstRun)
             {
                 m_showSplash = false;
-                m_audio.playMusic("assets/audio/space_atmosphere.wav", true, 2.0f);
+                m_audio.playMusic("assets/audio/space_atmosphere.ogg", true, 2.0f);
             }
         }
         if (m_game.settingsManager.Get().firstRun) return;
@@ -210,7 +210,7 @@ public:
             m_game.settingsManager.Save();
             m_showSplash = false;
 
-            m_audio.playMusic("assets/audio/space_atmosphere.wav", true, 2.0f);
+            m_audio.playMusic("assets/audio/space_atmosphere.ogg", true, 2.0f);
         }
 
         ImGui::End();
