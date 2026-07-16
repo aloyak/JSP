@@ -856,7 +856,9 @@ void SpacecraftBuilderMode::drawMenuBar() {
                 dl->AddText(nullptr, 0.0f, catPos, ImGui::GetColorU32(ImGuiCol_TextDisabled), category);
 
                 ImGui::SameLine(buttonPosX);
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.1f, 0.1f, 1.0f));
                 bool xClicked = m_ui.button("X");
+                ImGui::PopStyleColor();
                 if (ImGui::IsItemHovered()) {
                     m_hoveredMenuPartIds.clear();
                     CollectDescendants(p->id, m_hoveredMenuPartIds);
