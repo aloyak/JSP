@@ -1,6 +1,7 @@
 key,EN,ES
 notimplemented,Not Implemented Yet,Aún no se ha implementado
-mm.campaign,Play Campaign,Jugar Campaña
+mm.new,New Game,Nueva Partida
+mm.load,Load Save,Cargar Partida
 mm.explore,Explore the Solar System,Explora el Sistema Solar
 mm.sandbox,Sandbox Mode,Modo Sandbox
 mm.planeteditor,Planet Editor,Editor de Planetas
@@ -153,6 +154,9 @@ scb.bp.stages,Show Stages,Mostrar Etapas
 scb.launch.error,ERROR:,ERROR:
 scb.launch.noengine,- No Engine Found,- No Hay Ningún Motor
 scb.launch.nocockpit,- No Cockpit Found,- No Hay Ninguna Cabina
+scb.tools,Tools,Herramientas
+scb.accepts,Accepts:,Acepta:
+scb.any,Any Part,Cualquiera
 help,Help,Ayuda
 help.nohelp,No help available for this game mode.,No hay ayuda disponible en este modo de juego.
 help.key.lclick,Left Click,Click Izq.
@@ -168,6 +172,7 @@ help.action.sprint,Sprint,Esprintar
 help.action.cursor,Show Cursor,Mostrar Cursor
 help.action.rot.up,Rotate Up,Rotar Arriba
 help.action.rot.dn,Rotate Down,Rotar Abajo
+help.action.attachments,Attachment Info,"Info. Anclajes "
 help.hint.bp,View > Blueprint,Ver > Vista de Plano
 help.movemode.oc,Orbit Camera,Cámara Orbital
 help.movemode.fpv,First Person Camera,Primera Persona

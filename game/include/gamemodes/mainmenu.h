@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.11.1"
+#define VERSION "0.12.0"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -12,6 +12,7 @@
 #include "engine/components/entity.h"
 #include "game.h"
 
+#include "gamemodes/campaign.h"
 #include "gamemodes/sandbox.h"
 #include "gamemodes/planetbuilder.h"
 #include "gamemodes/spacecraftbuilder.h"
@@ -247,11 +248,11 @@ public:
 
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.5f, 0.9f, 0.9f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.4f, 1.0f, 0.75f));
+        if (m_ui.button("mm.new")) m_game.SetGameMode(std::make_unique<CampaignMode>(m_game), false, true, 0.75f);
         ImGui::BeginDisabled();
-        if (m_ui.button("mm.campaign")) {}
+        if (m_ui.button("mm.load")) {}// same call as the new game but adding an extra parameter
         if (m_ui.button("mm.explore")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
         ImGui::EndDisabled();
-
         
         if (m_ui.button("mm.sandbox")) { showSandbox = !showSandbox; }
         if (showSandbox) {

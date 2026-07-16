@@ -49,7 +49,7 @@ public:
     
     void Update();
     void LateUpdate();
-    void SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload = false, bool transition = true);
+    void SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload = false, bool transition = true, float transitionSpeed = 8.0f);
 
     Engine& GetEngine() { return *m_engine; }
     UI& GetUI() { return m_ui; }

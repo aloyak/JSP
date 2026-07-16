@@ -80,10 +80,11 @@ void Game::LateUpdate() {
     m_engine->endUI();
 }
 
-void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload, bool transition) {
+void Game::SetGameMode(std::unique_ptr<GameMode> newGameMode, bool forceReload, bool transition, float transitionSpeed) {
     m_nextGameMode = std::move(newGameMode);
     m_nextForceReload = forceReload;
-    
+    m_transitionSpeed = transitionSpeed;
+
     if (transition) {
         m_transitionState = TransitionState::FadingOut;
         m_transitionAlpha = 0.0f;
@@ -317,7 +318,8 @@ void UI::drawHelpWindow() {
         sections.push_back({getText("help.movemode.oc"), nullptr, {
             {getText("help.key.rclick"), getText("help.action.movecam")}, 
             {getText("help.key.scroll"), getText("help.action.zoom")}, 
-            {"Shift", "Y+"}, {"Ctrl", "Y-"}
+            {"Shift", "Y+"}, {"Ctrl", "Y-"},
+            {getText("help.key.lalt"), getText("help.action.attachments")},
         }});
         sections.push_back({getText("help.movemode.fpv"), nullptr, {
             {"WASD", getText("help.action.move")}, 
