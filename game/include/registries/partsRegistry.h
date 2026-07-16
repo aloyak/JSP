@@ -70,6 +70,7 @@ inline const char* AttachTagToString(AttachTag tag) {
         case AttachTag::LandingGear:   return "Landing Gear";
         case AttachTag::ModuleEngine:  return "Module Engine";
         case AttachTag::SolarPanel:    return "Solar Panel";
+        case AttachTag::OxigenTank:    return "Oxygen Tank";
     }
     return "Unknown";
 }

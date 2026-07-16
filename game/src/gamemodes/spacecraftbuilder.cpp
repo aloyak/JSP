@@ -11,6 +11,10 @@ SpacecraftBuilderMode::SpacecraftBuilderMode(Game& game)
     , m_game(game) {}
 
 void SpacecraftBuilderMode::OnEnter() {
+    // DEBUG: REMOVE ON RELEASE
+    m_game.showHelp = true;
+
+
     m_game.timeScale = 1.0f;
 
     m_camera = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Camera");
@@ -449,15 +453,22 @@ bool SpacecraftBuilderMode::WorldToScreen(const Vec3& worldPos, ImVec2& outScree
 }
 
 void SpacecraftBuilderMode::DrawAttachmentPointGizmos() {
-    if (!m_ghostEntity || !m_ghostPartDef) return;
+    bool altInspect = m_input.isKeyDown(KEY_LALT);
+    if (!m_ghostEntity && !altInspect) return;
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    ImVec2 mousePos = ImGui::GetIO().MousePos;
+    bool canHover = altInspect && !ImGui::GetIO().WantCaptureMouse;
+
+    float bestPixelDistSq = k_snapPixelThreshold * k_snapPixelThreshold;
+    const Attachment* hoveredAttach = nullptr;
 
     for (auto& placed : m_placedParts) {
         if (!placed.entity || !placed.partDef) continue;
 
         for (size_t idx = 0; idx < placed.partDef->attachmentPoints.size(); ++idx) {
-            if (idx < placed.usedAttachments.size() && placed.usedAttachments[idx]) continue; // already mated
+            bool used = idx < placed.usedAttachments.size() && placed.usedAttachments[idx];
+            if (used && !altInspect) continue;
 
             auto& attach = placed.partDef->attachmentPoints[idx];
             Vec3 worldPos = placed.entity->transform.position +
@@ -466,17 +477,49 @@ void SpacecraftBuilderMode::DrawAttachmentPointGizmos() {
             ImVec2 screenPos;
             if (!WorldToScreen(worldPos, screenPos)) continue;
 
-            bool allowed = attach.Allows(m_ghostPartDef->attachTag);
-            if (allowed) {
-                // usable point: bright and prominent, this is what you're aiming for
-                dl->AddCircleFilled(screenPos, 5.0f, IM_COL32(100, 255, 200, 230));
-                dl->AddCircle(screenPos, 7.0f, IM_COL32(100, 255, 200, 120), 16, 1.0f);
-            } else {
-                // incompatible point: faint grey reference only, not a candidate to snap to
-                dl->AddCircleFilled(screenPos, 4.5f, IM_COL32(150, 150, 150, 50));
-                dl->AddCircle(screenPos, 6.0f, IM_COL32(150, 150, 150, 35), 12, 1.0f);
+            if (m_ghostEntity && m_ghostPartDef && !used) {
+                bool allowed = attach.Allows(m_ghostPartDef->attachTag);
+                if (allowed) {
+                    dl->AddCircleFilled(screenPos, 5.0f, IM_COL32(100, 255, 200, 230));
+                    dl->AddCircle(screenPos, 7.0f, IM_COL32(100, 255, 200, 120), 16, 1.0f);
+                } else {
+                    dl->AddCircleFilled(screenPos, 4.5f, IM_COL32(150, 150, 150, 50));
+                    dl->AddCircle(screenPos, 6.0f, IM_COL32(150, 150, 150, 35), 12, 1.0f);
+                }
+            } else if (altInspect) {
+                if (used) {
+                    dl->AddCircleFilled(screenPos, 4.0f, IM_COL32(180, 180, 180, 100));
+                    dl->AddCircle(screenPos, 6.0f, IM_COL32(180, 180, 180, 70), 12, 1.0f);
+                } else {
+                    dl->AddCircleFilled(screenPos, 5.0f, IM_COL32(255, 210, 90, 220));
+                    dl->AddCircle(screenPos, 7.0f, IM_COL32(255, 210, 90, 120), 16, 1.0f);
+                }
+            }
+
+            if (canHover) {
+                float dx = screenPos.x - mousePos.x;
+                float dy = screenPos.y - mousePos.y;
+                float distSq = dx * dx + dy * dy;
+                if (distSq < bestPixelDistSq) {
+                    bestPixelDistSq = distSq;
+                    hoveredAttach = &attach;
+                }
             }
         }
+    }
+
+    if (hoveredAttach) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(m_ui.getText("scb.accepts"));
+        ImGui::Separator();
+        if (hoveredAttach->allowedTags.empty()) {
+            ImGui::TextUnformatted(m_ui.getText("scb.any"));
+        } else {
+            for (AttachTag tag : hoveredAttach->allowedTags) {
+                ImGui::BulletText("%s", AttachTagToString(tag));
+            }
+        }
+        ImGui::EndTooltip();
     }
 }
 

@@ -10,6 +10,10 @@ PlanetBuilderMode::PlanetBuilderMode(Game& game)
 }
 
 void PlanetBuilderMode::OnEnter() {
+    // DEBUG: REMOVE ON RELEASE
+    m_game.showHelp = true;
+
+
     m_game.timeScale = 1.0f;
 
     m_camera = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Camera");

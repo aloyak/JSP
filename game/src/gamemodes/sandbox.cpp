@@ -5,6 +5,10 @@ SandboxMode::SandboxMode(Game &game)
 
 void SandboxMode::OnEnter()
 {
+    // DEBUG: REMOVE ON RELEASE
+    m_game.showHelp = true;
+
+ 
     m_game.timeScale = 2000.0f;
 
     Entity *earth = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Earth").get();
