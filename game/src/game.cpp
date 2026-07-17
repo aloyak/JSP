@@ -202,7 +202,7 @@ void UI::drawSettingsWindow() {
     auto& settings = m_game.settingsManager.Get();
     bool settingsChanged = false;
 
-    int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+    int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse;
     ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
@@ -284,7 +284,7 @@ void UI::drawSettingsWindow() {
 }
 
 void UI::drawHelpWindow() {
-    int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+    int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_None | ImGuiWindowFlags_NoCollapse;
     ImGui::SetNextWindowPos(ImVec2(650, 350), ImGuiCond_Once);
     ImGui::Begin(getText("help"), &m_game.showHelp, flags);
     

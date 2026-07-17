@@ -200,7 +200,7 @@ void SpacecraftBuilderMode::Update() {
             m_firstPersonCamera->setMoveSpeed(m_baseMoveSpeed);
         }
 
-        m_firstPersonCamera->Update(&m_input, deltaTime, m_game.GetEngine().getTime());
+        m_firstPersonCamera->Update(&m_input, deltaTime);
     } else if (m_moveMode == MoveMode::Blueprint) {
         m_input.setCursorMode(false);
         if (m_blueprintMode) m_blueprintMode->update(deltaTime);
@@ -1091,7 +1091,7 @@ void SpacecraftBuilderMode::showAssemblyWindow() {
 
     ImGui::Begin("Assembly", nullptr,
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+        ImGuiWindowFlags_NoCollapse);
 
     const float categoryBarWidth = 56.0f;
     const float categoryButtonSize = 48.0f;

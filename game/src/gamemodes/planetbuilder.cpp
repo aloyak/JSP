@@ -84,6 +84,18 @@ void PlanetBuilderMode::Update() {
     TryPaint();
     TryTerrain();
     if (!m_isActivelyEditing) StopBrushSound();
+
+    // change near/far values dynamically based on the distance to the planet from the camera
+    if (planet) {
+        auto* planetComponent = planet->getComponent<PlanetComponent>();
+        if (planetComponent) {
+            float distanceToPlanet = (m_camera->transform.position - planet->transform.position).length();
+            float nearPlane = std::max(0.1f, distanceToPlanet * 0.1f);
+            float farPlane = std::max(1000.0f, distanceToPlanet * 1.5f);
+            m_camera->getComponent<CameraComponent>()->setNear(nearPlane);
+            m_camera->getComponent<CameraComponent>()->setFar(farPlane);
+        }
+    }
 }
 
 void PlanetBuilderMode::LateUpdate() {

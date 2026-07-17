@@ -1096,7 +1096,7 @@ void SandboxMode::Update()
             m_blackHole->setVec3("u_center", m_centralBody->transform.position);
             m_blackHole->setFloat("u_radius", std::max(1.0f, m_centralBody->transform.scale.x * 0.75f));
             m_blackHole->setFloat("u_lightWrapRadius", std::max(250.0f, distToSun * 0.1f));
-            m_blackHole->setFloat("u_lightWrapIntensity", 0.5f);
+            m_blackHole->setFloat("u_glowIntensity", 0.0f);
             m_blackHole->setFloat("u_distortionStrength", 0.3f);
             m_blackHole->setVec3("u_glowColor", Vec3(1.0f, 5.0f, 5.0f));
         }
@@ -1501,8 +1501,7 @@ void SandboxMode::DrawUI()
     ImGui::SetNextWindowSize(ImVec2(500, 200.0), ImGuiCond_Always);
 
     int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
-                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_NoDocking;
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar;
 
     if (!m_showSandbox)
     {
