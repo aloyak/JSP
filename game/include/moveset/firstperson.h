@@ -7,7 +7,7 @@ class FirstPersonCamera {
 private:
     Entity* m_camera = nullptr;
 
-    float m_sensitivity = 4.0f;
+    float m_sensitivity = 1.0f;
 
     float m_headBobAmplitude = 0.2f; // per settings
     
@@ -21,9 +21,7 @@ private:
     Vec3 playerPosition = {0.0f, 6.0f, 0.0f};
     Vec3 m_allowedMovementAxes = {1.0f, 0.0f, 1.0f}; 
 public:
-    FirstPersonCamera(Entity* camera) : m_camera(camera) {
-        
-    }
+    FirstPersonCamera(Entity* camera) : m_camera(camera) {}
 
     void SyncFromCurrentPosition() {
         playerPosition = m_camera->transform.position;
@@ -34,7 +32,7 @@ public:
         m_camera->transform.position = playerPosition;
     }
 
-    void Update(Input* input, float deltaTime, float time) {
+    void Update(Input* input, float deltaTime) {
         Vec2 mouseDelta = input->getMouseDelta();
         m_camera->transform.rotation.x -= mouseDelta.y * m_sensitivity;
         m_camera->transform.rotation.x = std::clamp(m_camera->transform.rotation.x, -89.0f, 89.0f);

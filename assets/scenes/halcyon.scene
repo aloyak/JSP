@@ -1,0 +1,324 @@
+{
+    "ambientStrength": 0.25,
+    "entities": [
+        {
+            "components": [
+                {
+                    "colorTint": [
+                        0.12,
+                        0.12,
+                        0.12
+                    ],
+                    "faces": [
+                        "assets/skybox/space/skybox_right.jpg",
+                        "assets/skybox/space/skybox_left.jpg",
+                        "assets/skybox/space/skybox_top.jpg",
+                        "assets/skybox/space/skybox_bottom.jpg",
+                        "assets/skybox/space/skybox_front.jpg",
+                        "assets/skybox/space/skybox_back.jpg"
+                    ],
+                    "rotation": 0.0,
+                    "type": "SkyboxComponent"
+                }
+            ],
+            "name": "Skybox",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rot": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "sca": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/planetbase.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "BlackHole",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rot": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "sca": [
+                    100.0,
+                    100.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/planetbase.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "Yin",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    -800.0,
+                    -2000.0
+                ],
+                "rot": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "sca": [
+                    100.0,
+                    100.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/planetbase.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "Yang",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    0.0,
+                    800.0,
+                    2000.0
+                ],
+                "rot": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "sca": [
+                    100.0,
+                    100.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/planetbase.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "Gaia",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    3500.0,
+                    800.0,
+                    600.0
+                ],
+                "rot": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "sca": [
+                    100.0,
+                    100.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/planetbase.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                },
+                {
+                    "children": [],
+                    "type": "ParentEntityComponent"
+                }
+            ],
+            "name": "Kepler",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    -4000.0,
+                    -1500.0,
+                    600.0
+                ],
+                "rot": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "sca": [
+                    100.0,
+                    100.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "children": [],
+                    "type": "ParentEntityComponent"
+                },
+                {
+                    "ambientStrength": 0.10000000149011612,
+                    "baseColor": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "diffuse": "",
+                    "frag": "assets/shaders/builtin/frag.glsl",
+                    "metallic": "",
+                    "model": "assets/models/planetbase.fbx",
+                    "normal": "",
+                    "shininess": 32.0,
+                    "specular": "",
+                    "specularStrength": 1.0,
+                    "type": "RenderComponent",
+                    "uvScale": [
+                        1.0,
+                        1.0
+                    ],
+                    "vert": "assets/shaders/builtin/vert.glsl"
+                }
+            ],
+            "name": "VestaStar",
+            "tag": "Untagged",
+            "transform": {
+                "pos": [
+                    3926.840087890625,
+                    1048.7347412109375,
+                    600.0
+                ],
+                "rot": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "sca": [
+                    100.0,
+                    100.0,
+                    100.0
+                ]
+            }
+        }
+    ],
+    "name": "Empty Scene"
+}

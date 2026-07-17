@@ -1,7 +1,7 @@
 #pragma once
 
 // Not the best way to control version but whatever
-#define VERSION "0.12.0"
+#define VERSION "0.13.0"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -13,9 +13,10 @@
 #include "game.h"
 
 #include "gamemodes/campaign.h"
-#include "gamemodes/sandbox.h"
+#include "gamemodes/explore.h"
 #include "gamemodes/planetbuilder.h"
 #include "gamemodes/spacecraftbuilder.h"
+#include "gamemodes/sandbox.h"
 #include "gamemodes/credits.h"
 
 #include "engine/render/texture.h"
@@ -251,8 +252,9 @@ public:
         if (m_ui.button("mm.new")) m_game.SetGameMode(std::make_unique<CampaignMode>(m_game), false, true, 0.75f);
         ImGui::BeginDisabled();
         if (m_ui.button("mm.load")) {}// same call as the new game but adding an extra parameter
-        if (m_ui.button("mm.explore")) {} //m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
         ImGui::EndDisabled();
+        // TODO: show disabled if the game wasnt completed
+        if (m_ui.button("mm.explore")) m_game.SetGameMode(std::make_unique<ExploreMode>(m_game));
         
         if (m_ui.button("mm.sandbox")) { showSandbox = !showSandbox; }
         if (showSandbox) {
@@ -284,7 +286,7 @@ public:
             ImGui::TextColored(textColor, text);
         };
 
-        ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+        ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse;
         
         ImGui::SetNextWindowPos(ImVec2(650, 200), ImGuiCond_Once);
         
@@ -348,7 +350,7 @@ public:
     }
 
     void ShowMenuSettings() {
-        int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | 
+        int flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | 
                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
         
         //ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
