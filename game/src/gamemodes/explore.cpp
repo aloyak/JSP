@@ -8,11 +8,14 @@ void ExploreMode::OnEnter() {
     m_game.GetEngine().getInput().setCursorMode(true);
 
     m_camera = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Camera");
-    m_camera->addComponent<CameraComponent>(60.0f, 16.0f / 9.0f, 0.1f, 10000.0f);
+    m_camera->addComponent<CameraComponent>(60.0f, 16.0f / 9.0f, 0.1f, 25000.0f);
 
-    m_freeCamera = new FreeCamera(m_camera);
     auto& settings = m_game.settingsManager.Get();
+    m_freeCamera = new FreeCamera(m_camera);
     m_freeCamera->setSensitivity(settings.mouseSens);
+
+    m_gravityBasedCamera = new GravityBasedCamera(m_camera);
+    m_gravityBasedCamera->setSensitivity(settings.mouseSens);
 
     setupPlanets();
     setupBlackHole();
@@ -21,7 +24,8 @@ void ExploreMode::OnEnter() {
 void ExploreMode::setupPlanets() {
     m_planets = GetPlanetsFromScene(
         m_game,
-        m_game.GetEngine().getSceneManager().getActiveScene()
+        m_game.GetEngine().getSceneManager().getActiveScene(),
+        m_camera
     );
 }
 
@@ -42,13 +46,21 @@ void ExploreMode::OnExit() {
     }
 
     delete m_freeCamera;
+    delete m_gravityBasedCamera;
 
     m_game.GetEngine().getInput().setCursorMode(false);
 }
 
 void ExploreMode::Update() {
-    m_freeCamera->Update(&m_game.GetEngine().getInput(), m_game.GetEngine().getDeltaTime());
+    updateLods(m_game.GetEngine().getDeltaTime());
 
+    if (!m_game.GetEngine().getInput().isKeyDown(KEY_LALT)) {
+        m_game.GetEngine().getInput().setCursorMode(true);
+        m_freeCamera->Update(&m_game.GetEngine().getInput(), m_game.GetEngine().getDeltaTime());
+        //m_gravityBasedCamera->Update(&m_game.GetEngine().getInput(), m_game.GetEngine().getDeltaTime());
+    } else {
+        m_game.GetEngine().getInput().setCursorMode(false);
+    }
     // update free camera speed with scroll wheel
     float scrollDelta = m_game.GetEngine().getInput().getScrollDelta().y;
     if (scrollDelta != 0.0f) { 
@@ -57,7 +69,6 @@ void ExploreMode::Update() {
         speed = std::clamp(speed, 0.1f, 1000.0f);
         m_freeCamera->setMoveSpeed(speed);
     }
-
 
     if (m_blackHoleShader) {
         auto* camComp = m_camera->getComponent<CameraComponent>();
@@ -76,11 +87,105 @@ void ExploreMode::Update() {
         m_blackHoleShader->setFloat("u_distortionStrength", 0.6f);
         m_blackHoleShader->setVec3("u_glowColor", Vec3(1.0f, 5.0f, 5.0f));
     }
+
+    // DEBUG
+    ImGui::Begin("DEBUG");
+    ImGui::SliderFloat("Time Scale", &m_game.timeScale, 0.0f, 100.0f);
+    ImGui::SliderFloat("Gravity Scale", &m_gravityScale, 0.0f, 100.0f);
+    ImGui::Text("Free Camera Speed: %.2f", m_freeCamera->getMoveSpeed());
+    ImGui::Text("Gravity Vector: (%.2f, %.2f, %.2f)", 
+        m_gravityBasedCamera->getGravityVector().x, 
+        m_gravityBasedCamera->getGravityVector().y, 
+        m_gravityBasedCamera->getGravityVector().z
+    );
+
+    ImGui::Text("Gravity Strenght (Gs): %.2f", m_gravityBasedCamera->getGravityVector().length());
+    ImGui::End();
 }
+
 
 void ExploreMode::LateUpdate() {
-    updateOrbits(); // based on timescale, special case for vesta star
+    updateOrbits(m_game.timeScale, m_game.GetEngine().getDeltaTime());
+    updateGravityVector();
 }
 
-void ExploreMode::updateOrbits() {
+void ExploreMode::updateOrbits(float timeScale, float dt) {
+    m_orbitTime += static_cast<double>(dt) * static_cast<double>(timeScale);
+
+    Vec3 blackHolePos = m_blackHole ? m_blackHole->transform.position : Vec3(0.0f, 0.0f, 0.0f);
+
+    // Pass 1: planets orbiting the black hole directly (orbitParent empty)
+    for (auto& planet : m_planets) {
+        if (!planet.component) continue;
+        planet.component->update(dt);
+        const auto& params = planet.component->getPlanetParams();
+        if (params.orbitParent.empty()) {
+            planet.component->updateOrbit(m_orbitTime, blackHolePos);
+        }
+    }
+
+    // Pass 2: planets orbiting another planet, resolved after pass 1 so the
+    // parent's freshly-updated position is used as this orbit's focus
+    for (auto& planet : m_planets) {
+        if (!planet.component) continue;
+        const auto& params = planet.component->getPlanetParams();
+        if (params.orbitParent.empty()) continue;
+
+        Vec3 focus = blackHolePos;
+        for (auto& parentCandidate : m_planets) {
+            if (parentCandidate.name == params.orbitParent && parentCandidate.entity) {
+                focus = parentCandidate.entity->transform.position;
+                break;
+            }
+        }
+
+        planet.component->updateOrbit(m_orbitTime, focus);
+    }
+}
+
+void ExploreMode::updateLods(float dt) {
+    for (auto& planet : m_planets) {
+        if (!planet.entity || !planet.component) continue;
+
+        float dist = (planet.entity->transform.position - m_camera->transform.position).length();
+        bool useHighLod = dist < LODDistance;
+
+        if (!planet.entity->hasComponent<RenderComponent>()) return;
+
+        if (useHighLod) {
+            planet.entity->removeComponent<RenderComponent>();
+            planet.entity->addComponent<RenderComponent>(planet.highLodModelPath);
+        } else {
+            planet.entity->removeComponent<RenderComponent>();
+            planet.entity->addComponent<RenderComponent>(planet.lowLodModelPath);
+        }
+    }
+}
+
+void ExploreMode::updateGravityVector() {
+    float influenceRadius = m_gravityBasedCamera->getInfluenceRadius();
+    Vec3 playerPos = m_camera->transform.position;
+
+    Vec3 gravitySum(0.0f, 0.0f, 0.0f);
+
+    for (auto& planet : m_planets) {
+        if (!planet.entity || !planet.component) continue;
+
+        const auto& params = planet.component->getPlanetParams();
+
+        Vec3 toPlanet = planet.entity->transform.position - playerPos;
+        float dist = toPlanet.length();
+        if (dist <= 0.0001f) continue;
+
+        float surfaceDist = dist - params.radius;
+        if (surfaceDist > influenceRadius) continue;
+
+        Vec3 dir = toPlanet / dist;
+
+        float strength = params.mass / (dist * dist);
+
+        gravitySum = gravitySum + dir * strength;
+    }
+
+    m_gravityBasedCamera->setGravityVector(gravitySum * m_gravityScale);
 }

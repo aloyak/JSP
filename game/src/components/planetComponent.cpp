@@ -1,5 +1,23 @@
 #include "components/planetComponent.h"
 
+namespace {
+
+constexpr float kPi = 3.14159265358979323846f;
+
+float solveKepler(float M, float e) {
+    float E = M;
+    for (int i = 0; i < 8; ++i) {
+        float f  = E - e * std::sin(E) - M;
+        float fp = 1.0f - e * std::cos(E);
+        float dE = f / fp;
+        E -= dE;
+        if (std::fabs(dE) < 1e-6f) break;
+    }
+    return E;
+}
+
+} // namespace
+
 PlanetComponent::PlanetComponent(Game& game, float period, float radius, float mass)
     : m_planetParams{Vec3(0.0f, 0.0f, 0.0f), period, radius, mass}, m_game(&game) {}
 
@@ -40,14 +58,16 @@ void PlanetComponent::update(float dt) {
         m_atmosphere->setVec3 ("u_planetCenter",     entity->transform.position);
         m_atmosphere->setFloat("u_planetRadius",     m_planetParams.radius);
         m_atmosphere->setFloat("u_atmosphereRadius", m_planetParams.radius + m_atmosphereParams.thickness);
+        
+        if (!m_camera) {
+            m_camera = engine.getActiveCamera();
+        }
+        if (m_camera) {
+            m_atmosphere->setVec3("u_cameraPos", m_camera->transform.position);
 
-        Entity* cam = engine.getActiveCamera();
-        if (cam) {
-            m_atmosphere->setVec3("u_cameraPos", cam->transform.position);
-
-            auto* camComp = cam->getComponent<CameraComponent>();
+            auto* camComp = m_camera->getComponent<CameraComponent>();
             if (camComp) {
-                m_atmosphere->setMat4("u_invView", camComp->getCamera().getInvViewMatrix(cam->transform));
+                m_atmosphere->setMat4("u_invView", camComp->getCamera().getInvViewMatrix(m_camera->transform));
                 m_atmosphere->setMat4("u_invProj", camComp->getCamera().getInvProjMatrix());
                 m_atmosphere->setFloat("u_near", camComp->getNear());
                 m_atmosphere->setFloat("u_far",  camComp->getFar());
@@ -102,6 +122,50 @@ PlanetParams& PlanetComponent::getPlanetParams() {
 void PlanetComponent::applyScale() {
     if (entity) {
         entity->transform.scale = Vec3(m_planetParams.radius, m_planetParams.radius, m_planetParams.radius);
+    }
+}
+
+void PlanetComponent::updateOrbit(double elapsedOrbitTime, const Vec3& focusPosition) {
+    if (!entity || m_planetParams.locked) return;
+
+    const float a = m_planetParams.semiMajorAxis;
+    if (a <= 0.0f || m_planetParams.orbitalPeriod <= 0.0f) return; // no orbit configured, leave as-is
+
+    const float e = std::clamp(m_planetParams.eccentricity, 0.0f, 0.999f);
+
+    const float periodSeconds = m_planetParams.orbitalPeriod * 60.0f;
+    const float meanMotionDegPerSec = 360.0f / periodSeconds;
+
+    float meanAnomalyDeg = m_planetParams.initialMeanAnomaly
+        + static_cast<float>(m_planetParams.orbitDirection) * meanMotionDegPerSec * static_cast<float>(elapsedOrbitTime);
+    meanAnomalyDeg = std::fmod(meanAnomalyDeg, 360.0f);
+    if (meanAnomalyDeg < 0.0f) meanAnomalyDeg += 360.0f;
+
+    const float M = meanAnomalyDeg * (kPi / 180.0f);
+    const float E = solveKepler(M, e);
+
+    const float xOrb = a * (std::cos(E) - e);
+    const float zOrb = a * std::sqrt(1.0f - e * e) * std::sin(E);
+
+    const float i  = m_planetParams.inclination * (kPi / 180.0f);
+    const float w  = m_planetParams.argOfPeriapsis * (kPi / 180.0f);
+    const float om = m_planetParams.longitudeAscendingNode * (kPi / 180.0f);
+
+    const float cosO = std::cos(om), sinO = std::sin(om);
+    const float cosw = std::cos(w),  sinw = std::sin(w);
+    const float cosi = std::cos(i),  sini = std::sin(i);
+
+    const float worldX = (cosO * cosw - sinO * sinw * cosi) * xOrb + (-cosO * sinw - sinO * cosw * cosi) * zOrb;
+    const float worldZ = (sinO * cosw + cosO * sinw * cosi) * xOrb + (-sinO * sinw + cosO * cosw * cosi) * zOrb;
+    const float worldY = (sinw * sini) * xOrb + (cosw * sini) * zOrb;
+
+    entity->transform.position = focusPosition + Vec3(worldX, worldY, worldZ);
+
+
+    // set the planet's sun direction to point towards the star
+    Vec3 sunDir = focusPosition - entity->transform.position;
+    if (sunDir.length() > 0.0f) {
+        m_planetParams.sunDir = sunDir.normalize(); 
     }
 }
 
