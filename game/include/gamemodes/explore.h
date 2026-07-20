@@ -10,6 +10,8 @@
 #include "moveset/gravitybased.h"
 #include "registries/halcyonRegistry.h"
 
+// NOTE: Planets right now have a spheric collision shape, but this should be change to a chunked dynamic collider
+
 class ExploreMode : public GameMode {
 public:
     ExploreMode(Game& game)
@@ -29,7 +31,7 @@ private:
     void updateGravityVector();
 
     Game& m_game;
-    float m_gravityScale = 30.0f; // DEBUG: eHigh for now
+    float m_gravityScale = 60.0f; // DEBUG: High for now
 
     Entity* m_camera = nullptr;
     
@@ -46,6 +48,7 @@ private:
 
 
     // DEBUG: Free camera used only for debugging, could be kept as a feature maybe
+    bool m_useFreeCamera = true;
     FreeCamera* m_freeCamera = nullptr;
     GravityBasedCamera* m_gravityBasedCamera = nullptr; // actual physics-based player camera
 };

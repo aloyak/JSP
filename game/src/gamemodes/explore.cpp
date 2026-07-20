@@ -14,7 +14,7 @@ void ExploreMode::OnEnter() {
     m_freeCamera = new FreeCamera(m_camera);
     m_freeCamera->setSensitivity(settings.mouseSens);
 
-    m_gravityBasedCamera = new GravityBasedCamera(m_camera);
+    m_gravityBasedCamera = new GravityBasedCamera(m_camera, &m_game);
     m_gravityBasedCamera->setSensitivity(settings.mouseSens);
 
     setupPlanets();
@@ -54,13 +54,22 @@ void ExploreMode::OnExit() {
 void ExploreMode::Update() {
     updateLods(m_game.GetEngine().getDeltaTime());
 
+    // DEBUG
+    if (m_game.GetEngine().getInput().isKeyPressed(KEY_F1)) {
+        m_gravityBasedCamera->syncPlayerToCamera();
+        m_useFreeCamera = !m_useFreeCamera;
+    }
+
     if (!m_game.GetEngine().getInput().isKeyDown(KEY_LALT)) {
         m_game.GetEngine().getInput().setCursorMode(true);
-        m_freeCamera->Update(&m_game.GetEngine().getInput(), m_game.GetEngine().getDeltaTime());
-        //m_gravityBasedCamera->Update(&m_game.GetEngine().getInput(), m_game.GetEngine().getDeltaTime());
-    } else {
+        if (m_useFreeCamera) {
+            m_freeCamera->Update(&m_game.GetEngine().getInput(), m_game.GetEngine().getDeltaTime());
+        } else {
+            m_gravityBasedCamera->Update(&m_game.GetEngine().getInput(), m_game.GetEngine().getDeltaTime());
+        }
+    } else 
         m_game.GetEngine().getInput().setCursorMode(false);
-    }
+    
     // update free camera speed with scroll wheel
     float scrollDelta = m_game.GetEngine().getInput().getScrollDelta().y;
     if (scrollDelta != 0.0f) { 
@@ -91,8 +100,9 @@ void ExploreMode::Update() {
     // DEBUG
     ImGui::Begin("DEBUG");
     ImGui::SliderFloat("Time Scale", &m_game.timeScale, 0.0f, 100.0f);
-    ImGui::SliderFloat("Gravity Scale", &m_gravityScale, 0.0f, 100.0f);
+    ImGui::SliderFloat("Gravity Scale", &m_gravityScale, 0.0f, 1000.0f);
     ImGui::Text("Free Camera Speed: %.2f", m_freeCamera->getMoveSpeed());
+    ImGui::Text("Body Velocity: %.2f", m_gravityBasedCamera->getVelocity());
     ImGui::Text("Gravity Vector: (%.2f, %.2f, %.2f)", 
         m_gravityBasedCamera->getGravityVector().x, 
         m_gravityBasedCamera->getGravityVector().y, 
