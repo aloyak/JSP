@@ -75,6 +75,7 @@ atms.has,Has Atmosphere?,¿Tiene Atmosfera?
 atms.thickness,Thickness,Espesor
 atms.scatter,Scatter Intensity,Intensidad de Dispersión
 atms.sharpness,Horizon Sharpness,Nitidez del Horizonte
+atms.density,Density,Densidad
 wtr,Water,Agua
 wtr.has,Has Water?,¿Tiene Agua?
 wtr.lvl,Water Level,Nivel del Agua
