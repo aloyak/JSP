@@ -81,6 +81,7 @@ void PlanetComponent::update(float dt) {
         m_atmosphere->setFloat("u_rayleighScaleH", atmoRadius * 0.08f);
         m_atmosphere->setFloat("u_sunIntensity", m_planetParams.sunIntensity);
         m_atmosphere->setFloat("u_edgeFalloff", m_atmosphereParams.edgeFalloff);
+        m_atmosphere->setFloat("u_atmosphereDensity", m_atmosphereParams.density);
     }
     if (m_hasWater && m_water && entity && m_game) {
         auto& engine = m_game->GetEngine();

@@ -237,7 +237,10 @@ void PlanetBuilderMode::DrawPropertiesWindow() {
             }
 
             if (ImGui::SliderFloat(m_ui.getText("atms.sharpness"), &atmo.edgeFalloff, 0.0f, 1200.0f,
-                    "%.2f", ImGuiSliderFlags_Logarithmic)) {}
+                "%.2f", ImGuiSliderFlags_Logarithmic)) {}
+
+            if (ImGui::SliderFloat(m_ui.getText("atms.density"), &atmo.density, 0.0f, 10.0f,
+                "%.2f", ImGuiSliderFlags_Logarithmic)) {}
         }
 
         ImGui::SeparatorText(m_ui.getText("wtr"));

@@ -81,7 +81,8 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         params.orbitDirection = 1;
 
         p.component->setHasAtmosphere(true);
-        p.component->getAtmosphere().thickness = 500.0f;
+        p.component->getAtmosphere().thickness = 350.0f;
+        p.component->getAtmosphere().density = 3.0f;
 
         planets.push_back(p);
     }
@@ -93,7 +94,7 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         p.component->setCamera(camera);
 
         auto& params = p.component->getPlanetParams();
-        params.radius = 1000.0f;
+        params.radius = 500.0f;
         params.mass = 1000.0f; // DEBUG
         params.semiMajorAxis = 8000.0f;
         params.eccentricity = 0.4f;
@@ -113,16 +114,15 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         p.component = p.entity->addComponent<PlanetComponent>(game);
 
         auto& params = p.component->getPlanetParams();
-        params.radius = 40.0f;
+        params.radius = 80.0f;
 
-        params.orbitParent = "Gaia";
-        params.semiMajorAxis = 400.0f;
+        params.semiMajorAxis = 800.0f;
         params.eccentricity = 0.0f;
-        params.inclination = 25.0f;
+        params.inclination = 0.0f;
         params.argOfPeriapsis = 0.0f;
         params.longitudeAscendingNode = 0.0f;
         params.initialMeanAnomaly = 0.0f;
-        params.orbitalPeriod = 2.0f;
+        params.orbitalPeriod = 3.0f;
         params.orbitDirection = 1;
 
         p.component->setHasAtmosphere(true);
@@ -130,6 +130,7 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         p.component->getAtmosphere().edgeFalloff = 1200.0f;
         p.component->getAtmosphere().rayleighCoeff = Vec3(0.003f, 0.0012f, 0.0002f);
         p.component->getPlanetParams().sunIntensity = 30.0f;
+        p.component->getAtmosphere().density = 2.5f;
 
         planets.push_back(p);
     }

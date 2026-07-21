@@ -54,6 +54,7 @@ struct AtmosphereParams {
     float thickness = 100.0f;
     Vec3 rayleighCoeff = Vec3(5.8e-3f, 13.5e-3f, 33.1e-3f);
     float edgeFalloff = 0.5f;
+    float density = 1.0f;
 
     float drag = 0.5f; // not directly used for the shader
 };

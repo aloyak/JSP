@@ -12,6 +12,7 @@ uniform vec3  u_cameraPos;
 uniform vec3  u_planetCenter;
 uniform float u_planetRadius;
 uniform float u_atmosphereRadius;
+uniform float u_atmosphereDensity;
 uniform float u_edgeFalloff;
 uniform vec3  u_sunDir;
 uniform vec3  u_rayleighCoeff;
@@ -20,7 +21,7 @@ uniform float u_sunIntensity;
 uniform float u_near;
 uniform float u_far;
 
-const int   NUM_VIEW_SAMPLES  = 16;
+const int   NUM_VIEW_SAMPLES  = 8;
 const int   NUM_LIGHT_SAMPLES = 8;
 const float PI = 3.14159265359;
 
@@ -116,7 +117,7 @@ void main() {
         scatteredLight += density * stepSize * extinction;
     }
 
-    scatteredLight *= u_rayleighCoeff * phase * u_sunIntensity;
+    scatteredLight *= u_rayleighCoeff * phase * u_sunIntensity * u_atmosphereDensity;
     scatteredLight = scatteredLight / (scatteredLight + vec3(1.0));
     float alpha = clamp(length(scatteredLight) * 2.5, 0.0, 1.0);
     FragColor = vec4(sceneColor.rgb * (1.0 - alpha) + scatteredLight, 1.0);
