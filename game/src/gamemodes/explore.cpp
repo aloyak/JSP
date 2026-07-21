@@ -103,13 +103,27 @@ void ExploreMode::Update() {
     ImGui::SliderFloat("Gravity Scale", &m_gravityScale, 0.0f, 1000.0f);
     ImGui::Text("Free Camera Speed: %.2f", m_freeCamera->getMoveSpeed());
     ImGui::Text("Body Velocity: %.2f", m_gravityBasedCamera->getVelocity());
+    ImGui::Text("Dist to Closest Planet: %.2f", m_gravityBasedCamera->getDistanceToClosestPlanet());
     ImGui::Text("Gravity Vector: (%.2f, %.2f, %.2f)", 
         m_gravityBasedCamera->getGravityVector().x, 
         m_gravityBasedCamera->getGravityVector().y, 
         m_gravityBasedCamera->getGravityVector().z
     );
+    ImGui::Text("Camera Rotation: (%.2f, %.2f, %.2f)", 
+        m_camera->transform.rotation.x, 
+        m_camera->transform.rotation.y, 
+        m_camera->transform.rotation.z
+    );
+    ImGui::Text("Body Rotation: (%.2f, %.2f, %.2f)", 
+        m_gravityBasedCamera->getPlayer()->transform.rotation.x, 
+        m_gravityBasedCamera->getPlayer()->transform.rotation.y, 
+        m_gravityBasedCamera->getPlayer()->transform.rotation.z
+    );
 
     ImGui::Text("Gravity Strenght (Gs): %.2f", m_gravityBasedCamera->getGravityVector().length());
+    if (ImGui::Button("Return")) {
+        m_game.GetUI().loadMainMenu();
+    }
     ImGui::End();
 }
 

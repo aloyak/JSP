@@ -70,7 +70,7 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
 
         auto& params = p.component->getPlanetParams();
         params.radius = 100.0f;
-
+        params.mass = 1000.0f;
         params.semiMajorAxis = 5000.0f;
         params.eccentricity = 0.05f;
         params.inclination = 0.0f;
@@ -79,6 +79,9 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         params.initialMeanAnomaly = 60.0f;
         params.orbitalPeriod = 20.0f;
         params.orbitDirection = 1;
+
+        p.component->setHasAtmosphere(true);
+        p.component->getAtmosphere().thickness = 500.0f;
 
         planets.push_back(p);
     }
@@ -90,8 +93,8 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         p.component->setCamera(camera);
 
         auto& params = p.component->getPlanetParams();
-        params.radius = 100.0f;
-
+        params.radius = 1000.0f;
+        params.mass = 1000.0f; // DEBUG
         params.semiMajorAxis = 8000.0f;
         params.eccentricity = 0.4f;
         params.inclination = 15.0f;
@@ -110,9 +113,8 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         p.component = p.entity->addComponent<PlanetComponent>(game);
 
         auto& params = p.component->getPlanetParams();
-        params.radius = 100.0f;
-
         params.radius = 40.0f;
+
         params.orbitParent = "Gaia";
         params.semiMajorAxis = 400.0f;
         params.eccentricity = 0.0f;
@@ -138,7 +140,10 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
 
         // start with high LOD so it gets registered and switching is fast, hopefully
         // TODO: in case doing renderComponent.setModel is too slow, use a two-entity system where it just gets disabled/enabled
-        planet.entity->addComponent<RenderComponent>(planet.highLodModelPath);
+        planet.entity->getComponent<RenderComponent>()->setModelPath(planet.highLodModelPath);
+        if (planet.entity->hasComponent<RigidbodyComponent>()) {
+            planet.entity->getComponent<RigidbodyComponent>()->setMass(planet.component->getPlanetParams().mass);
+        }
     }
 
     return planets;

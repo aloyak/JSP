@@ -3,6 +3,7 @@
 #include "engine/utils/logger.h"
 #include "engine/components/entity.h"
 #include "engine/components/rigidbodyComponent.h"
+#include "components/planetComponent.h"
 #include "engine/input/input.h"
 #include <cmath>
 #include <algorithm>
@@ -27,13 +28,13 @@ private:
 
     Entity* m_closestValidPlanet = nullptr;
 
-    float m_moveSpeed = 50.0f;
+    float m_moveSpeed = 75.0f;
     float m_sensitivity = 1.0f;
 
     float m_playerHeight = 1.0f;
 
     float m_gravInfluenceRadius = 1000.0f;
-    float m_playerEnterPlanetRadius = 200.0f;
+    float m_playerEnterPlanetRadius = 100.0f;
 
     float m_alignmentSpeed = 5.0f;
     float m_maxSlopeAngle = 45.0f; 
@@ -41,15 +42,23 @@ private:
     Vec3 m_velocity = Vec3(0.0f);
     Vec3 m_gravity = Vec3(0.0f);
 
+
+    Quat m_alignRot = Quat();
+
+    float m_yaw = 0.0f;
+    float m_pitch = 0.0f;
+
     PhysicsWorld* m_localWorld = nullptr;
 public:
     GravityBasedCamera(Entity* camera, Game* game) : m_camera(camera), m_game(game) {
         m_player = game->GetEngine().getSceneManager().getActiveScene()->createEntity("Player");
         auto* rigidbody = m_player->addComponent<RigidbodyComponent>();
+        m_player->transform.rotation = Vec3(0.0f, 0.0f, 0.0f);
         rigidbody->setPhysicsWorld(&game->GetEngine().getPhysicsWorld());
         rigidbody->setBodyType(RigidbodyComponent::BodyType::Dynamic);
         rigidbody->setColliderType(RigidbodyComponent::ColliderType::Capsule);
         rigidbody->setFreezeRotationX(true);
+        rigidbody->setFreezeRotationY(true);
         rigidbody->setFreezeRotationZ(true);
         rigidbody->setFriction(0.1f);
 
@@ -66,15 +75,42 @@ public:
         m_closestValidPlanet = getClosestPlanet();
 
         Vec2 mouseDelta = input->getMouseDelta();
-        m_camera->transform.rotation.x -= mouseDelta.y * m_sensitivity;
-        m_camera->transform.rotation.x = std::clamp(m_camera->transform.rotation.x, -89.0f, 89.0f);
-        m_camera->transform.rotation.y += mouseDelta.x * m_sensitivity;
+        m_pitch += mouseDelta.y * m_sensitivity;
+        m_pitch = std::clamp(m_pitch, -89.0f, 89.0f);
+        m_yaw += mouseDelta.x * m_sensitivity;
+        if (m_yaw > 180.0f) m_yaw -= 360.0f;
+        if (m_yaw < -180.0f) m_yaw += 360.0f;
 
-        // DEBUG: added some weight
-        m_player->getComponent<RigidbodyComponent>()->getPhysicsWorld()->setGravity(m_gravity * 100.0f);
+        m_player->getComponent<RigidbodyComponent>()->getPhysicsWorld()->setGravity(m_gravity * 50.0f);
+
+        alignWithGravity(m_closestValidPlanet, dt);
+
+        constexpr float DEG2RAD = 3.1415926535f / 180.0f;
+        Quat pitchQuat = fromAxisAngle(Vec3(0.0f, 0.0f, -1.0f), m_pitch * DEG2RAD);
+        Quat yawQuat = fromAxisAngle(Vec3(0.0f, -1.0f, 0.0f), m_yaw * DEG2RAD);
+
+        Quat finalRot = normalize(m_alignRot * yawQuat * pitchQuat);
+
+        Vec3 finalForward = finalRot * Vec3(1.0f, 0.0f, 0.0f);
+        Vec3 finalUp = finalRot * Vec3(0.0f, 1.0f, 0.0f);
+        
+        float pitch = std::asin(std::clamp(finalForward.y, -1.0f, 1.0f)) * (180.0f / 3.1415926535f);
+        float yaw = std::atan2(finalForward.z, finalForward.x) * (180.0f / 3.1415926535f);
+        
+        Vec3 unrolledRight = cross(Vec3(0.0f, 1.0f, 0.0f), finalForward);
+        if (unrolledRight.length() < 0.001f) {
+            unrolledRight = Vec3(0.0f, 0.0f, -1.0f);
+        } else {
+            unrolledRight = unrolledRight.normalize();
+        }
+        Vec3 unrolledUp = cross(finalForward, unrolledRight).normalize();
+        float roll = std::atan2(dot(cross(unrolledUp, finalUp), finalForward), dot(unrolledUp, finalUp)) * (180.0f / 3.1415926535f);
+
+        m_camera->transform.rotation = Vec3(pitch, yaw, roll);
 
         Vec3 forward = m_camera->transform.forward();
         Vec3 right = m_camera->transform.right();
+        Vec3 up = m_camera->transform.up();
 
         if (input->isKeyDown(KEY_W)) {
             m_player->getComponent<RigidbodyComponent>()->applyForce(forward * m_moveSpeed);
@@ -89,87 +125,88 @@ public:
             m_player->getComponent<RigidbodyComponent>()->applyForce(right * (-m_moveSpeed));
         }
 
-        alignWithGravity(m_closestValidPlanet, dt);
+        // TODO: roll
+        if (input->isKeyDown(KEY_Q)) {
+            m_player->getComponent<RigidbodyComponent>()->applyTorque(up * m_moveSpeed);
+        }
+        if (input->isKeyDown(KEY_E)) {
+            m_player->getComponent<RigidbodyComponent>()->applyTorque(up * (-m_moveSpeed));
+        }
 
-        m_camera->transform.position = m_player->transform.position + (m_camera->transform.up() * m_playerHeight);
+        m_camera->transform.position = m_player->transform.position + (up * m_playerHeight);
 
         m_velocity = m_player->getComponent<RigidbodyComponent>()->getLinearVelocity();
-        //calculateDrag();
+        calculateDrag(m_closestValidPlanet);
     }
 
     Entity* getClosestPlanet() {
+        Entity* closest = nullptr;
+        float closestSurfaceDist = m_playerEnterPlanetRadius;
+
         for (auto& entity : m_game->GetEngine().getSceneManager().getActiveScene()->getEntities()) {
-            if (entity->hasComponent<RigidbodyComponent>()) {
-                auto* rigidbody = entity->getComponent<RigidbodyComponent>();
-                if (rigidbody->getBodyType() == RigidbodyComponent::BodyType::Static) {
-                    float distance = (entity->transform.position - m_player->transform.position).length();
-                    if (distance < m_playerEnterPlanetRadius) {
-                        return entity.get();
-                    }
-                }
+            if (entity.get() == m_player) continue;
+            if (!entity->hasComponent<PlanetComponent>()) continue;
+
+            float planetRadius = entity->getComponent<PlanetComponent>()->getPlanetParams().radius;
+            float distance = (entity->transform.position - m_player->transform.position).length();
+            float surfaceDistance = distance - planetRadius;
+
+            if (surfaceDistance < closestSurfaceDist) {
+                closestSurfaceDist = surfaceDistance;
+                closest = entity.get();
             }
         }
-        return nullptr;
+        //Logger::info("Closest planet: " + (closest ? closest->name : "None") + ", Surface distance: " + std::to_string(closestSurfaceDist));
+        return closest;
     }
 
     void alignWithGravity(Entity* planet, float dt) {
-        if (!planet) return;
-        Logger::info("aligning cam");
-        auto* rigidbody = m_player->getComponent<RigidbodyComponent>();
-        rigidbody->setFreezeRotationX(false);
-        rigidbody->setFreezeRotationZ(false);
-
-        Vec3 playerPos = m_player->transform.position;
-        Vec3 targetUp = (playerPos - planet->transform.position).normalize();
-
-        Vec3 origin = m_player->transform.localToWorld(Vec3(0, 0, 0));
-        Vec3 currentUp = (m_player->transform.localToWorld(Vec3(0, 1, 0)) - origin).normalize();
-
-        Vec3 axis = cross(currentUp, targetUp);
-        float d = dot(currentUp, targetUp);
-        Quat qRot;
-
-        if (axis.length() > 0.0001f) {
-            axis = axis.normalize();
-            float angle = std::acos(std::clamp(d, -1.0f, 1.0f));
-            float sinA = std::sin(angle * 0.5f);
-            float cosA = std::cos(angle * 0.5f);
-            qRot = Quat(axis.x * sinA, axis.y * sinA, axis.z * sinA, cosA);
+        Vec3 targetUp;
+        if (planet) {
+            targetUp = (m_player->transform.position - planet->transform.position).normalize();
+        } else if (length(m_gravity) > 0.0001f) {
+            targetUp = (-m_gravity).normalize();
         } else {
-            if (d < 0.0f) {
-                Vec3 perp = cross(currentUp, Vec3(1.0f, 0.0f, 0.0f));
-                if (perp.length() < 0.001f) {
-                    perp = cross(currentUp, Vec3(0.0f, 0.0f, 1.0f));
-                }
-                perp = perp.normalize();
-                qRot = Quat(perp.x, perp.y, perp.z, 0.0f);
-            } else {
-                qRot = Quat(0.0f, 0.0f, 0.0f, 1.0f);
-            }
+            return;
         }
 
-        Quat qPlayerCurrent = Quat::fromEulerAngles(m_player->transform.rotation.x, m_player->transform.rotation.y, m_player->transform.rotation.z);
-        Quat qPlayerTarget = qRot * qPlayerCurrent;
-        Quat qPlayerNew = Quat::slerp(qPlayerCurrent, qPlayerTarget, std::clamp(m_alignmentSpeed * dt, 0.0f, 1.0f));
-        m_player->transform.rotation = toEulerAngles(qPlayerNew);
+        Vec3 currentUp = m_alignRot * Vec3(0.0f, 1.0f, 0.0f);
+        float d = std::clamp(dot(currentUp, targetUp), -1.0f, 1.0f);
 
-        Quat qCamCurrent = Quat::fromEulerAngles(m_camera->transform.rotation.x, m_camera->transform.rotation.y, m_camera->transform.rotation.z);
-        Quat qCamTarget = qRot * qCamCurrent;
-        Quat qCamNew = Quat::slerp(qCamCurrent, qCamTarget, std::clamp(m_alignmentSpeed * dt, 0.0f, 1.0f));
-        m_camera->transform.rotation = toEulerAngles(qCamNew);
+        if (d > 0.9999f) return; // already aligned, nothing to do
+
+        Vec3 axis;
+        float angle;
+        if (d < -0.9999f) {
+            Vec3 arbitrary = (std::abs(currentUp.x) < 0.9f) ? Vec3(1.0f, 0.0f, 0.0f) : Vec3(0.0f, 0.0f, 1.0f);
+            axis = cross(currentUp, arbitrary).normalize();
+            angle = 3.1415926535f;
+        } else {
+            axis = cross(currentUp, targetUp).normalize();
+            angle = std::acos(d);
+        }
+
+        Quat fullDelta = fromAxisAngle(axis, angle);
+        float t = std::clamp(1.0f - std::exp(-m_alignmentSpeed * dt), 0.0f, 1.0f);
+        Quat stepDelta = Quat::slerp(Quat(), fullDelta, t);
+
+        m_alignRot = normalize(stepDelta * m_alignRot);
     }
 
-    void calculateDrag() {
-        // should be based on the planets atmosphere's drag but for now its gonna be fixed
-        // apply a contrary force to the player's velocity to simulate drag
-        Vec3 dragForce = -m_velocity * 0.75f; 
+    void calculateDrag(Entity* planet) {
+        if (!planet) return;
+        
+        Vec3 dragForce = -m_velocity * 0.5f; 
         m_player->getComponent<RigidbodyComponent>()->applyForce(dragForce);
+        
+        // TODO: use each planet's params
+        // planet->getComponent<PlanetComponent>()->getAtmosphere().drag
     }
 
     void syncPlayerToCamera() {
         if (!m_camera || !m_player) return;
         Vec3 newPos = m_camera->transform.position - (m_camera->transform.up() * m_playerHeight);
-        m_player->getComponent<RigidbodyComponent>()->teleport(newPos, m_camera->transform.rotation);
+        m_player->getComponent<RigidbodyComponent>()->teleport(newPos, Vec3(0.0f, 0.0f, 0.0f));
     }
 
     void setSensitivity(float newSensitivity) { m_sensitivity = newSensitivity; }
@@ -183,4 +220,13 @@ public:
 
     void setGravityVector(const Vec3& gravity) { m_gravity = gravity; }
     Vec3 getGravityVector() const { return m_gravity; }
+
+    Entity* getPlayer() const { return m_player; }
+
+    float getDistanceToClosestPlanet() const {
+        if (!m_closestValidPlanet) return -1.0f;
+        float planetRadius = m_closestValidPlanet->getComponent<PlanetComponent>()->getPlanetParams().radius;
+        float distance = (m_closestValidPlanet->transform.position - m_player->transform.position).length();
+        return distance - planetRadius; // surface distance
+    }
 };
