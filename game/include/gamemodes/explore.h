@@ -29,6 +29,10 @@ private:
     void updateOrbits(float timeScale, float dt);
     void updateLods(float dt);
     void updateGravityVector();
+    void updateGlobalLighting();
+
+    // DEBUG
+    void drawDebugInfo();
 
     Game& m_game;
     float m_gravityScale = 60.0f; // DEBUG: High for now

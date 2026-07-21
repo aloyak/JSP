@@ -97,7 +97,10 @@ void ExploreMode::Update() {
         m_blackHoleShader->setVec3("u_glowColor", Vec3(1.0f, 5.0f, 5.0f));
     }
 
-    // DEBUG
+    drawDebugInfo();
+}
+
+void ExploreMode::drawDebugInfo() {
     ImGui::Begin("DEBUG");
     ImGui::SliderFloat("Time Scale", &m_game.timeScale, 0.0f, 100.0f);
     ImGui::SliderFloat("Gravity Scale", &m_gravityScale, 0.0f, 1000.0f);
@@ -124,13 +127,55 @@ void ExploreMode::Update() {
     if (ImGui::Button("Return")) {
         m_game.GetUI().loadMainMenu();
     }
+
+    ImGui::Separator();
+
+    if (m_gravityBasedCamera->getClosestPlanet()) {
+        AtmosphereParams& atmo = m_gravityBasedCamera->getClosestPlanet()->getComponent<PlanetComponent>()->getAtmosphere();
+        if (ImGui::SliderFloat("thickness", &atmo.thickness, 1.0f, 1000.0f)) {}
+
+        Vec3& rc = atmo.rayleighCoeff;
+        static constexpr float k_rayleighMax = 0.08f; // displayable ceiling
+        float skyColor[3] = {
+            std::fmin(rc.x / k_rayleighMax, 1.0f),
+            std::fmin(rc.y / k_rayleighMax, 1.0f),
+            std::fmin(rc.z / k_rayleighMax, 1.0f)
+        };
+        if (ImGui::ColorEdit3("scatter", skyColor,
+                ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_PickerHueWheel)) {
+            float maxC = std::fmax(skyColor[0], std::fmax(skyColor[1], skyColor[2]));
+            if (maxC < 1e-5f) maxC = 1.0f;
+            rc.x = (skyColor[0] / maxC) * k_rayleighMax;
+            rc.y = (skyColor[1] / maxC) * k_rayleighMax;
+            rc.z = (skyColor[2] / maxC) * k_rayleighMax;
+        }
+
+        float maxCoeff = std::fmax(rc.x, std::fmax(rc.y, rc.z));
+        float scatterStrength = maxCoeff / k_rayleighMax; // [0,1]
+        if (ImGui::SliderFloat("scatter", &scatterStrength, 0.01f, 1.0f)) {
+            float prevMax = std::fmax(rc.x, std::fmax(rc.y, rc.z));
+            if (prevMax > 1e-6f) {
+                float scale = (scatterStrength * k_rayleighMax) / prevMax;
+                rc.x *= scale;
+                rc.y *= scale;
+                rc.z *= scale;
+            }
+        }
+
+        if (ImGui::SliderFloat("sharpness", &atmo.edgeFalloff, 0.0f, 1200.0f,
+            "%.2f", ImGuiSliderFlags_Logarithmic)) {}
+
+        if (ImGui::SliderFloat("density", &atmo.density, 0.0f, 10.0f,
+            "%.2f", ImGuiSliderFlags_Logarithmic)) {}
+    }
+
     ImGui::End();
 }
-
 
 void ExploreMode::LateUpdate() {
     updateOrbits(m_game.timeScale, m_game.GetEngine().getDeltaTime());
     updateGravityVector();
+    updateGlobalLighting();
 }
 
 void ExploreMode::updateOrbits(float timeScale, float dt) {
@@ -212,4 +257,18 @@ void ExploreMode::updateGravityVector() {
     }
 
     m_gravityBasedCamera->setGravityVector(gravitySum * m_gravityScale);
+}
+
+void ExploreMode::updateGlobalLighting() {
+    Entity* lightSource = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("VestaStar")->get();
+
+    for (auto& planet : m_planets) {
+        if (!planet.entity || !planet.component) continue;
+
+        auto* planetComp = planet.entity->getComponent<PlanetComponent>();
+        if (!planetComp) continue;
+       
+        planetComp->getPlanetParams().sunDir = 
+            (lightSource->transform.position - planet.entity->transform.position).normalize();
+    }
 }
