@@ -27,6 +27,7 @@ struct GameSettings {
     float masterVolume = 1.0f;
     float musicVolume = 1.0f;
     float sfxVolume = 1.0f;
+    float uiScale = 1.0f;
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
@@ -40,7 +41,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
     headbobIntensity,
     masterVolume, 
     musicVolume, 
-    sfxVolume
+    sfxVolume,
+    uiScale
 )
 
 class Game {

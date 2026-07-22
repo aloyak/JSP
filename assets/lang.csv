@@ -39,6 +39,8 @@ sttngs.headBob,"Head Bob Intensity: ","Movimiento de la Cámara: "
 sttngs.vol.master,"Master Volume: ","Volumen Principal: "
 sttngs.vol.music,"Music Volume: ","Volumen Música: "
 sttngs.vol.sfx,"SFX Volume: ","Volumen SFX: "
+sttngs.uiScale,UI Scale:,Tamaño de la Interfaz:
+sttngs.ui,User Interface,Interfaz del Usuario
 tm.game,Game,Modo
 tm.mm,Main Menu,Menu Principal
 tm.settings,Settings,Configuración
@@ -110,7 +112,7 @@ sbox.tabs.sttngs,Settings,Configuración
 sbox.tabs.sim,Simulation,Simulación
 sbox.planets.load,Load Custom Planet...,Cargar Planeta Personalizado...
 sbox.planets.ss,Solar System,Sistema Solar
-sbox.planets.campaign,Campaign,Campaña
+sbox.planets.halcyon,Halcyon,S. Halcíone
 sbox.planets.custom,Custom,Propios
 sbox.prpts.locked,Locked,Bloquear
 sbox.prpts.destroy,DESTROY,DESTRUIR

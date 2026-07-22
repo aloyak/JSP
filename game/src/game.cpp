@@ -16,9 +16,8 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
     settingsManager.Load();
     auto& settings = settingsManager.Get();
 
-    m_engine->getWindow().setFullscreen(settings.isFullscreen); // TODO: SET ON RELEASE
+    m_engine->getWindow().setFullscreen(settings.isFullscreen);
     m_engine->getWindow().enableVSync(settings.vsyncEnabled);
-    // m_engine->getWindow().allowResize(false); // TODO
     m_engine->setTargetFps(settings.targetFPS);
 
     m_audio.setVolume(settings.masterVolume, Master);
@@ -29,6 +28,24 @@ Game::Game(Engine& engine) : m_engine(&engine), m_ui(*this), m_currentGameMode(n
 
     m_ui.initialize(); 
     m_ui.setLang(settings.language);
+    m_ui.setUIScale(settings.uiScale);
+
+    if (settings.firstRun) {
+        // dynamic ui scale
+        Vec2 windowSize = m_engine->getWindow().getSize();
+        float scale = std::clamp(windowSize.y / 1080.0f, 0.5f, 2.0f);
+        m_ui.setUIScale(scale);
+        settings.uiScale = scale;
+        
+        // dynamic target FPS based on monitor refresh rate
+        int refreshRate = m_engine->getWindow().getRefreshRate();
+        if (refreshRate > 0) {
+            m_engine->setTargetFps(refreshRate);
+            settings.targetFPS = refreshRate;
+        }
+
+        settingsManager.Save();
+    }
 }
 
 void Game::Update() {
@@ -240,6 +257,13 @@ void UI::drawSettingsWindow() {
         settingsChanged = true;
     }
 
+    ImGui::SeparatorText(getText("sttngs.ui"));
+    std::string uiScaleFormat = std::string(getText("sttngs.uiScale")) + " %.2f";
+    if (ImGui::SliderFloat("##UIScale", &settings.uiScale, 0.5f, 2.0f, uiScaleFormat.c_str())) {
+        m_game.GetUI().setUIScale(settings.uiScale);
+        settingsChanged = true;
+    }
+    
     ImGui::SeparatorText(getText("sttngs.gameplay"));
     std::string mouseSensFormat = std::string(getText("sttngs.sens")) + " %.3f";
     if (ImGui::SliderFloat("##MouseSensitivity", &settings.mouseSens, 0.0f, 1.0f, mouseSensFormat.c_str()))

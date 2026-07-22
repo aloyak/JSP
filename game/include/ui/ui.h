@@ -34,6 +34,8 @@ public:
         fonts.push_back(io.Fonts->Fonts[io.Fonts->Fonts.size() - 2]);
         fonts.push_back(io.Fonts->Fonts[io.Fonts->Fonts.size() - 3]);
 
+        m_defaultStyle = ImGui::GetStyle();
+
         loadLanguageFile();
     }
 
@@ -42,6 +44,18 @@ public:
             ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
         } else {
             ImGui::PushFont(fonts[index]);
+        }
+    }
+
+    void setUIScale(float scale)
+    {
+        ImGuiStyle style = m_defaultStyle;
+        style.ScaleAllSizes(scale);
+        ImGui::GetStyle() = style;
+
+        ImGuiIO& io = ImGui::GetIO();
+        for (size_t i = 0; i < fonts.size(); ++i) {
+            io.Fonts->Fonts[i]->Scale = scale;
         }
     }
 
@@ -152,6 +166,8 @@ public:
     const char* getText(const char* key);
 private:
     Game& m_game;
+
+    ImGuiStyle m_defaultStyle = ImGuiStyle();
 
     std::string m_hoverSoundPath = "assets/audio/UI/hover.wav";
     std::string m_pressSoundPath = "assets/audio/UI/press.wav";
