@@ -52,6 +52,7 @@ struct PlanetParams {
 struct AtmosphereParams {
     bool hasAtmosphere = false;
     float thickness = 100.0f;
+    float entryThickness = 150.0f;
     Vec3 rayleighCoeff = Vec3(5.8e-3f, 13.5e-3f, 33.1e-3f);
     float edgeFalloff = 0.5f;
     float density = 1.0f;

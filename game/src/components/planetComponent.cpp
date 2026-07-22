@@ -55,9 +55,10 @@ void PlanetComponent::update(float dt) {
     if (m_hasAtmosphere && m_atmosphere && entity && m_game) {
         auto& engine = m_game->GetEngine();
 
-        m_atmosphere->setVec3 ("u_planetCenter",     entity->transform.position);
-        m_atmosphere->setFloat("u_planetRadius",     m_planetParams.radius);
+        m_atmosphere->setVec3 ("u_planetCenter", entity->transform.position);
+        m_atmosphere->setFloat("u_planetRadius", m_planetParams.radius);
         m_atmosphere->setFloat("u_atmosphereRadius", m_planetParams.radius + m_atmosphereParams.thickness);
+        m_atmosphere->setFloat("u_atmosphereEntryRadius", m_planetParams.radius + m_atmosphereParams.entryThickness);
         
         if (!m_camera) {
             m_camera = engine.getActiveCamera();
@@ -70,7 +71,7 @@ void PlanetComponent::update(float dt) {
                 m_atmosphere->setMat4("u_invView", camComp->getCamera().getInvViewMatrix(m_camera->transform));
                 m_atmosphere->setMat4("u_invProj", camComp->getCamera().getInvProjMatrix());
                 m_atmosphere->setFloat("u_near", camComp->getNear());
-                m_atmosphere->setFloat("u_far",  camComp->getFar());
+                m_atmosphere->setFloat("u_far", camComp->getFar());
             }
         }
 
@@ -88,13 +89,13 @@ void PlanetComponent::update(float dt) {
 
         m_water->setVec3 ("u_planetCenter", entity->transform.position);
         m_water->setFloat("u_planetRadius", m_planetParams.radius);
-        m_water->setFloat("u_waterLevel",   m_waterParams.level);
-        m_water->setVec3 ("u_waterColorA",   m_waterParams.colorA);
-        m_water->setVec3 ("u_waterColorB",   m_waterParams.colorB);
+        m_water->setFloat("u_waterLevel", m_waterParams.level);
+        m_water->setVec3 ("u_waterColorA", m_waterParams.colorA);
+        m_water->setVec3 ("u_waterColorB", m_waterParams.colorB);
         m_water->setFloat("u_depthMultiplier", m_waterParams.depthMultiplier);
         m_water->setFloat("u_alphaMultiplier", m_waterParams.alphaMultiplier);
         
-        m_water->setVec3 ("u_sunDir",       m_planetParams.sunDir);
+        m_water->setVec3 ("u_sunDir", m_planetParams.sunDir);
         m_water->setFloat("u_sunIntensity", m_planetParams.sunIntensity);
 
         Entity* cam = engine.getActiveCamera();

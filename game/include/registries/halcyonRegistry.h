@@ -69,8 +69,8 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         p.component->setCamera(camera);
 
         auto& params = p.component->getPlanetParams();
-        params.radius = 100.0f;
-        params.mass = 1000.0f;
+        params.radius = 1000.0f;
+        params.mass = 10000.0f;
         params.semiMajorAxis = 5000.0f;
         params.eccentricity = 0.05f;
         params.inclination = 0.0f;
@@ -83,6 +83,7 @@ inline std::vector<Planet> GetPlanetsFromScene(Game& game, Scene* scene, Entity*
         p.component->setHasAtmosphere(true);
         p.component->getAtmosphere().thickness = 350.0f;
         p.component->getAtmosphere().density = 3.0f;
+        p.component->getAtmosphere().entryThickness = 600.0f;
 
         planets.push_back(p);
     }
