@@ -292,11 +292,10 @@ void ExploreMode::resetOrigin() {
     for (auto& entity : m_game.GetEngine().getSceneManager().getActiveScene()->getEntities()) {
         if (entity.get() == m_camera) continue;
 
-        // if it has a rigidbody use teleport instead
         if (entity->hasComponent<RigidbodyComponent>()) {
             auto* rb = entity->getComponent<RigidbodyComponent>();
             if (rb) {
-                rb->teleport(entity->transform.position - offset, entity->transform.rotation);
+                rb->shiftOrigin(-offset);
                 continue;
             }
         } else {
