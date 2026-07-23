@@ -4,6 +4,7 @@
 #include "gamemode.h"
 
 #include "engine/components/entity.h"
+#include "engine/components/rigidbodyComponent.h"
 #include "engine/render/postprocess/postProcessor.h"
 
 #include "moveset/freecamera.h"
@@ -31,6 +32,8 @@ private:
     void updateGravityVector();
     void updateGlobalLighting();
 
+    void resetOrigin();
+
     // DEBUG
     void drawDebugInfo();
 
@@ -50,6 +53,7 @@ private:
 
     float LODDistance = 2000.0f;
 
+    float m_playerMaxOriginDist = 15000.0f; // triggers floating origin reset
 
     // DEBUG: Free camera used only for debugging, could be kept as a feature maybe
     bool m_useFreeCamera = true;

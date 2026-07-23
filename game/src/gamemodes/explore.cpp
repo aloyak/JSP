@@ -1,5 +1,9 @@
 #include "gamemodes/explore.h"
 
+// IMPORTANT TODOs:
+// Custom physics world for when inside a planet, to allow walking on the surface while the planet is rotating and moving in orbit
+// far future: chunked collision mesh per planet, not just a sphere collider
+
 void ExploreMode::OnEnter() {
     m_game.showHelp = false;
     m_game.showSettings = false;
@@ -8,7 +12,7 @@ void ExploreMode::OnEnter() {
     m_game.GetEngine().getInput().setCursorMode(true);
 
     m_camera = m_game.GetEngine().getSceneManager().getActiveScene()->createEntity("Camera");
-    m_camera->addComponent<CameraComponent>(60.0f, 16.0f / 9.0f, 0.1f, 25000.0f);
+    m_camera->addComponent<CameraComponent>(60.0f, 16.0f / 9.0f, 0.1f, 250000.0f); // ouch
 
     auto& settings = m_game.settingsManager.Get();
     m_freeCamera = new FreeCamera(m_camera);
@@ -75,7 +79,7 @@ void ExploreMode::Update() {
     if (scrollDelta != 0.0f) { 
         float speed = m_freeCamera->getMoveSpeed();
         speed *= std::pow(1.15f, scrollDelta);
-        speed = std::clamp(speed, 0.1f, 1000.0f);
+        speed = std::clamp(speed, 0.1f, 10000.0f);
         m_freeCamera->setMoveSpeed(speed);
     }
 
@@ -106,17 +110,23 @@ void ExploreMode::drawDebugInfo() {
     ImGui::SliderFloat("Gravity Scale", &m_gravityScale, 0.0f, 1000.0f);
     ImGui::Text("Free Camera Speed: %.2f", m_freeCamera->getMoveSpeed());
     ImGui::Text("Body Velocity: %.2f", m_gravityBasedCamera->getVelocity());
-    ImGui::Text("Dist to Closest Planet: %.2f", m_gravityBasedCamera->getDistanceToClosestPlanet());
     ImGui::Text("Gravity Vector: (%.2f, %.2f, %.2f)", 
         m_gravityBasedCamera->getGravityVector().x, 
         m_gravityBasedCamera->getGravityVector().y, 
         m_gravityBasedCamera->getGravityVector().z
+    );
+    ImGui::Separator();
+    ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", 
+        m_camera->transform.position.x, 
+        m_camera->transform.position.y, 
+        m_camera->transform.position.z
     );
     ImGui::Text("Camera Rotation: (%.2f, %.2f, %.2f)", 
         m_camera->transform.rotation.x, 
         m_camera->transform.rotation.y, 
         m_camera->transform.rotation.z
     );
+    ImGui::Separator();
     ImGui::Text("Body Rotation: (%.2f, %.2f, %.2f)", 
         m_gravityBasedCamera->getPlayer()->transform.rotation.x, 
         m_gravityBasedCamera->getPlayer()->transform.rotation.y, 
@@ -176,6 +186,9 @@ void ExploreMode::LateUpdate() {
     updateOrbits(m_game.timeScale, m_game.GetEngine().getDeltaTime());
     updateGravityVector();
     updateGlobalLighting();
+
+    if (m_camera->transform.position.length() > m_playerMaxOriginDist) 
+        resetOrigin();
 }
 
 void ExploreMode::updateOrbits(float timeScale, float dt) {
@@ -271,4 +284,25 @@ void ExploreMode::updateGlobalLighting() {
         planetComp->getPlanetParams().sunDir = 
             (lightSource->transform.position - planet.entity->transform.position).normalize();
     }
+}
+
+void ExploreMode::resetOrigin() {
+    Vec3 offset = m_camera->transform.position;
+
+    for (auto& entity : m_game.GetEngine().getSceneManager().getActiveScene()->getEntities()) {
+        if (entity.get() == m_camera) continue;
+
+        // if it has a rigidbody use teleport instead
+        if (entity->hasComponent<RigidbodyComponent>()) {
+            auto* rb = entity->getComponent<RigidbodyComponent>();
+            if (rb) {
+                rb->teleport(entity->transform.position - offset, entity->transform.rotation);
+                continue;
+            }
+        } else {
+            entity->transform.position = entity->transform.position - offset;
+        }
+    }
+
+    m_camera->transform.position = Vec3(0.0f, 0.0f, 0.0f);
 }
