@@ -14,6 +14,8 @@ struct RegistryAtmosphere {
     float thickness     = 100.0f;
     Vec3  rayleighCoeff = Vec3(5.8e-3f, 13.5e-3f, 33.1e-3f);
     float edgeFalloff   = 0.5f;
+    float entryThickness = 100.0f;
+    float density        = 1.0f;
 };
 
 struct GravityBody {
@@ -41,10 +43,14 @@ struct GravityBody {
             a.thickness     = atmosphere.thickness;
             a.rayleighCoeff = atmosphere.rayleighCoeff;
             a.edgeFalloff   = atmosphere.edgeFalloff;
+            a.entryThickness = atmosphere.entryThickness;
+            a.density        = atmosphere.density;
         }
 
         comp.applyScale();
     }
+
+    bool discovered = true; // only for campaign planets
 };
 
 class PlanetRegistry {

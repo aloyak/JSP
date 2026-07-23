@@ -6,10 +6,13 @@ SandboxMode::SandboxMode(Game &game)
 void SandboxMode::OnEnter()
 {
     // DEBUG: REMOVE ON RELEASE
-    m_game.showHelp = true;
+    m_game.showHelp = true; 
 
- 
+    
     m_game.timeScale = 2000.0f;
+
+    for (auto &b : GetHalcyonGravityBodies())
+        m_registry.bodies.push_back(b);
 
     Entity *earth = m_game.GetEngine().getSceneManager().getActiveScene()->getEntityByName("Earth").get();
     if (earth)
@@ -1577,9 +1580,9 @@ void SandboxMode::DrawUI()
                     {
                         m_selector.toggleOpen();
                     }
-                    ImGui::Separator();
                 }
 
+                std::vector<int> visibleIndices;
                 for (int i = 0; i < (int)m_registry.bodies.size(); i++)
                 {
                     bool show = false;
@@ -1591,28 +1594,44 @@ void SandboxMode::DrawUI()
                         show = true;
 
                     if (show)
+                        visibleIndices.push_back(i);
+                }
+
+                // discovered planets first, undiscovered pushed to the end (stable within each group)
+                std::stable_sort(visibleIndices.begin(), visibleIndices.end(),
+                    [this](int a, int b) {
+                        return m_registry.bodies[a].discovered && !m_registry.bodies[b].discovered;
+                    });
+
+                for (int i : visibleIndices)
+                {
+                    bool discovered = m_registry.bodies[i].discovered;
+                    if (!discovered) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                    if (m_ui.button(m_registry.bodies[i].name.c_str(),
+                                    ImVec2(100, ImGui::GetContentRegionAvail().y)))
                     {
-                        if (m_ui.button(m_registry.bodies[i].name.c_str(),
-                                        ImVec2(100, ImGui::GetContentRegionAvail().y)))
-                            StartPlacement(i);
-                        ImGui::SameLine();
+                        if (discovered) StartPlacement(i);
                     }
+
+                    if (!discovered) ImGui::PopStyleColor();
+                    if (!discovered && ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s", m_ui.getText("sbox.notdiscov"));
+
+                    ImGui::SameLine();
                 }
 
                 if (simulationRunning) ImGui::EndDisabled();
 
                 ImGui::EndChild();
-
                 ImGui::SameLine();
 
                 ImGui::BeginChild("PlanetTypeSelection", ImVec2(rightSideW, childH));
 
                 ImGui::RadioButton(m_ui.getText("sbox.planets.ss"), &selectedType, 0);
-                ImGui::RadioButton(m_ui.getText("sbox.planets.campaign"), &selectedType, 1);
+                ImGui::RadioButton(m_ui.getText("sbox.planets.halcyon"), &selectedType, 1);
                 ImGui::RadioButton(m_ui.getText("sbox.planets.custom"), &selectedType, 2);
 
                 ImGui::EndChild();
-
                 ImGui::EndTabItem();
             }
             if (m_ui.beginTabItem("sbox.tabs.cb"))

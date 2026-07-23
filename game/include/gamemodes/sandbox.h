@@ -11,6 +11,7 @@
 
 #include "components/planetComponent.h"
 #include "registries/planetRegistry.h"
+#include "registries/halcyonRegistry.h"
 #include "ui/selector.h"
 #include "engine/utils/path.h"
 #include <nlohmann/json.hpp>
@@ -18,6 +19,7 @@
 #include <filesystem>
 #include <cstring>
 #include <string>
+#include <algorithm>
 
 class Game;
 
