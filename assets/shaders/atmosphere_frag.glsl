@@ -66,6 +66,8 @@ void main() {
     vec4  clipRay  = vec4(TexCoords * 2.0 - 1.0, 1.0, 1.0);
     vec4  viewRay  = u_invProj * clipRay;
     viewRay = vec4(viewRay.xy, -1.0, 0.0);
+    
+    vec3  viewDir  = viewRay.xyz;
     vec3  worldRay = normalize((u_invView * viewRay).xyz);
     vec3 rayOrigin = u_cameraPos;
     vec3 rayDir    = worldRay;
@@ -88,8 +90,10 @@ void main() {
 
     float rawDepth = texture(depthTexture, TexCoords).r;
     float sceneLinear = lineariseDepth(rawDepth);
-    if (rawDepth > 0.0 && sceneLinear < tMax) {
-        tMax = sceneLinear;
+    float sceneEuclidean = sceneLinear * length(viewDir);
+
+    if (rawDepth > 0.0 && sceneEuclidean < tMax) {
+        tMax = sceneEuclidean;
     }
 
     if (tMin >= tMax) {
